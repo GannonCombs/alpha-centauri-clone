@@ -13,9 +13,10 @@ class Tile:
         # Future expansion: resources, improvements, etc.
         self.resource = None
         self.improvement = None
-        self.unit = None
+        self.units = []  # Changed from single unit to list for stacking
         self.base = None
         self.supply_pod = False  # Unity supply pods
+        self.displayed_unit_index = 0  # Which unit in stack to display
 
     def is_land(self):
         """Check if this tile is land terrain."""
@@ -83,12 +84,46 @@ class GameMap:
         return 0 <= x < self.width and 0 <= y < self.height
 
     def get_unit_at(self, x, y):
-        """Get unit at a tile position, if any."""
+        """Get currently displayed unit at a tile position, if any."""
         tile = self.get_tile(x, y)
-        return tile.unit if tile else None
+        if tile and tile.units:
+            # Return the unit at the displayed index (cycling with W key)
+            if 0 <= tile.displayed_unit_index < len(tile.units):
+                return tile.units[tile.displayed_unit_index]
+            # Fallback to first unit if index is invalid
+            return tile.units[0]
+        return None
+
+    def add_unit_at(self, x, y, unit):
+        """Add a unit to a tile (supports stacking)."""
+        tile = self.get_tile(x, y)
+        if tile and unit not in tile.units:
+            tile.units.append(unit)
+
+    def remove_unit_at(self, x, y, unit):
+        """Remove a specific unit from a tile."""
+        tile = self.get_tile(x, y)
+        if tile and unit in tile.units:
+            tile.units.remove(unit)
+            # Adjust displayed index if needed
+            if tile.displayed_unit_index >= len(tile.units):
+                tile.displayed_unit_index = max(0, len(tile.units) - 1)
 
     def set_unit_at(self, x, y, unit):
-        """Place a unit on a tile."""
+        """Place a unit on a tile (legacy method - adds to stack)."""
+        self.add_unit_at(x, y, unit)
+
+    def clear_units_at(self, x, y):
+        """Remove all units from a tile."""
         tile = self.get_tile(x, y)
         if tile:
-            tile.unit = unit
+            tile.units = []
+            tile.displayed_unit_index = 0
+
+    def cycle_displayed_unit(self, x, y):
+        """Cycle to next unit in stack at this tile."""
+        tile = self.get_tile(x, y)
+        if tile and len(tile.units) > 1:
+            tile.displayed_unit_index = (tile.displayed_unit_index + 1) % len(tile.units)
+            return tile.units[tile.displayed_unit_index]
+        return None

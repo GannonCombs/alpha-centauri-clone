@@ -95,6 +95,18 @@ class Renderer:
 
     def draw_unit(self, unit, selected_unit, player_id, game_map):
         """Draw a single unit with health bar if selected."""
+        # Only draw if this is the displayed unit for its tile
+        tile = game_map.get_tile(unit.x, unit.y)
+        if tile and tile.units:
+            # Check if this unit is the one that should be displayed
+            if 0 <= tile.displayed_unit_index < len(tile.units):
+                if tile.units[tile.displayed_unit_index] != unit:
+                    return  # Not the displayed unit, skip
+            else:
+                # Invalid index, check if it's the first unit
+                if tile.units[0] != unit:
+                    return
+
         # Calculate wrapped screen position
         wrapped_x = (unit.x - self.camera_offset_x) % game_map.width
         screen_x = (wrapped_x * TILE_SIZE) + self.base_offset_x
@@ -135,12 +147,12 @@ class Renderer:
 
         self.screen.blit(text_surf, text_rect)
 
-        # Draw selection indicator (home plate) if selected
+        # Draw selection indicator if selected
         if unit == selected_unit:
             self._draw_selection_indicator(screen_x, screen_y, unit)
 
     def _draw_selection_indicator(self, tile_x, tile_y, unit):
-        """Draw home plate selection indicator and health bar in top-left of tile.
+        """Draw selection indicator and health bar in top-left of tile.
 
         Args:
             tile_x (int): Top-left X of tile
@@ -163,12 +175,12 @@ class Renderer:
         health_color = unit.get_health_color()
         pygame.draw.rect(self.screen, health_color, (bar_x, fill_y, bar_width, fill_height))
 
-        # Home plate (pentagon pointing down) next to health bar
+        # Selection indicator (pentagon pointing down) next to health bar
         size = 10
         x = bar_x + bar_width + 2
         y = tile_y + 2
 
-        # Pentagon vertices (home plate shape)
+        # Pentagon vertices (pentagon pointing down)
         points = [
             (x, y),                    # Top-left
             (x + size, y),             # Top-right
@@ -177,9 +189,43 @@ class Renderer:
             (x, y + size - 3)          # Left before point
         ]
 
-        # Draw filled yellow home plate
+        # Draw filled yellow selection indicator
         pygame.draw.polygon(self.screen, COLOR_UNIT_SELECTED, points)
         pygame.draw.polygon(self.screen, COLOR_BLACK, points, 1)
+
+        # Morale indicator - vertical bar with segments to the right of selection indicator
+        # Only draw if unit has morale system (backward compatibility)
+        if hasattr(unit, 'morale_level'):
+            morale_x = x + size + 2
+            morale_y = tile_y + 2
+            morale_width = 3
+            morale_height = 10  # Match selection indicator height
+            segment_height = morale_height / 7  # 7 morale levels (0-7)
+
+            # Draw background for morale bar
+            morale_bg_rect = pygame.Rect(morale_x, morale_y, morale_width, morale_height)
+            pygame.draw.rect(self.screen, (40, 40, 40), morale_bg_rect)
+            pygame.draw.rect(self.screen, COLOR_BLACK, morale_bg_rect, 1)
+
+            # Fill segments from top to bottom based on morale level
+            # Morale levels: 0-7 (Very Very Green to Elite)
+            # Fill (morale_level + 1) segments (so Green=2 fills 3 segments)
+            filled_segments = unit.morale_level + 1
+            for i in range(filled_segments):
+                seg_y = morale_y + (i * segment_height)
+                seg_rect = pygame.Rect(morale_x, int(seg_y), morale_width, int(segment_height) + 1)
+
+                # Color based on morale tier
+                if unit.morale_level >= 7:  # Elite
+                    seg_color = (255, 215, 0)  # Gold
+                elif unit.morale_level >= 5:  # Veteran+
+                    seg_color = (100, 200, 255)  # Light blue
+                elif unit.morale_level >= 3:  # Disciplined+
+                    seg_color = (150, 255, 150)  # Light green
+                else:  # Below Disciplined
+                    seg_color = (180, 180, 180)  # Gray
+
+                pygame.draw.rect(self.screen, seg_color, seg_rect)
 
     def draw_bases(self, bases, player_id, game_map):
         """Draw all bases on the map."""
@@ -227,11 +273,17 @@ class Renderer:
         # Draw population in top-left corner
         pop_size = 20
         pop_rect = pygame.Rect(screen_x + 2, screen_y + 2, pop_size, pop_size)
-        pop_color = COLOR_BASE_FRIENDLY if base.is_friendly(player_id) else COLOR_BASE_ENEMY
-        pygame.draw.rect(self.screen, pop_color, pop_rect)
-        pygame.draw.rect(self.screen, COLOR_BASE_BORDER, pop_rect, 1)
 
-        pop_font = pygame.font.Font(None, 16)
+        # Only draw background fill if there are garrisoned units
+        if len(base.garrison) > 0:
+            pop_color = COLOR_BASE_FRIENDLY if base.is_friendly(player_id) else COLOR_BASE_ENEMY
+            pygame.draw.rect(self.screen, pop_color, pop_rect)
+
+        # Always draw black outline (thicker for visibility)
+        pygame.draw.rect(self.screen, COLOR_BLACK, pop_rect, 2)
+
+        # Always draw population number in black (bold font for visibility)
+        pop_font = pygame.font.Font(None, 18)  # Slightly larger for boldness
         pop_text = pop_font.render(str(base.population), True, COLOR_BLACK)
         pop_text_rect = pop_text.get_rect(center=pop_rect.center)
         self.screen.blit(pop_text, pop_text_rect)

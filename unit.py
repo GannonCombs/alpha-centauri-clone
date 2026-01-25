@@ -47,31 +47,48 @@ class Unit:
             self.weapon = 0
             self.armor = 1
             self.reactor_level = 1  # Reactor value (d in a-b-c*d format)
+            self.weapon_mode = 'noncombat'
+            self.armor_mode = 'projectile'
         elif unit_type == UNIT_COLONY_POD_SEA:
             self.weapon = 0
             self.armor = 1
             self.reactor_level = 1
+            self.weapon_mode = 'noncombat'
+            self.armor_mode = 'projectile'
         elif unit_type == UNIT_LAND:
             self.weapon = 1
             self.armor = 1
             self.reactor_level = 1
+            self.weapon_mode = 'projectile'  # Hand weapons (projectile)
+            self.armor_mode = 'projectile'   # No armor (projectile)
         elif unit_type == UNIT_SEA:
             self.weapon = 1
             self.armor = 1
             self.reactor_level = 1
+            self.weapon_mode = 'projectile'
+            self.armor_mode = 'projectile'
         elif unit_type == UNIT_AIR:
             self.weapon = 1
             self.armor = 1
             self.reactor_level = 1
+            self.weapon_mode = 'missile'     # Air units default to missile
+            self.armor_mode = 'projectile'
         else:
             # Default for unknown types
             self.weapon = 1
             self.armor = 1
             self.reactor_level = 1
+            self.weapon_mode = 'projectile'
+            self.armor_mode = 'projectile'
 
         # Health system: max HP = 10 * reactor_level
         self.max_health = 10 * self.reactor_level
         self.current_health = self.max_health
+
+        # Morale/Experience system
+        self.experience = 0
+        self.morale_level = 2  # Start at Green (0=Very Very Green, 1=Very Green, 2=Green, 3=Disciplined, 4=Hardened, 5=Veteran, 6=Commando, 7=Elite)
+        self.kills = 0  # Track total kills for promotion logic
 
     def max_moves(self):
         """Return maximum movement points per turn.
@@ -80,11 +97,17 @@ class Unit:
             int: Movement points available each turn
         """
         # Air units have 10 moves, sea units have 4, land units have 1
+        base_moves = 1
         if self.unit_type == UNIT_AIR:
-            return 10
+            base_moves = 10
         elif self.unit_type in [UNIT_SEA, UNIT_COLONY_POD_SEA]:
-            return 4
-        return 1
+            base_moves = 4
+
+        # Elite units get +1 move (backward compatibility check)
+        if hasattr(self, 'morale_level') and self.morale_level >= 7:  # Elite
+            base_moves += 1
+
+        return base_moves
 
     def can_move_to(self, tile):
         """Check if this unit can legally move to a tile.
@@ -203,3 +226,86 @@ class Unit:
             return (255, 255, 0)  # Yellow
         else:
             return (255, 0, 0)  # Red
+
+    def get_morale_name(self):
+        """Get morale level as string.
+
+        Returns:
+            str: Morale level name
+        """
+        # Backward compatibility - initialize if missing
+        if not hasattr(self, 'morale_level'):
+            self.morale_level = 2  # Green
+            self.experience = 0
+            self.kills = 0
+
+        morale_names = [
+            "Very Very Green",  # 0
+            "Very Green",       # 1
+            "Green",            # 2
+            "Disciplined",      # 3
+            "Hardened",         # 4
+            "Veteran",          # 5
+            "Commando",         # 6
+            "Elite"             # 7
+        ]
+        if 0 <= self.morale_level < len(morale_names):
+            return morale_names[self.morale_level]
+        return "Unknown"
+
+    def gain_experience(self, amount):
+        """Gain experience and check for promotion.
+
+        Args:
+            amount (int): Amount of XP to gain
+        """
+        # Backward compatibility
+        if not hasattr(self, 'experience'):
+            self.morale_level = 2
+            self.experience = 0
+            self.kills = 0
+
+        self.experience += amount
+        self._check_promotion()
+
+    def record_kill(self):
+        """Record a kill and gain experience.
+
+        Special rule: Units below Disciplined (morale < 3) automatically
+        promote on their first kill.
+        """
+        # Backward compatibility
+        if not hasattr(self, 'kills'):
+            self.morale_level = 2
+            self.experience = 0
+            self.kills = 0
+
+        self.kills += 1
+
+        # Special rule: below Disciplined, first kill = auto-promote
+        if self.morale_level < 3:  # Very Very Green, Very Green, or Green
+            self.morale_level += 1
+            print(f"{self.name} promoted to {self.get_morale_name()} (first kill)")
+        else:
+            # Normal XP gain
+            self.gain_experience(10)  # Arbitrary XP amount for kill
+
+    def _check_promotion(self):
+        """Check if unit has enough XP to promote."""
+        # XP thresholds for each level (after Disciplined)
+        # These are somewhat arbitrary - adjust as needed
+        thresholds = {
+            3: 0,    # Disciplined (starting point after auto-promotions)
+            4: 20,   # Hardened
+            5: 50,   # Veteran
+            6: 100,  # Commando
+            7: 200   # Elite
+        }
+
+        # Check if we've reached next threshold
+        if self.morale_level < 7:  # Not yet Elite
+            next_level = self.morale_level + 1
+            if next_level in thresholds and self.experience >= thresholds[next_level]:
+                old_morale = self.get_morale_name()
+                self.morale_level = next_level
+                print(f"{self.name} promoted from {old_morale} to {self.get_morale_name()}!")

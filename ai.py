@@ -60,7 +60,7 @@ class AIPlayer:
             self._move_randomly(unit, game)
 
     def _move_military_unit(self, unit, game):
-        """Move military unit - either explore or move toward player."""
+        """Move military unit - balance offense, defense, and exploration."""
         # First, check for adjacent enemies we can attack
         player_units = [u for u in game.units if u.owner == 0]
 
@@ -76,17 +76,28 @@ class AIPlayer:
                     continue
 
                 check_tile = game.game_map.get_tile(check_x, check_y)
-                if check_tile and check_tile.unit:
-                    if check_tile.unit.owner == 0:  # Player unit
+                if check_tile and len(check_tile.units) > 0:
+                    # Check first unit in stack (defender)
+                    target_unit = check_tile.units[0]
+                    if target_unit.owner == 0:  # Player unit
                         # Found adjacent enemy - consider attacking
-                        if self._should_attack(unit, check_tile.unit, game):
+                        if self._should_attack(unit, target_unit, game):
                             # Attack by moving onto their tile
                             target_x = check_x
                             target_y = check_y
                             game.try_move_unit(unit, target_x, target_y)
                             return
 
-        # No adjacent enemies worth attacking - find nearest player unit or base
+        # Check for ungarrisoned bases that need defending
+        garrison_target = self._find_nearest_ungarrisoned_base(unit, game)
+        if garrison_target:
+            base_x, base_y, distance = garrison_target
+            if self._should_garrison(unit, distance, game):
+                # Move toward undefended base
+                self._move_toward(unit, base_x, base_y, game)
+                return
+
+        # No immediate defensive needs - find nearest player unit or base
         player_bases = [b for b in game.bases if b.owner == 0]
 
         targets = []
@@ -161,14 +172,18 @@ class AIPlayer:
         if not target_tile:
             return False
 
-        # Check if there's an enemy unit
-        if target_tile.unit and target_tile.unit.owner != unit.owner:
-            # Enemy unit - only attack if odds are favorable
-            if self._should_attack(unit, target_tile.unit, game):
-                return self._try_move(unit, dx, dy, game)
-            else:
-                # Don't attack - bad odds
-                return False
+        # Check if there's an enemy unit in the stack
+        if len(target_tile.units) > 0:
+            # Check first unit in stack
+            target_unit = target_tile.units[0]
+            if target_unit.owner != unit.owner:
+                # Enemy unit - only attack if odds are favorable
+                if self._should_attack(unit, target_unit, game):
+                    return self._try_move(unit, dx, dy, game)
+                else:
+                    # Don't attack - bad odds
+                    return False
+            # else: Friendly unit, allow stacking (continue below)
 
         # No enemy, proceed with normal move
         return self._try_move(unit, dx, dy, game)
@@ -266,6 +281,65 @@ class AIPlayer:
 
         return None
 
+    def _find_nearest_ungarrisoned_base(self, unit, game):
+        """Find the nearest AI base without any garrison.
+
+        Args:
+            unit (Unit): The unit looking for a base to garrison
+            game (Game): Current game state
+
+        Returns:
+            tuple: (base_x, base_y, distance) or None if no ungarrisoned bases
+        """
+        ai_bases = [b for b in game.bases if b.owner == self.player_id]
+        ungarrisoned_bases = [b for b in ai_bases if len(b.garrison) == 0]
+
+        if not ungarrisoned_bases:
+            return None
+
+        # Find nearest ungarrisoned base
+        map_width = game.game_map.width
+        nearest = None
+        nearest_dist = float('inf')
+
+        for base in ungarrisoned_bases:
+            dist = self._distance(unit.x, unit.y, base.x, base.y, map_width)
+            if dist < nearest_dist:
+                nearest_dist = dist
+                nearest = (base.x, base.y, dist)
+
+        return nearest
+
+    def _should_garrison(self, unit, base_distance, game):
+        """Decide if unit should prioritize garrisoning over other actions.
+
+        Uses distance-based priority system:
+        - 1-2 tiles (CRITICAL): Always garrison
+        - 3-4 tiles (MODERATE): 50% chance to garrison
+        - 5+ tiles (LOW): Continue mission, don't garrison
+        - Damaged units (<75% HP): Always prefer garrison
+
+        Args:
+            unit (Unit): The unit considering garrison
+            base_distance (int): Distance to nearest ungarrisoned base
+            game (Game): Current game state
+
+        Returns:
+            bool: True if unit should move to garrison
+        """
+        # Damaged units prefer safety of garrison
+        if unit.get_health_percentage() < 0.75:
+            return True
+
+        # Distance-based priority
+        if base_distance <= 2:
+            return True  # CRITICAL range - always garrison
+
+        if base_distance <= 4:
+            return random.random() < 0.5  # MODERATE range - 50% chance
+
+        return False  # LOW priority - continue mission
+
     def _distance(self, x1, y1, x2, y2, map_width):
         """Calculate Manhattan distance with horizontal wrapping."""
         dx = abs(x2 - x1)
@@ -298,6 +372,8 @@ class AIPlayer:
     def _calculate_attack_odds(self, attacker, defender):
         """Calculate probability of attacker winning combat.
 
+        Factors in both combat strength (weapon vs armor) and current health.
+
         Args:
             attacker (Unit): Attacking unit
             defender (Unit): Defending unit
@@ -305,8 +381,9 @@ class AIPlayer:
         Returns:
             float: Probability of attacker winning (0.0 to 1.0)
         """
-        attacker_strength = attacker.weapon
-        defender_strength = defender.armor
+        # Factor in both combat strength and current health
+        attacker_strength = attacker.weapon * attacker.current_health
+        defender_strength = defender.armor * defender.current_health
 
         total_strength = attacker_strength + defender_strength
         if total_strength == 0:

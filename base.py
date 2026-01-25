@@ -51,9 +51,10 @@ class Base:
         self.supported_units = []  # Units this base supports
 
         # Production
-        self.current_production = None
-        self.production_progress = 0
-        self.production_turns_remaining = 5  # Placeholder
+        self.current_production = "Scout Patrol"  # Default production
+        self.production_progress = 0  # Minerals accumulated
+        self.production_cost = self._get_production_cost("Scout Patrol")
+        self.production_turns_remaining = self._calculate_production_turns()
 
         # Growth
         self.nutrients_accumulated = 0
@@ -66,11 +67,23 @@ class Base:
         Uses progressive scaling: each population level requires more nutrients.
         Formula: base_cost (7) + (population - 1) * 3
 
+        Population limits:
+        - 7 without Habitation Complex
+        - 14 with Habitation Complex
+        - Unlimited with Habitation Dome
+
         Returns:
             int: Nutrients required for next growth, or 999 if at max population
         """
+        # Determine population limit based on facilities
+        max_pop = 7  # Default limit
+        if 'Habitation Dome' in self.facilities:
+            max_pop = 999  # Effectively unlimited
+        elif 'Habitation Complex' in self.facilities:
+            max_pop = 14
+
         # Scaling: 7, 10, 14, 19, 25, 32 for pops 1->2, 2->3, 3->4, etc.
-        if self.population >= 7:
+        if self.population >= max_pop:
             return 999  # Max pop reached, won't grow
 
         base_cost = 7
@@ -89,12 +102,86 @@ class Base:
         # Assuming 1 nutrient per turn for now
         return remaining
 
+    def _get_production_cost(self, item_name):
+        """Get the mineral/credit cost for producing an item.
+
+        Args:
+            item_name (str): Name of the unit or facility to produce
+
+        Returns:
+            int: Total cost in minerals/credits
+        """
+        production_costs = {
+            "Scout Patrol": 3,
+            "Gunship Foil": 8,
+            "Gunship Needlejet": 15,
+            "Colony Pod": 10,
+            "Sea Colony Pod": 12,
+            "Stockpile Energy": 0  # Instant, used for converting production to energy
+        }
+        return production_costs.get(item_name, 30)  # Default to 30 if not found
+
+    def _calculate_production_turns(self):
+        """Calculate turns remaining until production completes.
+
+        Assumes base produces minerals based on population (for now, 1 mineral per turn).
+
+        Returns:
+            int: Number of turns until production completes
+        """
+        if not self.current_production:
+            return 0
+
+        remaining = self.production_cost - self.production_progress
+        minerals_per_turn = self.population  # Simple: 1 mineral per citizen
+        if minerals_per_turn == 0:
+            return 999
+
+        return (remaining + minerals_per_turn - 1) // minerals_per_turn  # Ceiling division
+
+    def hurry_production(self, credits_spent):
+        """Rush production by spending energy credits.
+
+        The cost is 10 credits per 1 production point. Partial payments
+        reduce the number of turns remaining.
+
+        Args:
+            credits_spent (int): Amount of energy credits to spend
+
+        Returns:
+            tuple: (production_added, completed) where completed is True if production finished
+        """
+        if not self.current_production:
+            return (0, False)
+
+        remaining_cost = self.production_cost - self.production_progress
+
+        # Calculate how much production this buys (10 credits = 1 production)
+        production_added = credits_spent // 10
+        production_added = min(production_added, remaining_cost)
+
+        # Add to progress
+        self.production_progress += production_added
+
+        # Check if completed
+        completed = self.production_progress >= self.production_cost
+
+        # Update turns remaining
+        self.production_turns_remaining = self._calculate_production_turns()
+
+        return (production_added, completed)
+
     def process_turn(self):
         """Process end of turn for this base.
 
-        Adds nutrients, checks for population growth, and updates growth timers.
-        Called at the end of each player's turn phase.
+        Adds nutrients, checks for population growth, handles production,
+        and updates all timers. Called at the end of each player's turn phase.
+
+        Returns:
+            str: Name of completed production item, or None if nothing completed
         """
+        completed_item = None
+
         # Add nutrients (1 per turn for now)
         if self.population < 7:
             self.nutrients_accumulated += 1
@@ -108,6 +195,33 @@ class Base:
 
         # Update growth turns remaining
         self.growth_turns_remaining = self._calculate_growth_turns()
+
+        # Handle production
+        if self.current_production:
+            minerals_per_turn = self.population  # Simple: 1 mineral per citizen
+            self.production_progress += minerals_per_turn
+
+            # Check if production completed
+            if self.production_progress >= self.production_cost:
+                completed_item = self.current_production
+                print(f"{self.name} completed production of {completed_item}")
+
+                # Reset production
+                if completed_item == "Stockpile Energy":
+                    # Stockpile Energy continues each turn
+                    self.current_production = "Stockpile Energy"
+                    self.production_progress = 0
+                    self.production_cost = self._get_production_cost("Stockpile Energy")
+                else:
+                    # Other items reset to default
+                    self.current_production = "Scout Patrol"
+                    self.production_progress = 0
+                    self.production_cost = self._get_production_cost(self.current_production)
+
+            # Update turns remaining
+            self.production_turns_remaining = self._calculate_production_turns()
+
+        return completed_item
 
     def is_friendly(self, player_id):
         """Check if base belongs to given player."""

@@ -54,6 +54,12 @@ class Game:
         self.ai_unit_queue = []  # Queue of units for AI to process
         self.ai_current_unit_index = 0
 
+        # Victory state
+        self.game_over = False
+        self.winner = None  # 0 = human, 1+ = AI player
+        self.player_ever_had_base = False  # Track if player has founded at least one base
+        self.enemy_ever_had_base = False  # Track if enemy has founded at least one base
+
         # Spawn some initial units for testing
         self._spawn_test_units()
 
@@ -77,10 +83,10 @@ class Game:
         if len(land_tiles) >= 2:
             # Land unit
             x, y = land_tiles[0]
-            unit = Unit(x, y, UNIT_LAND, self.player_id, "Scout")
+            unit = Unit(x, y, UNIT_LAND, self.player_id, "Scout Patrol")
             self.units.append(unit)
             self.game_map.set_unit_at(x, y, unit)
-            print(f"Spawned Scout at ({x}, {y})")
+            print(f"Spawned Scout Patrol at ({x}, {y})")
 
             # Land colony pod
             x, y = land_tiles[2]
@@ -93,10 +99,10 @@ class Game:
         if len(ocean_tiles) >= 2:
             # Sea unit
             x, y = ocean_tiles[0]
-            unit = Unit(x, y, UNIT_SEA, self.player_id, "Foil")
+            unit = Unit(x, y, UNIT_SEA, self.player_id, "Gunship Foil")
             self.units.append(unit)
             self.game_map.set_unit_at(x, y, unit)
-            print(f"Spawned Foil at ({x}, {y})")
+            print(f"Spawned Gunship Foil at ({x}, {y})")
 
             # Sea colony pod
             x, y = ocean_tiles[1]
@@ -108,20 +114,20 @@ class Game:
         # Spawn player air unit (for testing - fast movement)
         if len(land_tiles) >= 4:
             x, y = land_tiles[1]
-            unit = Unit(x, y, UNIT_AIR, self.player_id, "Needlejet")
+            unit = Unit(x, y, UNIT_AIR, self.player_id, "Gunship Needlejet")
             self.units.append(unit)
             self.game_map.set_unit_at(x, y, unit)
-            print(f"Spawned Needlejet at ({x}, {y})")
+            print(f"Spawned Gunship Needlejet at ({x}, {y})")
 
         # Spawn AI units (same as player: 1 land unit, 1 land colony pod, 1 sea unit, 1 sea colony pod, 1 air)
         ai_player_id = 1
         if len(land_tiles) >= 10:
             # AI land unit
             x, y = land_tiles[-1]
-            unit = Unit(x, y, UNIT_LAND, ai_player_id, "AI Scout")
+            unit = Unit(x, y, UNIT_LAND, ai_player_id, "AI Scout Patrol")
             self.units.append(unit)
             self.game_map.set_unit_at(x, y, unit)
-            print(f"Spawned AI Scout at ({x}, {y})")
+            print(f"Spawned AI Scout Patrol at ({x}, {y})")
 
             # AI Colony Pod
             if len(land_tiles) >= 12:
@@ -135,10 +141,10 @@ class Game:
         if len(ocean_tiles) >= 5:
             # AI sea unit
             x, y = ocean_tiles[-1]
-            unit = Unit(x, y, UNIT_SEA, ai_player_id, "AI Foil")
+            unit = Unit(x, y, UNIT_SEA, ai_player_id, "AI Gunship Foil")
             self.units.append(unit)
             self.game_map.set_unit_at(x, y, unit)
-            print(f"Spawned AI Foil at ({x}, {y})")
+            print(f"Spawned AI Gunship Foil at ({x}, {y})")
 
             # AI sea colony pod
             if len(ocean_tiles) >= 6:
@@ -151,10 +157,10 @@ class Game:
         # AI air unit (for testing)
         if len(land_tiles) >= 14:
             x, y = land_tiles[-5]
-            unit = Unit(x, y, UNIT_AIR, ai_player_id, "AI Needlejet")
+            unit = Unit(x, y, UNIT_AIR, ai_player_id, "AI Gunship Needlejet")
             self.units.append(unit)
             self.game_map.set_unit_at(x, y, unit)
-            print(f"Spawned AI Needlejet at ({x}, {y})")
+            print(f"Spawned AI Gunship Needlejet at ({x}, {y})")
 
         print(f"Total units spawned: {len(self.units)}")
 
@@ -238,32 +244,33 @@ class Game:
         if not unit.can_move_to(target_tile):
             return False
 
-        # Check if there's already a unit there
-        if target_tile.unit and target_tile.unit != unit:
+        # Check if there are units at target (stacking support)
+        if target_tile.units and len(target_tile.units) > 0:
+            # Get first unit in stack (defender in combat, or check if friendly)
+            first_unit = target_tile.units[0]
+
             # Check if it's an enemy unit
-            if target_tile.unit.owner != unit.owner:
-                # Only player units trigger battle prediction (AI auto-attacks)
+            if first_unit.owner != unit.owner:
+                # Enemy stack - initiate combat with first unit
                 if unit.owner == self.player_id:
                     # Set up pending battle - UI will show prediction screen
                     self.pending_battle = {
                         'attacker': unit,
-                        'defender': target_tile.unit,
+                        'defender': first_unit,
                         'target_x': target_x,
                         'target_y': target_y
                     }
                     return True  # Battle initiated
                 else:
                     # AI unit attacking - resolve immediately (no prediction screen)
-                    self.resolve_combat(unit, target_tile.unit, target_x, target_y)
+                    self.resolve_combat(unit, first_unit, target_x, target_y)
                     return True
-            else:
-                # Friendly unit - can't move there
-                return False
+            # else: Friendly unit(s) - allow stacking, continue below
 
         # Clear old position and remove from garrison if leaving a base
         old_tile = self.game_map.get_tile(unit.x, unit.y)
         if old_tile:
-            old_tile.unit = None
+            self.game_map.remove_unit_at(unit.x, unit.y, unit)
             # Remove from garrison if was in a base
             if old_tile.base and unit in old_tile.base.garrison:
                 old_tile.base.garrison.remove(unit)
@@ -271,11 +278,67 @@ class Game:
 
         # Move unit
         unit.move_to(target_x, target_y)
-        target_tile.unit = unit
+        self.game_map.add_unit_at(target_x, target_y, unit)
 
-        # Check for supply pod
-        if target_tile.supply_pod:
+        # Update displayed unit index to show the unit that just moved
+        if target_tile and unit in target_tile.units:
+            target_tile.displayed_unit_index = target_tile.units.index(unit)
+
+        # Check for supply pod (air units cannot collect supply pods)
+        if target_tile.supply_pod and unit.unit_type != UNIT_AIR:
             self._collect_supply_pod(target_tile, unit)
+
+        # Check for base capture (enemy base with no garrison)
+        if target_tile.base:
+            base = target_tile.base
+            if base.owner != unit.owner and len(base.garrison) == 0:
+                # Capture the base!
+                old_owner = base.owner
+
+                # Reduce population by 1
+                base.population -= 1
+
+                # Check if base is destroyed
+                if base.population <= 0:
+                    # Base is destroyed
+                    if unit.owner == self.player_id:
+                        self.set_status_message(f"Destroyed {base.name}!")
+                        print(f"Player destroyed {base.name}!")
+                    else:
+                        self.set_status_message(f"AI destroyed {base.name}!")
+                        print(f"AI player {unit.owner} destroyed {base.name}!")
+
+                    # Remove base from game
+                    self.bases.remove(base)
+                    target_tile.base = None
+
+                    # Update territory
+                    self.territory.update_territory(self.bases)
+
+                    # Check for victory/defeat immediately
+                    self.check_victory()
+                else:
+                    # Base captured successfully
+                    base.owner = unit.owner
+
+                    # Recalculate production and growth based on new population
+                    base.nutrients_needed = base._calculate_nutrients_needed()
+                    base.growth_turns_remaining = base._calculate_growth_turns()
+                    base.production_turns_remaining = base._calculate_production_turns()
+
+                    # Update territory
+                    self.territory.update_territory(self.bases)
+
+                    # Show message
+                    if unit.owner == self.player_id:
+                        self.set_status_message(f"Captured {base.name}! (Pop {base.population})")
+                        print(f"Player captured {base.name}! New population: {base.population}")
+                    else:
+                        self.set_status_message(f"AI captured {base.name}!")
+                        print(f"AI player {unit.owner} captured {base.name}! New population: {base.population}")
+
+                    # Check for victory/defeat immediately
+                    self.check_victory()
 
         # If moving into a base, add to garrison
         if target_tile.base and target_tile.base.owner == unit.owner:
@@ -304,6 +367,144 @@ class Game:
             # AI collected it
             print(f"AI collected supply pod at ({tile.x}, {tile.y})")
 
+    def get_combat_modifiers(self, unit, is_defender=False, vs_unit=None):
+        """Get all combat modifiers for a unit.
+
+        Args:
+            unit (Unit): Unit to get modifiers for
+            is_defender (bool): Whether unit is defending
+            vs_unit (Unit): Opponent unit (for mode bonuses)
+
+        Returns:
+            list: List of modifier dicts with 'name' and 'multiplier' keys
+        """
+        modifiers = []
+
+        # Morale modifier
+        if hasattr(unit, 'morale_level'):
+            morale_multipliers = {
+                0: 0.70,  # Very Very Green: -30%
+                1: 0.85,  # Very Green: -15%
+                2: 1.00,  # Green: no modifier
+                3: 1.10,  # Disciplined: +10%
+                4: 1.20,  # Hardened: +20%
+                5: 1.30,  # Veteran: +30%
+                6: 1.40,  # Commando: +40%
+                7: 1.50   # Elite: +50%
+            }
+            multiplier = morale_multipliers.get(unit.morale_level, 1.0)
+            if multiplier != 1.0:
+                morale_name = unit.get_morale_name()
+                percent = int((multiplier - 1.0) * 100)
+                sign = '+' if percent > 0 else ''
+                modifiers.append({
+                    'name': f'Morale ({morale_name})',
+                    'multiplier': multiplier,
+                    'display': f'{sign}{percent}%'
+                })
+
+        # Defender bonuses
+        if is_defender:
+            tile = self.game_map.get_tile(unit.x, unit.y)
+
+            # Base defense bonus
+            if tile and tile.base:
+                modifiers.append({
+                    'name': 'Base Defense',
+                    'multiplier': 1.25,
+                    'display': '+25%'
+                })
+
+            # Trance defending vs Psi (+50%)
+            if vs_unit and hasattr(unit, 'abilities'):
+                if 'trance' in unit.abilities and hasattr(vs_unit, 'weapon_mode') and vs_unit.weapon_mode == 'psi':
+                    modifiers.append({
+                        'name': 'Trance vs Psi',
+                        'multiplier': 1.50,
+                        'display': '+50%'
+                    })
+
+                # AAA vs air units (+100%)
+                if 'AAA' in unit.abilities and vs_unit.unit_type == UNIT_AIR:
+                    modifiers.append({
+                        'name': 'AAA vs Air',
+                        'multiplier': 2.00,
+                        'display': '+100%'
+                    })
+
+            # Sensor range bonus (+25%) - check if there's a friendly sensor array nearby
+            # For now, simplified: check if any friendly base is within 2 tiles
+            friendly_sensor_nearby = False
+            for dx in range(-2, 3):
+                for dy in range(-2, 3):
+                    check_x = (unit.x + dx) % self.game_map.width
+                    check_y = unit.y + dy
+                    if 0 <= check_y < self.game_map.height:
+                        check_tile = self.game_map.get_tile(check_x, check_y)
+                        if check_tile and check_tile.base and check_tile.base.owner == unit.owner:
+                            friendly_sensor_nearby = True
+                            break
+                if friendly_sensor_nearby:
+                    break
+
+            if friendly_sensor_nearby:
+                modifiers.append({
+                    'name': 'Sensor Range',
+                    'multiplier': 1.25,
+                    'display': '+25%'
+                })
+
+        # Attacker bonuses
+        else:
+            tile = self.game_map.get_tile(unit.x, unit.y)
+            defender_tile = self.game_map.get_tile(vs_unit.x, vs_unit.y) if vs_unit else None
+
+            # Infantry attacking base bonus
+            if unit.unit_type == UNIT_LAND and defender_tile and defender_tile.base:
+                modifiers.append({
+                    'name': 'Infantry vs Base',
+                    'multiplier': 1.25,
+                    'display': '+25%'
+                })
+
+            # Airdrop penalty - check if unit has used airdrop this turn
+            if hasattr(unit, 'used_airdrop') and unit.used_airdrop:
+                modifiers.append({
+                    'name': 'Airdrop Penalty',
+                    'multiplier': 0.50,
+                    'display': '-50%'
+                })
+
+            # Empath Song attacking Psi (+50% vs psi)
+            if vs_unit and hasattr(unit, 'abilities'):
+                if 'empath' in unit.abilities and hasattr(vs_unit, 'armor_mode') and vs_unit.armor_mode == 'psi':
+                    modifiers.append({
+                        'name': 'Empath vs Psi',
+                        'multiplier': 1.50,
+                        'display': '+50%'
+                    })
+
+        # Combat mode bonuses (both attacker and defender)
+        if vs_unit and hasattr(unit, 'weapon_mode') and hasattr(vs_unit, 'armor_mode'):
+            # Projectile weapon vs Energy armor = +25%
+            if unit.weapon_mode == 'projectile' and vs_unit.armor_mode == 'energy':
+                modifiers.append({
+                    'name': 'Mode: Proj vs Energy',
+                    'multiplier': 1.25,
+                    'display': '+25%'
+                })
+            # Energy weapon vs Projectile armor = +25%
+            elif unit.weapon_mode == 'energy' and vs_unit.armor_mode == 'projectile':
+                modifiers.append({
+                    'name': 'Mode: Energy vs Proj',
+                    'multiplier': 1.25,
+                    'display': '+25%'
+                })
+            # Binary armor = no bonus for anyone
+            # Missile weapons = never get mode bonus
+
+        return modifiers
+
     def calculate_combat_odds(self, attacker, defender):
         """Calculate combat odds for battle prediction screen.
 
@@ -314,8 +515,21 @@ class Game:
         Returns:
             float: Probability of attacker winning (0.0 to 1.0)
         """
-        attacker_strength = attacker.weapon
-        defender_strength = defender.armor
+        # Base strength: weapon/armor * health
+        attacker_base_strength = attacker.weapon * attacker.current_health
+        defender_base_strength = defender.armor * defender.current_health
+
+        # Apply modifiers (pass opponent for mode bonuses)
+        attacker_modifiers = self.get_combat_modifiers(attacker, is_defender=False, vs_unit=defender)
+        defender_modifiers = self.get_combat_modifiers(defender, is_defender=True, vs_unit=attacker)
+
+        attacker_strength = attacker_base_strength
+        for mod in attacker_modifiers:
+            attacker_strength *= mod['multiplier']
+
+        defender_strength = defender_base_strength
+        for mod in defender_modifiers:
+            defender_strength *= mod['multiplier']
 
         total_strength = attacker_strength + defender_strength
         if total_strength == 0:
@@ -337,6 +551,10 @@ class Game:
         """
         import random
 
+        # Save original health values
+        original_attacker_hp = attacker.current_health
+        original_defender_hp = defender.current_health
+
         # Set up active battle for animation
         self.active_battle = {
             'attacker': attacker,
@@ -350,10 +568,32 @@ class Game:
             'complete': False
         }
 
-        # Simulate all combat rounds upfront
-        while not attacker.is_destroyed() and not defender.is_destroyed():
-            # Calculate odds for this round
-            odds = self.calculate_combat_odds(attacker, defender)
+        # Get modifiers (calculated once at battle start, pass opponent for mode bonuses)
+        attacker_modifiers = self.get_combat_modifiers(attacker, is_defender=False, vs_unit=defender)
+        defender_modifiers = self.get_combat_modifiers(defender, is_defender=True, vs_unit=attacker)
+
+        attacker_modifier_total = 1.0
+        for mod in attacker_modifiers:
+            attacker_modifier_total *= mod['multiplier']
+
+        defender_modifier_total = 1.0
+        for mod in defender_modifiers:
+            defender_modifier_total *= mod['multiplier']
+
+        # Simulate combat using temporary HP values (don't modify units yet)
+        sim_attacker_hp = original_attacker_hp
+        sim_defender_hp = original_defender_hp
+
+        while sim_attacker_hp > 0 and sim_defender_hp > 0:
+            # Calculate odds for this round based on current sim HP and modifiers
+            attacker_strength = attacker.weapon * sim_attacker_hp * attacker_modifier_total
+            defender_strength = defender.armor * sim_defender_hp * defender_modifier_total
+            total_strength = attacker_strength + defender_strength
+
+            if total_strength == 0:
+                odds = 0.5
+            else:
+                odds = attacker_strength / total_strength
 
             # Determine who wins this round
             attacker_wins_round = random.random() < odds
@@ -362,24 +602,28 @@ class Game:
             damage = random.randint(1, 3)
 
             if attacker_wins_round:
-                defender.take_damage(damage)
+                sim_defender_hp -= damage
+                if sim_defender_hp < 0:
+                    sim_defender_hp = 0
                 self.active_battle['rounds'].append({
                     'winner': 'attacker',
                     'damage': damage,
-                    'attacker_hp': attacker.current_health,
-                    'defender_hp': defender.current_health
+                    'attacker_hp': sim_attacker_hp,
+                    'defender_hp': sim_defender_hp
                 })
             else:
-                attacker.take_damage(damage)
+                sim_attacker_hp -= damage
+                if sim_attacker_hp < 0:
+                    sim_attacker_hp = 0
                 self.active_battle['rounds'].append({
                     'winner': 'defender',
                     'damage': damage,
-                    'attacker_hp': attacker.current_health,
-                    'defender_hp': defender.current_health
+                    'attacker_hp': sim_attacker_hp,
+                    'defender_hp': sim_defender_hp
                 })
 
         # Determine final outcome
-        if attacker.is_destroyed():
+        if sim_attacker_hp <= 0:
             self.active_battle['victor'] = 'defender'
         else:
             self.active_battle['victor'] = 'attacker'
@@ -393,15 +637,25 @@ class Game:
         defender = self.active_battle['defender']
         victor = self.active_battle['victor']
 
-        # Remove destroyed unit
+        # Get final HP from last round
+        if self.active_battle['rounds']:
+            final_round = self.active_battle['rounds'][-1]
+            attacker.current_health = final_round['attacker_hp']
+            defender.current_health = final_round['defender_hp']
+
+        # Remove destroyed unit and award experience
         if victor == 'defender':
             # Attacker destroyed
             self._remove_unit(attacker)
+            # Defender records kill and gains experience
+            defender.record_kill()
             # Attacker consumed their move/turn
             # (already happened when they initiated attack)
         else:
             # Defender destroyed
             self._remove_unit(defender)
+            # Attacker records kill and gains experience
+            attacker.record_kill()
             # Attacker consumed their move/turn
 
         # Clear battle state
@@ -419,8 +673,8 @@ class Game:
 
         # Remove from map
         tile = self.game_map.get_tile(unit.x, unit.y)
-        if tile and tile.unit == unit:
-            tile.unit = None
+        if tile:
+            self.game_map.remove_unit_at(unit.x, unit.y, unit)
 
         # Remove from base garrison if present
         if tile and tile.base and unit in tile.base.garrison:
@@ -487,7 +741,7 @@ class Game:
         # Update the tile
         if tile:
             tile.base = base
-            tile.unit = None
+            self.game_map.remove_unit_at(unit.x, unit.y, unit)
 
         # Remove the unit
         self.units.remove(unit)
@@ -502,24 +756,65 @@ class Game:
         print(f"Founded base '{base_name}' at ({base.x}, {base.y})")
         return True
 
+    def _spawn_production(self, base, item_name):
+        """Spawn a completed production item at a base.
+
+        Args:
+            base (Base): The base that completed production
+            item_name (str): Name of the unit or facility to create
+        """
+        # Handle facilities (non-unit production)
+        if item_name == "Stockpile Energy":
+            # Convert production to energy
+            energy_gained = 1 + base.population
+            self.energy_credits += energy_gained
+            self.set_status_message(f"{base.name}: Stockpile Energy +{energy_gained}")
+            print(f"{base.name} stockpiled {energy_gained} energy")
+            return
+
+        # Map unit names to unit types
+        unit_type_map = {
+            "Scout Patrol": UNIT_LAND,
+            "Gunship Foil": UNIT_SEA,
+            "Gunship Needlejet": UNIT_AIR,
+            "Colony Pod": UNIT_COLONY_POD_LAND,
+            "Sea Colony Pod": UNIT_COLONY_POD_SEA
+        }
+
+        unit_type = unit_type_map.get(item_name, UNIT_LAND)
+
+        # Spawn at the base location (stacking is now allowed)
+        unit = Unit(base.x, base.y, unit_type, base.owner, item_name)
+        self.units.append(unit)
+        self.game_map.add_unit_at(base.x, base.y, unit)
+        self.set_status_message(f"{base.name} completed {item_name}")
+        print(f"{base.name} spawned {item_name} at ({base.x}, {base.y})")
+
     def set_status_message(self, message, duration=3000):
         """Set a status message to display temporarily."""
         self.status_message = message
         self.status_message_timer = duration
 
     def cycle_units(self):
-        """Select next friendly unit (W key)."""
+        """Select next friendly unit (W key). Cycles through all units including stacked ones."""
         friendly_units = [u for u in self.units if u.is_friendly(self.player_id)]
 
         if not friendly_units:
             return
 
+        # Cycle through all friendly units in sequence (includes stacked units)
         if self.selected_unit in friendly_units:
             current_idx = friendly_units.index(self.selected_unit)
             next_idx = (current_idx + 1) % len(friendly_units)
             self.selected_unit = friendly_units[next_idx]
         else:
             self.selected_unit = friendly_units[0]
+
+        # Update displayed unit on the map tile to show the selected unit
+        if self.selected_unit:
+            tile = self.game_map.get_tile(self.selected_unit.x, self.selected_unit.y)
+            if tile and self.selected_unit in tile.units:
+                tile.displayed_unit_index = tile.units.index(self.selected_unit)
 
     def end_turn(self):
         """End current turn and start next."""
@@ -531,7 +826,9 @@ class Game:
         # Process player bases at end of player turn
         for base in self.bases:
             if base.owner == self.player_id:
-                base.process_turn()
+                completed_item = base.process_turn()
+                if completed_item:
+                    self._spawn_production(base, completed_item)
 
         # Process player tech research
         self.tech_tree.process_turn()
@@ -570,6 +867,10 @@ class Game:
                 self.processing_ai = False
                 self.turn += 1
                 print(f"Turn {self.turn} started!")
+
+                # Check for victory/defeat
+                self.check_victory()
+
                 return False
 
         # Process one unit from the queue
@@ -587,7 +888,9 @@ class Game:
             ai_player = self.ai_players[self.current_ai_index]
             for base in self.bases:
                 if base.owner == ai_player.player_id:
-                    base.process_turn()
+                    completed_item = base.process_turn()
+                    if completed_item:
+                        self._spawn_production(base, completed_item)
 
             # Process AI tech research
             if ai_player.player_id in self.ai_tech_trees:
@@ -635,6 +938,32 @@ class Game:
             return f"AI Player {ai.player_id} is thinking..."
         return None
 
+    def check_victory(self):
+        """Check if the game is over due to conquest victory/defeat."""
+        # Count bases by owner
+        player_bases = [b for b in self.bases if b.owner == self.player_id]
+        enemy_bases = [b for b in self.bases if b.owner != self.player_id]
+
+        # Track if players have ever had bases
+        if len(player_bases) > 0:
+            self.player_ever_had_base = True
+        if len(enemy_bases) > 0:
+            self.enemy_ever_had_base = True
+
+        # Check if player has lost all bases (only if they previously had at least one)
+        if self.player_ever_had_base and len(player_bases) == 0:
+            self.game_over = True
+            self.winner = 1  # AI wins (first AI player)
+            print("GAME OVER: Player has been defeated!")
+            return
+
+        # Check if all enemy bases are destroyed (only if they previously had at least one)
+        if self.enemy_ever_had_base and len(enemy_bases) == 0:
+            self.game_over = True
+            self.winner = self.player_id
+            print("VICTORY: All enemy bases destroyed!")
+            return
+
     def new_game(self):
         """Start a fresh game."""
         self.game_map = GameMap(constants.MAP_WIDTH, constants.MAP_HEIGHT)
@@ -651,6 +980,10 @@ class Game:
         self.supply_pod_message = None
         self.pending_battle = None
         self.active_battle = None
+        self.game_over = False
+        self.winner = None
+        self.player_ever_had_base = False
+        self.enemy_ever_had_base = False
         self.tech_tree = TechTree()
         self.ai_tech_trees = {1: TechTree()}
         self.territory = TerritoryManager(self.game_map)

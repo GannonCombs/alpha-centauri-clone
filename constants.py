@@ -13,7 +13,7 @@ FPS = 60
 
 # UI Layout - will be calculated at runtime
 MAP_AREA_HEIGHT = 0
-UI_PANEL_HEIGHT = 200  # Fixed height for UI panel
+UI_PANEL_HEIGHT = 280  # Fixed height for UI panel (increased for unit stack panel)
 UI_PANEL_Y = 0
 
 # Colors (RGB)

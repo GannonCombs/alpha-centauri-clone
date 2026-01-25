@@ -3,7 +3,7 @@ import pygame
 import sys
 from game import Game
 from renderer import Renderer
-from ui import UIPanel
+from ui import UIManager
 
 
 def main():
@@ -38,7 +38,7 @@ def main():
     # Initialize core systems
     game = Game()
     renderer = Renderer(screen)
-    ui_panel = UIPanel()
+    ui_panel = UIManager()
 
     # AI turn processing
     ai_turn_delay = 500  # milliseconds between AI unit moves
