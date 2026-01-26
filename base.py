@@ -6,6 +6,8 @@ on the game map. Bases grow in population over time, produce units,
 and can garrison military units for defense.
 """
 
+import facilities
+
 class Base:
     """Represents a base (city) on the map.
 
@@ -111,6 +113,12 @@ class Base:
         Returns:
             int: Total cost in minerals/credits
         """
+        # Check if it's a facility or secret project
+        facility_data = facilities.get_facility_by_name(item_name)
+        if facility_data:
+            return facility_data['cost']
+
+        # Otherwise check unit costs
         production_costs = {
             "Scout Patrol": 3,
             "Gunship Foil": 8,
@@ -205,6 +213,12 @@ class Base:
             if self.production_progress >= self.production_cost:
                 completed_item = self.current_production
                 print(f"{self.name} completed production of {completed_item}")
+
+                # Check if it's a facility or project - add to base
+                facility_data = facilities.get_facility_by_name(completed_item)
+                if facility_data:
+                    self.facilities.append(completed_item)
+                    print(f"{self.name} now has facility: {completed_item}")
 
                 # Reset production
                 if completed_item == "Stockpile Energy":

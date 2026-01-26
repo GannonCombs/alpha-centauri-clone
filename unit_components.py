@@ -2,10 +2,11 @@
 """Unit component definitions for the Design Workshop.
 
 This module contains all available chassis, weapons, armor, and reactors
-that can be combined to create custom units.
+that can be combined to create custom units. Each component has a tech
+prerequisite that must be researched before it can be used.
 """
 
-# 9 Chassis Types (SMAC values)
+# 9 Chassis Types (SMAC values with tech prereqs from alpha.txt)
 CHASSIS = [
     {
         'id': 'infantry',
@@ -13,6 +14,7 @@ CHASSIS = [
         'type': 'land',
         'speed': 1,
         'cost': 1,
+        'prereq': None,  # Available from start
         'description': 'Basic land unit'
     },
     {
@@ -21,6 +23,7 @@ CHASSIS = [
         'type': 'land',
         'speed': 2,
         'cost': 2,
+        'prereq': 'Mobile',  # Doctrine: Mobility
         'description': 'Fast rover unit'
     },
     {
@@ -29,6 +32,7 @@ CHASSIS = [
         'type': 'land',
         'speed': 3,
         'cost': 3,
+        'prereq': 'NanoMin',  # Nanominiaturization
         'description': 'Hover tank'
     },
     {
@@ -37,6 +41,7 @@ CHASSIS = [
         'type': 'sea',
         'speed': 4,
         'cost': 4,
+        'prereq': 'DocFlex',  # Doctrine: Flexibility
         'description': 'Basic sea unit'
     },
     {
@@ -45,6 +50,7 @@ CHASSIS = [
         'type': 'sea',
         'speed': 6,
         'cost': 6,
+        'prereq': 'DocInit',  # Doctrine: Initiative
         'description': 'Advanced sea unit'
     },
     {
@@ -53,6 +59,7 @@ CHASSIS = [
         'type': 'air',
         'speed': 8,
         'cost': 8,
+        'prereq': 'DocAir',  # Doctrine: Air Power
         'description': 'Air superiority'
     },
     {
@@ -61,6 +68,7 @@ CHASSIS = [
         'type': 'air',
         'speed': 8,
         'cost': 8,
+        'prereq': 'MindMac',  # Mind/Machine Interface
         'description': 'Tactical helicopter'
     },
     {
@@ -69,6 +77,7 @@ CHASSIS = [
         'type': 'air',
         'speed': 8,
         'cost': 8,
+        'prereq': 'Gravity',  # Graviton Theory
         'description': 'Antigrav unit'
     },
     {
@@ -77,65 +86,66 @@ CHASSIS = [
         'type': 'air',
         'speed': 12,
         'cost': 12,
+        'prereq': 'Orbital',  # Orbital Spaceflight
         'description': 'One-shot missile'
     }
 ]
 
-# 20 Weapon Types (SMAC values)
+# 20 Weapon Types (SMAC values with tech prereqs from alpha.txt)
 WEAPONS = [
     # Non-combat
-    {'id': 'colony_pod', 'name': 'Colony Module', 'attack': 0, 'cost': 10, 'mode': 'noncombat'},
-    {'id': 'terraforming', 'name': 'Terraforming Unit', 'attack': 0, 'cost': 6, 'mode': 'noncombat'},
-    {'id': 'transport', 'name': 'Troop Transport', 'attack': 0, 'cost': 4, 'mode': 'noncombat'},
-    {'id': 'supply', 'name': 'Supply Transport', 'attack': 0, 'cost': 8, 'mode': 'noncombat'},
-    {'id': 'probe', 'name': 'Probe Team', 'attack': 0, 'cost': 4, 'mode': 'noncombat'},
+    {'id': 'colony_pod', 'name': 'Colony Module', 'attack': 0, 'cost': 10, 'mode': 'noncombat', 'prereq': None},
+    {'id': 'terraforming', 'name': 'Terraforming Unit', 'attack': 0, 'cost': 6, 'mode': 'noncombat', 'prereq': 'Ecology'},
+    {'id': 'transport', 'name': 'Troop Transport', 'attack': 0, 'cost': 4, 'mode': 'noncombat', 'prereq': 'DocFlex'},
+    {'id': 'supply', 'name': 'Supply Transport', 'attack': 0, 'cost': 8, 'mode': 'noncombat', 'prereq': 'IndAuto'},
+    {'id': 'probe', 'name': 'Probe Team', 'attack': 0, 'cost': 4, 'mode': 'noncombat', 'prereq': 'PlaNets'},
 
     # Combat - Projectile
-    {'id': 'hand_weapons', 'name': 'Hand Weapons', 'attack': 1, 'cost': 1, 'mode': 'projectile'},
-    {'id': 'particle_impactor', 'name': 'Particle Impactor', 'attack': 4, 'cost': 4, 'mode': 'projectile'},
-    {'id': 'chaos_gun', 'name': 'Chaos Gun', 'attack': 8, 'cost': 8, 'mode': 'projectile'},
-    {'id': 'graviton_gun', 'name': 'Graviton Gun', 'attack': 20, 'cost': 20, 'mode': 'projectile'},
+    {'id': 'hand_weapons', 'name': 'Hand Weapons', 'attack': 1, 'cost': 1, 'mode': 'projectile', 'prereq': None},
+    {'id': 'particle_impactor', 'name': 'Particle Impactor', 'attack': 4, 'cost': 4, 'mode': 'projectile', 'prereq': 'Chaos'},
+    {'id': 'chaos_gun', 'name': 'Chaos Gun', 'attack': 8, 'cost': 8, 'mode': 'projectile', 'prereq': 'String'},
+    {'id': 'graviton_gun', 'name': 'Graviton Gun', 'attack': 20, 'cost': 20, 'mode': 'projectile', 'prereq': 'AGrav'},
 
     # Combat - Energy
-    {'id': 'laser', 'name': 'Laser', 'attack': 2, 'cost': 2, 'mode': 'energy'},
-    {'id': 'gatling_laser', 'name': 'Gatling Laser', 'attack': 5, 'cost': 5, 'mode': 'energy'},
-    {'id': 'fusion_laser', 'name': 'Fusion Laser', 'attack': 10, 'cost': 10, 'mode': 'energy'},
-    {'id': 'tachyon_bolt', 'name': 'Tachyon Bolt', 'attack': 12, 'cost': 12, 'mode': 'energy'},
-    {'id': 'quantum_laser', 'name': 'Quantum Laser', 'attack': 16, 'cost': 16, 'mode': 'energy'},
-    {'id': 'singularity_laser', 'name': 'Singularity Laser', 'attack': 24, 'cost': 24, 'mode': 'energy'},
+    {'id': 'laser', 'name': 'Laser', 'attack': 2, 'cost': 2, 'mode': 'energy', 'prereq': 'Physic'},
+    {'id': 'gatling_laser', 'name': 'Gatling Laser', 'attack': 5, 'cost': 5, 'mode': 'energy', 'prereq': 'Super'},
+    {'id': 'fusion_laser', 'name': 'Fusion Laser', 'attack': 10, 'cost': 10, 'mode': 'energy', 'prereq': 'SupLube'},
+    {'id': 'tachyon_bolt', 'name': 'Tachyon Bolt', 'attack': 12, 'cost': 12, 'mode': 'energy', 'prereq': 'Unified'},
+    {'id': 'quantum_laser', 'name': 'Quantum Laser', 'attack': 16, 'cost': 16, 'mode': 'energy', 'prereq': 'QuanMac'},
+    {'id': 'singularity_laser', 'name': 'Singularity Laser', 'attack': 24, 'cost': 24, 'mode': 'energy', 'prereq': 'ConSing'},
 
     # Combat - Missile
-    {'id': 'missile_launcher', 'name': 'Missile Launcher', 'attack': 6, 'cost': 6, 'mode': 'missile'},
-    {'id': 'plasma_shard', 'name': 'Plasma Shard', 'attack': 13, 'cost': 13, 'mode': 'missile'},
-    {'id': 'conventional', 'name': 'Conventional Payload', 'attack': 12, 'cost': 12, 'mode': 'missile'},
+    {'id': 'missile_launcher', 'name': 'Missile Launcher', 'attack': 6, 'cost': 6, 'mode': 'missile', 'prereq': 'Fossil'},
+    {'id': 'plasma_shard', 'name': 'Plasma Shard', 'attack': 13, 'cost': 13, 'mode': 'missile', 'prereq': 'Space'},
+    {'id': 'conventional', 'name': 'Conventional Payload', 'attack': 12, 'cost': 12, 'mode': 'missile', 'prereq': 'Orbital'},
 
     # Special - Psi
-    {'id': 'psi_attack', 'name': 'Psi Attack', 'attack': -1, 'cost': 10, 'mode': 'psi'},
+    {'id': 'psi_attack', 'name': 'Psi Attack', 'attack': -1, 'cost': 10, 'mode': 'psi', 'prereq': 'CentPsi'},
 
     # Planet Buster (special)
-    {'id': 'planet_buster', 'name': 'Planet Buster', 'attack': 99, 'cost': 32, 'mode': 'projectile'}
+    {'id': 'planet_buster', 'name': 'Planet Buster', 'attack': 99, 'cost': 32, 'mode': 'projectile', 'prereq': 'Orbital'}
 ]
 
-# 10 Armor Types (SMAC values)
+# 10 Armor Types (SMAC values with tech prereqs from alpha.txt)
 ARMOR = [
-    {'id': 'no_armor', 'name': 'No Armor', 'defense': 1, 'cost': 1, 'mode': 'projectile'},
-    {'id': 'synthmetal', 'name': 'Synthmetal Armor', 'defense': 2, 'cost': 2, 'mode': 'projectile'},
-    {'id': 'plasma_steel', 'name': 'Plasma Steel Armor', 'defense': 3, 'cost': 3, 'mode': 'binary'},
-    {'id': 'silksteel', 'name': 'Silksteel Armor', 'defense': 4, 'cost': 4, 'mode': 'energy'},
-    {'id': 'photon_wall', 'name': 'Photon Wall', 'defense': 5, 'cost': 5, 'mode': 'energy'},
-    {'id': 'probability', 'name': 'Probability Sheath', 'defense': 6, 'cost': 6, 'mode': 'binary'},
-    {'id': 'neutronium', 'name': 'Neutronium Armor', 'defense': 8, 'cost': 8, 'mode': 'energy'},
-    {'id': 'antimatter', 'name': 'Antimatter Plate', 'defense': 10, 'cost': 10, 'mode': 'binary'},
-    {'id': 'stasis', 'name': 'Stasis Generator', 'defense': 12, 'cost': 12, 'mode': 'binary'},
-    {'id': 'psi_defense', 'name': 'Psi Defense', 'defense': -1, 'cost': 6, 'mode': 'psi'}
+    {'id': 'no_armor', 'name': 'No Armor', 'defense': 1, 'cost': 1, 'mode': 'projectile', 'prereq': None},
+    {'id': 'synthmetal', 'name': 'Synthmetal Armor', 'defense': 2, 'cost': 2, 'mode': 'projectile', 'prereq': 'Indust'},
+    {'id': 'plasma_steel', 'name': 'Plasma Steel Armor', 'defense': 3, 'cost': 3, 'mode': 'binary', 'prereq': 'Chemist'},
+    {'id': 'silksteel', 'name': 'Silksteel Armor', 'defense': 4, 'cost': 4, 'mode': 'energy', 'prereq': 'Alloys'},
+    {'id': 'photon_wall', 'name': 'Photon Wall', 'defense': 5, 'cost': 5, 'mode': 'energy', 'prereq': 'DocSec'},
+    {'id': 'probability', 'name': 'Probability Sheath', 'defense': 6, 'cost': 6, 'mode': 'binary', 'prereq': 'ProbMec'},
+    {'id': 'neutronium', 'name': 'Neutronium Armor', 'defense': 8, 'cost': 8, 'mode': 'energy', 'prereq': 'MatComp'},
+    {'id': 'antimatter', 'name': 'Antimatter Plate', 'defense': 10, 'cost': 10, 'mode': 'binary', 'prereq': 'NanEdit'},
+    {'id': 'stasis', 'name': 'Stasis Generator', 'defense': 12, 'cost': 12, 'mode': 'binary', 'prereq': 'TempMec'},
+    {'id': 'psi_defense', 'name': 'Psi Defense', 'defense': -1, 'cost': 6, 'mode': 'psi', 'prereq': 'Eudaim'}
 ]
 
-# 4 Reactor Types (SMAC values)
+# 4 Reactor Types (SMAC values with tech prereqs from alpha.txt)
 REACTORS = [
-    {'id': 'fission', 'name': 'Fission Plant', 'power': 1, 'cost': 0},
-    {'id': 'fusion', 'name': 'Fusion Reactor', 'power': 2, 'cost': 0},
-    {'id': 'quantum', 'name': 'Quantum Chamber', 'power': 3, 'cost': 0},
-    {'id': 'singularity', 'name': 'Singularity Engine', 'power': 4, 'cost': 0}
+    {'id': 'fission', 'name': 'Fission Plant', 'power': 1, 'cost': 0, 'prereq': None},
+    {'id': 'fusion', 'name': 'Fusion Reactor', 'power': 2, 'cost': 0, 'prereq': 'Fusion'},
+    {'id': 'quantum', 'name': 'Quantum Chamber', 'power': 3, 'cost': 0, 'prereq': 'Quantum'},
+    {'id': 'singularity', 'name': 'Singularity Engine', 'power': 4, 'cost': 0, 'prereq': 'SingMec'}
 ]
 
 
@@ -171,30 +181,45 @@ def get_reactor_by_id(reactor_id):
     return REACTORS[0]  # Default to fission
 
 
-# 22 Special Abilities
+def is_component_available(component, tech_tree):
+    """Check if a component is available based on tech prerequisites.
+
+    Args:
+        component (dict): Component with 'prereq' field
+        tech_tree (TechTree): Player's tech tree
+
+    Returns:
+        bool: True if component is unlocked
+    """
+    if component['prereq'] is None:
+        return True
+    return tech_tree.has_tech(component['prereq'])
+
+
+# 22 Special Abilities (tech prereqs from alpha.txt)
 SPECIAL_ABILITIES = [
-    {'id': 'none', 'name': 'None', 'cost': 0, 'description': 'No special ability'},
-    {'id': 'super_former', 'name': 'Super Former', 'cost': 10, 'description': 'Terraform twice as fast'},
-    {'id': 'deep_radar', 'name': 'Deep Radar', 'cost': 20, 'description': 'See 2 squares farther'},
-    {'id': 'cloaking', 'name': 'Cloaking Device', 'cost': 25, 'description': 'Invisible to enemy units'},
-    {'id': 'amphibious', 'name': 'Amphibious Pods', 'cost': 15, 'description': 'Move on land and sea'},
-    {'id': 'drop_pods', 'name': 'Drop Pods', 'cost': 30, 'description': 'Make airdrops anywhere'},
-    {'id': 'air_superiority', 'name': 'Air Superiority', 'cost': 20, 'description': '+100% vs air units'},
-    {'id': 'deep_pressure', 'name': 'Deep Pressure Hull', 'cost': 15, 'description': 'Operate in ocean trenches'},
-    {'id': 'carrier_deck', 'name': 'Carrier Deck', 'cost': 40, 'description': 'Carry up to 4 air units'},
-    {'id': 'AAA', 'name': 'AAA Tracking', 'cost': 25, 'description': '+100% vs air attacks'},
-    {'id': 'comm_jammer', 'name': 'Comm Jammer', 'cost': 20, 'description': 'Enemy -50% when attacking this'},
-    {'id': 'antigrav', 'name': 'Antigrav Struts', 'cost': 20, 'description': '+1 movement, ignore terrain'},
-    {'id': 'empath', 'name': 'Empath Song', 'cost': 25, 'description': '+50% vs psi'},
-    {'id': 'polymorphic', 'name': 'Polymorphic Encryption', 'cost': 30, 'description': 'Immune to probe teams'},
-    {'id': 'fungal_payload', 'name': 'Fungal Payload', 'cost': 25, 'description': 'Creates fungus on impact'},
-    {'id': 'blink', 'name': 'Blink Displacer', 'cost': 50, 'description': 'Teleport short distances'},
-    {'id': 'trance', 'name': 'Trance', 'cost': 10, 'description': '+50% vs psi attacks'},
-    {'id': 'heavy_artillery', 'name': 'Heavy Artillery', 'cost': 30, 'description': 'Bombard from 2 squares'},
-    {'id': 'clean_reactor', 'name': 'Clean Reactor', 'cost': 20, 'description': 'No support costs'},
-    {'id': 'repair_bay', 'name': 'Repair Bay', 'cost': 35, 'description': 'Repair nearby units'},
-    {'id': 'slow', 'name': 'Slow', 'cost': -10, 'description': '-1 movement (prototype)'},
-    {'id': 'police', 'name': 'Police 2x', 'cost': 15, 'description': 'Counts as 2 police units'}
+    {'id': 'none', 'name': 'None', 'cost': 0, 'prereq': None, 'description': 'No special ability'},
+    {'id': 'super_former', 'name': 'Super Former', 'cost': 10, 'prereq': 'EcoEng2', 'description': 'Terraform twice as fast'},
+    {'id': 'deep_radar', 'name': 'Deep Radar', 'cost': 20, 'prereq': 'MilAlg', 'description': 'See 2 squares farther'},
+    {'id': 'cloaking', 'name': 'Cloaking Device', 'cost': 25, 'prereq': 'Surface', 'description': 'Invisible to enemy units'},
+    {'id': 'amphibious', 'name': 'Amphibious Pods', 'cost': 15, 'prereq': 'DocInit', 'description': 'Move on land and sea'},
+    {'id': 'drop_pods', 'name': 'Drop Pods', 'cost': 30, 'prereq': 'MindMac', 'description': 'Make airdrops anywhere'},
+    {'id': 'air_superiority', 'name': 'Air Superiority', 'cost': 20, 'prereq': 'DocAir', 'description': '+100% vs air units'},
+    {'id': 'deep_pressure', 'name': 'Deep Pressure Hull', 'cost': 15, 'prereq': 'Metal', 'description': 'Operate in ocean trenches'},
+    {'id': 'carrier_deck', 'name': 'Carrier Deck', 'cost': 40, 'prereq': 'Metal', 'description': 'Carry up to 4 air units'},
+    {'id': 'AAA', 'name': 'AAA Tracking', 'cost': 25, 'prereq': 'MilAlg', 'description': '+100% vs air attacks'},
+    {'id': 'comm_jammer', 'name': 'Comm Jammer', 'cost': 20, 'prereq': 'Subat', 'description': 'Enemy -50% when attacking this'},
+    {'id': 'antigrav', 'name': 'Antigrav Struts', 'cost': 20, 'prereq': 'Gravity', 'description': '+1 movement, ignore terrain'},
+    {'id': 'empath', 'name': 'Empath Song', 'cost': 25, 'prereq': 'CentEmp', 'description': '+50% vs psi'},
+    {'id': 'polymorphic', 'name': 'Polymorphic Encryption', 'cost': 30, 'prereq': 'Algor', 'description': 'Immune to probe teams'},
+    {'id': 'fungal_payload', 'name': 'Fungal Payload', 'cost': 25, 'prereq': 'Fossil', 'description': 'Creates fungus on impact'},
+    {'id': 'blink', 'name': 'Blink Displacer', 'cost': 50, 'prereq': 'Matter', 'description': 'Teleport short distances'},
+    {'id': 'trance', 'name': 'Trance', 'cost': 10, 'prereq': 'Brain', 'description': '+50% vs psi attacks'},
+    {'id': 'heavy_artillery', 'name': 'Heavy Artillery', 'cost': 30, 'prereq': 'Poly', 'description': 'Bombard from 2 squares'},
+    {'id': 'clean_reactor', 'name': 'Clean Reactor', 'cost': 20, 'prereq': 'BioEng', 'description': 'No support costs'},
+    {'id': 'repair_bay', 'name': 'Repair Bay', 'cost': 35, 'prereq': 'Metal', 'description': 'Repair nearby units'},
+    {'id': 'slow', 'name': 'Slow', 'cost': -10, 'prereq': None, 'description': '-1 movement (prototype)'},
+    {'id': 'police', 'name': 'Police 2x', 'cost': 15, 'prereq': 'Integ', 'description': 'Counts as 2 police units'}
 ]
 
 

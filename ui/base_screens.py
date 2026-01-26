@@ -3,6 +3,7 @@
 import pygame
 import random
 import constants
+import facilities
 from constants import (COLOR_TEXT, COLOR_BUTTON, COLOR_BUTTON_HOVER,
                        COLOR_BUTTON_BORDER, COLOR_BUTTON_HIGHLIGHT,
                        COLOR_UI_BORDER, COLOR_BLACK, COLOR_BASE_FRIENDLY,
@@ -534,6 +535,34 @@ class BaseScreenManager:
             support_text = self.small_font.render(f"0 units supported", True, (120, 140, 160))
             screen.blit(support_text, (support_x + 15, support_y + 40))
 
+        # BASE FACILITIES panel (below Unit Support)
+        facilities_x = support_x
+        facilities_y = support_y + support_h + 10
+        facilities_w = support_w
+        facilities_h = 200
+        facilities_rect = pygame.Rect(facilities_x, facilities_y, facilities_w, facilities_h)
+        pygame.draw.rect(screen, (40, 35, 45), facilities_rect, border_radius=8)
+        pygame.draw.rect(screen, (120, 100, 140), facilities_rect, 2, border_radius=8)
+
+        facilities_title = self.small_font.render("BASE FACILITIES", True, (200, 180, 220))
+        screen.blit(facilities_title, (facilities_x + 10, facilities_y + 8))
+
+        # List facilities
+        if base.facilities:
+            y_offset = 35
+            for i, facility_name in enumerate(base.facilities):
+                if y_offset + 20 > facilities_h - 10:  # Stop if we run out of space
+                    remaining = len(base.facilities) - i
+                    more_text = self.small_font.render(f"+{remaining} more...", True, (150, 150, 150))
+                    screen.blit(more_text, (facilities_x + 15, facilities_y + y_offset))
+                    break
+                fac_text = self.small_font.render(f"• {facility_name}", True, (180, 180, 200))
+                screen.blit(fac_text, (facilities_x + 15, facilities_y + y_offset))
+                y_offset += 20
+        else:
+            no_fac_text = self.small_font.render("No facilities", True, (120, 120, 140))
+            screen.blit(no_fac_text, (facilities_x + 15, facilities_y + 35))
+
         # Base name title at top
         base_title = pygame.font.Font(None, 36).render(base.name, True, COLOR_TEXT)
         screen.blit(base_title, (content_x + content_w // 2 - base_title.get_width() // 2, nutrients_y - 50))
@@ -666,14 +695,37 @@ class BaseScreenManager:
                 return 999
             return (cost + minerals_per_turn - 1) // minerals_per_turn  # Ceiling division
 
-        production_items = [
-            {"name": "Scout Patrol", "type": "unit", "description": f"Infantry unit, {get_turns('Scout Patrol')} turns"},
-            {"name": "Gunship Foil", "type": "unit", "description": f"Naval unit, {get_turns('Gunship Foil')} turns"},
-            {"name": "Gunship Needlejet", "type": "unit", "description": f"Air unit, {get_turns('Gunship Needlejet')} turns"},
-            {"name": "Colony Pod", "type": "unit", "description": f"Found new base, {get_turns('Colony Pod')} turns"},
-            {"name": "Sea Colony Pod", "type": "unit", "description": f"Found coastal base, {get_turns('Sea Colony Pod')} turns"},
-            {"name": "Stockpile Energy", "type": "facility", "description": f"Earn {1 + base.population} energy per turn"}
-        ]
+        # Build production items list
+        production_items = []
+
+        # Units (filtered by tech)
+        production_items.append({"name": "Scout Patrol", "type": "unit", "description": f"Infantry unit, {get_turns('Scout Patrol')} turns"})
+        production_items.append({"name": "Colony Pod", "type": "unit", "description": f"Found new base, {get_turns('Colony Pod')} turns"})
+
+        # Facilities (filtered by tech and not already built)
+        available_facilities = facilities.get_available_facilities(game.tech_tree)
+        for facility in available_facilities:
+            # Skip Headquarters (auto-granted to first base)
+            if facility['name'] == 'Headquarters':
+                continue
+            # Skip if already built in this base
+            if facility['name'] in base.facilities:
+                continue
+            turns = get_turns(facility['name'])
+            description = f"{facility['effect']}, {turns} turns, {facility['maint']} energy/turn"
+            production_items.append({"name": facility['name'], "type": "facility", "description": description})
+
+        # Secret Projects (filtered by tech and global uniqueness)
+        if not hasattr(game, 'built_projects'):
+            game.built_projects = set()
+        available_projects = facilities.get_available_projects(game.tech_tree, game.built_projects)
+        for project in available_projects:
+            turns = get_turns(project['name'])
+            description = f"{project['effect']}, {turns} turns"
+            production_items.append({"name": project['name'], "type": "project", "description": description})
+
+        # Stockpile Energy (always available)
+        production_items.append({"name": "Stockpile Energy", "type": "special", "description": f"Earn {1 + base.population} energy per turn"})
 
         # Calculate grid layout (6 items per row)
         items_per_row = 6

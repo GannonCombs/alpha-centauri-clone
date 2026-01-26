@@ -5,6 +5,7 @@ import constants
 from constants import (COLOR_TEXT, COLOR_BUTTON, COLOR_BUTTON_HOVER,
                        COLOR_BUTTON_BORDER, COLOR_BUTTON_HIGHLIGHT)
 import unit_components
+import social_engineering
 
 
 class SocialScreensManager:
@@ -20,12 +21,12 @@ class SocialScreensManager:
         self.tech_tree_open = False
         self.design_workshop_open = False
 
-        self.se_selections = {
-            'Politics': 0,      # 0=Frontier, 1=Police State, 2=Democratic, 3=Fundamentalist
-            'Economics': 0,     # 0=Simple, 1=Free Market, 2=Planned, 3=Green
-            'Values': 0,        # 0=Survival, 1=Power, 2=Knowledge, 3=Wealth
-            'Future Society': 0 # 0=None, 1=Cybernetic, 2=Eudaimonic, 3=Thought Control
-        }
+        # Tech tree state
+        self.tech_tree_scroll_offset = 0
+        self.tech_tree_focused_tech = 'Ecology'  # Start focused on Centauri Ecology (Gaian starting tech)
+
+        # Social Engineering selections (temporary UI state, synced from game.se_selections)
+        self.se_selections = None
 
         # Design Workshop state
         self.unit_designs = [
@@ -88,6 +89,10 @@ class SocialScreensManager:
 
     def draw_social_engineering(self, screen, game):
         """Draw the Social Engineering screen."""
+        # Sync selections from game (copy so we can cancel)
+        if self.se_selections is None:
+            self.se_selections = game.se_selections.copy()
+
         # Fill background
         screen.fill((20, 25, 30))
 
@@ -157,28 +162,48 @@ class SocialScreensManager:
                 choice_h = 70
 
                 choice_rect = pygame.Rect(x, choice_y, choice_w, choice_h)
-                self.se_choice_rects[(category, col_idx)] = choice_rect
+
+                # Check if this choice is unlocked
+                available_choices = social_engineering.get_available_choices(category, game.tech_tree)
+                is_unlocked = any(c['name'] == choice_name for c in available_choices)
+
+                # Only store unlocked choices for clicking
+                if is_unlocked:
+                    self.se_choice_rects[(category, col_idx)] = choice_rect
 
                 is_selected = self.se_selections[category] == col_idx
-                is_hover = choice_rect.collidepoint(pygame.mouse.get_pos())
+                is_hover = choice_rect.collidepoint(pygame.mouse.get_pos()) and is_unlocked
 
                 # Draw choice box
-                if is_selected:
+                if not is_unlocked:
+                    # Locked - grayed out
+                    bg_color = (25, 25, 25)
+                    border_color = (50, 50, 50)
+                    text_color = (80, 80, 80)
+                elif is_selected:
                     bg_color = (60, 80, 100)
                     border_color = (120, 180, 200)
+                    text_color = COLOR_TEXT
                 elif is_hover:
                     bg_color = (50, 60, 70)
                     border_color = (100, 140, 160)
+                    text_color = COLOR_TEXT
                 else:
                     bg_color = (40, 45, 50)
                     border_color = (80, 100, 120)
+                    text_color = COLOR_TEXT
 
                 pygame.draw.rect(screen, bg_color, choice_rect, border_radius=6)
                 pygame.draw.rect(screen, border_color, choice_rect, 2, border_radius=6)
 
                 # Choice name
-                name_surf = self.small_font.render(choice_name, True, COLOR_TEXT)
+                name_surf = self.small_font.render(choice_name, True, text_color)
                 screen.blit(name_surf, (choice_rect.centerx - name_surf.get_width() // 2, choice_rect.y + 8))
+
+                # Show lock icon if locked
+                if not is_unlocked:
+                    lock_text = self.small_font.render("🔒", True, (100, 100, 100))
+                    screen.blit(lock_text, (choice_rect.centerx - lock_text.get_width() // 2, choice_rect.y + 35))
 
                 # Show effect icons for non-leftmost choices
                 if col_idx > 0:
@@ -224,22 +249,21 @@ class SocialScreensManager:
         cancel_text = self.font.render("Cancel", True, COLOR_TEXT)
         screen.blit(cancel_text, (cancel_rect.centerx - cancel_text.get_width() // 2, cancel_rect.centery - 10))
 
-    def handle_social_engineering_click(self, pos):
+    def handle_social_engineering_click(self, pos, game):
         """Handle clicks in the Social Engineering screen. Returns 'close' if should exit, None otherwise."""
         # Check OK button
         if hasattr(self, 'se_ok_rect') and self.se_ok_rect.collidepoint(pos):
+            # Save selections to game
+            game.se_selections = self.se_selections.copy()
+            self.se_selections = None  # Clear UI state
             self.social_engineering_open = False
+            game.set_status_message("Social Engineering updated")
             return 'close'
 
         # Check Cancel button
         if hasattr(self, 'se_cancel_rect') and self.se_cancel_rect.collidepoint(pos):
-            # Reset selections to defaults (all leftmost)
-            self.se_selections = {
-                'Politics': 0,
-                'Economics': 0,
-                'Values': 0,
-                'Future Society': 0
-            }
+            # Discard changes
+            self.se_selections = None  # Clear UI state (will reload from game next time)
             self.social_engineering_open = False
             return 'close'
 
@@ -410,7 +434,7 @@ class SocialScreensManager:
 
         # Draw component selection modal if a panel is being edited
         if self.dw_editing_panel:
-            self._draw_component_selection(screen)
+            self._draw_component_selection(screen, game)
 
     def _draw_component_panel(self, screen, rect, title, value):
         """Draw a component selection panel."""
@@ -474,7 +498,7 @@ class SocialScreensManager:
             stats_surf = self.small_font.render(stats_text, True, (180, 190, 200))
             screen.blit(stats_surf, (rect.x + 10, rect.y + 80))
 
-    def _draw_component_selection(self, screen):
+    def _draw_component_selection(self, screen, game):
         """Draw component selection modal overlay."""
         # Semi-transparent overlay
         overlay = pygame.Surface((constants.SCREEN_WIDTH, constants.SCREEN_HEIGHT))
@@ -497,17 +521,20 @@ class SocialScreensManager:
 
         # Get components list based on editing panel
         if self.dw_editing_panel == 'chassis':
-            components = unit_components.CHASSIS
+            all_components = unit_components.CHASSIS
         elif self.dw_editing_panel == 'weapon':
-            components = unit_components.WEAPONS
+            all_components = unit_components.WEAPONS
         elif self.dw_editing_panel == 'armor':
-            components = unit_components.ARMOR
+            all_components = unit_components.ARMOR
         elif self.dw_editing_panel == 'reactor':
-            components = unit_components.REACTORS
+            all_components = unit_components.REACTORS
         elif self.dw_editing_panel in ['ability1', 'ability2']:
-            components = unit_components.SPECIAL_ABILITIES
+            all_components = unit_components.SPECIAL_ABILITIES
         else:
-            components = []
+            all_components = []
+
+        # Filter components by tech prerequisites
+        components = [c for c in all_components if unit_components.is_component_available(c, game.tech_tree)]
 
         # Draw components
         self.dw_component_selection_rects = []
@@ -652,88 +679,152 @@ class SocialScreensManager:
         return lines
 
     def draw_tech_tree(self, screen, game):
-        """Draw the Technology Tree screen."""
+        """Draw the Technology Tree screen with visualization."""
         # Fill background
         screen.fill((15, 20, 25))
 
         screen_w = constants.SCREEN_WIDTH
         screen_h = constants.SCREEN_HEIGHT
 
-        # Title
-        title_font = pygame.font.Font(None, 48)
-        title = title_font.render("TECHNOLOGY TREE", True, (180, 220, 240))
-        screen.blit(title, (screen_w // 2 - title.get_width() // 2, 20))
+        # TOP PROGRESS BAR (~80% screen width)
+        progress_bar_w = int(screen_w * 0.8)
+        progress_bar_h = 50
+        progress_bar_x = (screen_w - progress_bar_w) // 2
+        progress_bar_y = 10
 
-        # Current research info
-        current_tech = game.tech_tree.get_current_tech()
-        info_y = 100
+        # Progress bar background
+        prog_bg_rect = pygame.Rect(progress_bar_x, progress_bar_y, progress_bar_w, progress_bar_h)
+        pygame.draw.rect(screen, (30, 35, 40), prog_bg_rect, border_radius=8)
 
-        current_label = self.font.render("Current Research:", True, (150, 180, 200))
-        screen.blit(current_label, (50, info_y))
+        current_tech_name = game.tech_tree.get_current_tech()
+        if current_tech_name and game.tech_tree.current_research:
+            # Get category color for progress bar
+            category = game.tech_tree.get_current_category()
+            fill_color = game.tech_tree.get_category_color(category) if category else (80, 150, 200)
 
-        tech_name = pygame.font.Font(None, 36).render(current_tech, True, (200, 220, 240))
-        screen.blit(tech_name, (50, info_y + 35))
-
-        # Progress bar
-        progress_y = info_y + 80
-        progress_w = 600
-        progress_h = 40
-        progress_x = 50
-
-        progress_rect = pygame.Rect(progress_x, progress_y, progress_w, progress_h)
-        pygame.draw.rect(screen, (30, 35, 40), progress_rect, border_radius=6)
-
-        # Fill based on progress
-        if current_tech != "Complete":
+            # Fill progress
             progress_pct = game.tech_tree.get_progress_percentage()
-            fill_w = int(progress_w * progress_pct)
-            fill_rect = pygame.Rect(progress_x, progress_y, fill_w, progress_h)
-            pygame.draw.rect(screen, (80, 150, 200), fill_rect, border_radius=6)
+            fill_w = int(progress_bar_w * progress_pct)
+            fill_rect = pygame.Rect(progress_bar_x, progress_bar_y, fill_w, progress_bar_h)
+            pygame.draw.rect(screen, fill_color, fill_rect, border_radius=8)
 
-        pygame.draw.rect(screen, (100, 140, 180), progress_rect, 2, border_radius=6)
-
-        # Progress text
-        if current_tech != "Complete":
+            # Progress text (hide tech name - keep it mysterious!)
             turns_left = game.tech_tree.get_turns_remaining()
-            progress_text = self.font.render(f"{turns_left} turns remaining", True, COLOR_TEXT)
-            screen.blit(progress_text, (progress_rect.centerx - progress_text.get_width() // 2, progress_rect.centery - 10))
+            total_cost = game.tech_tree.get_research_cost()
+            accumulated = game.tech_tree.research_accumulated
+            prog_text = self.font.render(f"Research: {accumulated}/{total_cost} ({turns_left} turns)", True, COLOR_TEXT)
+            screen.blit(prog_text, (prog_bg_rect.centerx - prog_text.get_width() // 2, prog_bg_rect.centery - 10))
         else:
-            complete_text = self.font.render("Research Complete!", True, (100, 220, 100))
-            screen.blit(complete_text, (progress_rect.centerx - complete_text.get_width() // 2, progress_rect.centery - 10))
+            # No research active (should not happen with auto-research)
+            prog_text = self.font.render("Selecting research...", True, (180, 150, 100))
+            screen.blit(prog_text, (prog_bg_rect.centerx - prog_text.get_width() // 2, prog_bg_rect.centery - 10))
 
-        # Tech list (linear progression)
-        list_y = progress_y + 80
-        list_title = self.font.render("Technology Progression:", True, (150, 180, 200))
-        screen.blit(list_title, (50, list_y))
+        pygame.draw.rect(screen, (100, 140, 180), prog_bg_rect, 3, border_radius=8)
 
-        # Display all 20 techs in a grid
-        tech_start_y = list_y + 40
-        tech_spacing_y = 35
-        cols = 2
-        col_width = (screen_w - 100) // cols
+        # LEFT PANEL: Scrollable alphabetized list
+        left_panel_x = 20
+        left_panel_y = progress_bar_y + progress_bar_h + 20
+        left_panel_w = 320
+        left_panel_h = screen_h - left_panel_y - 20
 
-        for i, tech in enumerate(game.tech_tree.techs):
-            col = i % cols
-            row = i // cols
+        # Panel background
+        left_panel_rect = pygame.Rect(left_panel_x, left_panel_y, left_panel_w, left_panel_h)
+        pygame.draw.rect(screen, (25, 30, 35), left_panel_rect, border_radius=8)
+        pygame.draw.rect(screen, (80, 100, 120), left_panel_rect, 2, border_radius=8)
 
-            tech_x = 50 + col * col_width
-            tech_y = tech_start_y + row * tech_spacing_y
+        # Panel title
+        list_title = self.font.render("Technologies", True, (150, 180, 200))
+        screen.blit(list_title, (left_panel_x + 10, left_panel_y + 10))
 
-            status = game.tech_tree.get_tech_status(tech)
+        # Get all techs alphabetically
+        all_techs = [(tech_id, tech_data) for tech_id, tech_data in game.tech_tree.technologies.items()]
+        all_techs.sort(key=lambda x: x[1]['name'])
+
+        # Scrollable list
+        tech_list_y = left_panel_y + 45
+        tech_line_h = 22
+        visible_lines = (left_panel_h - 60) // tech_line_h
+        self.tech_tree_selection_rects = []
+
+        # Draw scroll arrows if needed
+        if len(all_techs) > visible_lines:
+            # Up arrow
+            up_arrow_rect = pygame.Rect(left_panel_x + left_panel_w - 30, left_panel_y + 10, 20, 20)
+            pygame.draw.polygon(screen, (150, 180, 200), [
+                (up_arrow_rect.centerx, up_arrow_rect.top + 5),
+                (up_arrow_rect.left + 3, up_arrow_rect.bottom - 5),
+                (up_arrow_rect.right - 3, up_arrow_rect.bottom - 5)
+            ])
+            self.tech_tree_up_arrow = up_arrow_rect
+
+            # Down arrow
+            down_arrow_rect = pygame.Rect(left_panel_x + left_panel_w - 30, left_panel_y + left_panel_h - 30, 20, 20)
+            pygame.draw.polygon(screen, (150, 180, 200), [
+                (down_arrow_rect.centerx, down_arrow_rect.bottom - 5),
+                (down_arrow_rect.left + 3, down_arrow_rect.top + 5),
+                (down_arrow_rect.right - 3, down_arrow_rect.top + 5)
+            ])
+            self.tech_tree_down_arrow = down_arrow_rect
+        else:
+            self.tech_tree_up_arrow = None
+            self.tech_tree_down_arrow = None
+
+        # Display visible techs
+        for i in range(self.tech_tree_scroll_offset, min(self.tech_tree_scroll_offset + visible_lines, len(all_techs))):
+            tech_id, tech_data = all_techs[i]
+            display_index = i - self.tech_tree_scroll_offset
+            tech_y = tech_list_y + display_index * tech_line_h
+
+            # Tech status
+            status = game.tech_tree.get_tech_status(tech_id)
 
             # Color based on status
             if status == "Completed":
                 tech_color = (100, 220, 100)
-                status_symbol = "✓"
+                prefix = "✓ "
             elif status == "Researching":
                 tech_color = (200, 220, 100)
-                status_symbol = "→"
-            else:
-                tech_color = (120, 130, 140)
-                status_symbol = " "
+                prefix = "→ "
+            elif status == "Available":
+                tech_color = (180, 200, 220)
+                prefix = "  "
+            else:  # Locked
+                tech_color = (100, 110, 120)
+                prefix = "  "
 
-            tech_text = self.small_font.render(f"{status_symbol} {tech}", True, tech_color)
-            screen.blit(tech_text, (tech_x, tech_y))
+            # Clickable rect
+            tech_rect = pygame.Rect(left_panel_x + 10, tech_y, left_panel_w - 50, tech_line_h)
+
+            # Highlight if focused or hovered
+            is_focused = (tech_id == self.tech_tree_focused_tech)
+            is_hovered = tech_rect.collidepoint(pygame.mouse.get_pos())
+
+            if is_focused:
+                pygame.draw.rect(screen, (50, 70, 90), tech_rect, border_radius=4)
+            elif is_hovered:
+                pygame.draw.rect(screen, (40, 50, 60), tech_rect, border_radius=4)
+
+            # Store for click detection
+            self.tech_tree_selection_rects.append((tech_rect, tech_id))
+
+            # Tech name
+            tech_text = self.small_font.render(f"{prefix}{tech_data['name']}", True, tech_color)
+            screen.blit(tech_text, (left_panel_x + 15, tech_y + 3))
+
+        # MAIN VIEW: Tech visualization
+        main_panel_x = left_panel_x + left_panel_w + 20
+        main_panel_y = left_panel_y
+        main_panel_w = screen_w - main_panel_x - 20
+        main_panel_h = left_panel_h
+
+        # Main panel background
+        main_panel_rect = pygame.Rect(main_panel_x, main_panel_y, main_panel_w, main_panel_h)
+        pygame.draw.rect(screen, (20, 25, 30), main_panel_rect, border_radius=8)
+        pygame.draw.rect(screen, (80, 100, 120), main_panel_rect, 2, border_radius=8)
+
+        # Draw focused tech
+        if self.tech_tree_focused_tech and self.tech_tree_focused_tech in game.tech_tree.technologies:
+            self._draw_tech_visualization(screen, game, main_panel_rect)
 
         # OK button
         ok_button_w = 150
@@ -749,8 +840,260 @@ class SocialScreensManager:
         ok_text = self.font.render("OK", True, COLOR_TEXT)
         screen.blit(ok_text, (self.tech_tree_ok_rect.centerx - ok_text.get_width() // 2, self.tech_tree_ok_rect.centery - 10))
 
-    def handle_tech_tree_click(self, pos):
+    def _draw_tech_visualization(self, screen, game, main_rect):
+        """Draw the main tech visualization showing focused tech and connections."""
+        focused_id = self.tech_tree_focused_tech
+        focused_data = game.tech_tree.technologies[focused_id]
+
+        # Storage for clickable prerequisite/unlock rectangles
+        self.tech_tree_prereq_rects = []  # List of (rect, tech_id) tuples
+        self.tech_tree_unlock_rects = []  # List of (rect, tech_id) tuples
+
+        # Center tech box
+        center_x = main_rect.centerx
+        center_y = main_rect.centery
+        tech_box_w = 240
+        tech_box_h = 180
+
+        # Draw center tech (focused)
+        center_rect = pygame.Rect(center_x - tech_box_w // 2, center_y - tech_box_h // 2, tech_box_w, tech_box_h)
+
+        # Color based on status
+        status = game.tech_tree.get_tech_status(focused_id)
+        if status == "Completed":
+            bg_color = (40, 60, 40)
+            border_color = (100, 220, 100)
+            text_color = (255, 255, 255)
+        elif status == "Researching":
+            bg_color = (60, 60, 40)
+            border_color = (200, 220, 100)
+            text_color = (255, 255, 255)
+        elif status == "Available":
+            bg_color = (40, 50, 60)
+            border_color = (120, 180, 220)
+            text_color = (255, 255, 255)
+        else:  # Locked
+            bg_color = (30, 30, 30)
+            border_color = (80, 80, 80)
+            text_color = (120, 120, 120)
+
+        pygame.draw.rect(screen, bg_color, center_rect, border_radius=10)
+        pygame.draw.rect(screen, border_color, center_rect, 3, border_radius=10)
+
+        # Tech icon (simple placeholder)
+        icon_size = 80
+        icon_rect = pygame.Rect(center_rect.centerx - icon_size // 2, center_rect.top + 20, icon_size, icon_size)
+        pygame.draw.circle(screen, border_color, icon_rect.center, icon_size // 2)
+        pygame.draw.circle(screen, bg_color, icon_rect.center, icon_size // 2 - 3)
+
+        # Tech ID abbreviation in icon
+        abbrev_font = pygame.font.Font(None, 32)
+        abbrev_text = abbrev_font.render(focused_id[:4], True, text_color)
+        screen.blit(abbrev_text, (icon_rect.centerx - abbrev_text.get_width() // 2, icon_rect.centery - 12))
+
+        # Tech name (wrapped)
+        name_y = center_rect.top + 110
+        name_lines = self._wrap_text(focused_data['name'], tech_box_w - 20, self.font)
+        for i, line in enumerate(name_lines[:2]):
+            line_surf = self.font.render(line, True, text_color)
+            screen.blit(line_surf, (center_rect.centerx - line_surf.get_width() // 2, name_y + i * 24))
+
+        # Cost and category info
+        cost = focused_data['cost']
+        category = focused_data.get('category', 'unknown')
+        category_color = game.tech_tree.get_category_color(category)
+
+        # Category badge
+        category_names = {'explore': 'EXPLORE', 'discover': 'DISCOVER', 'build': 'BUILD', 'conquer': 'CONQUER'}
+        category_name = category_names.get(category, 'UNKNOWN')
+        category_text = self.small_font.render(category_name, True, category_color)
+        category_badge_rect = pygame.Rect(center_rect.left + 10, center_rect.bottom - 45, category_text.get_width() + 10, 20)
+        pygame.draw.rect(screen, (20, 25, 30), category_badge_rect, border_radius=4)
+        pygame.draw.rect(screen, category_color, category_badge_rect, 2, border_radius=4)
+        screen.blit(category_text, (category_badge_rect.x + 5, category_badge_rect.y + 2))
+
+        # Cost text
+        cost_text = self.small_font.render(f"Cost: {cost}", True, text_color)
+        screen.blit(cost_text, (center_rect.centerx - cost_text.get_width() // 2, center_rect.bottom - 25))
+
+        # PREREQUISITES (arrows from left)
+        prereq1 = focused_data.get('prereq1')
+        prereq2 = focused_data.get('prereq2')
+        prereqs = [p for p in [prereq1, prereq2] if p is not None]
+
+        arrow_spacing = 100
+        prereq_x = center_x - tech_box_w // 2 - 200
+        prereq_start_y = center_y - (len(prereqs) - 1) * arrow_spacing // 2
+
+        for i, prereq_id in enumerate(prereqs):
+            if prereq_id in game.tech_tree.technologies:
+                prereq_data = game.tech_tree.technologies[prereq_id]
+                prereq_y = prereq_start_y + i * arrow_spacing
+
+                # Small prereq box
+                prereq_w, prereq_h = 140, 60
+                prereq_rect = pygame.Rect(prereq_x - prereq_w // 2, prereq_y - prereq_h // 2, prereq_w, prereq_h)
+
+                # Store for click detection
+                self.tech_tree_prereq_rects.append((prereq_rect, prereq_id))
+
+                # Color based on status
+                prereq_status = game.tech_tree.get_tech_status(prereq_id)
+                if prereq_status == "Completed":
+                    prereq_bg = (30, 50, 30)
+                    prereq_border = (80, 180, 80)
+                    prereq_text_color = (200, 220, 200)
+                else:
+                    prereq_bg = (25, 25, 25)
+                    prereq_border = (60, 60, 60)
+                    prereq_text_color = (100, 100, 100)
+
+                # Highlight on hover
+                is_hovered = prereq_rect.collidepoint(pygame.mouse.get_pos())
+                if is_hovered:
+                    prereq_border = tuple(min(255, c + 50) for c in prereq_border)
+
+                pygame.draw.rect(screen, prereq_bg, prereq_rect, border_radius=6)
+                pygame.draw.rect(screen, prereq_border, prereq_rect, 2, border_radius=6)
+
+                # Prereq name (wrapped)
+                prereq_lines = self._wrap_text(prereq_data['name'], prereq_w - 10, self.small_font)
+                for j, line in enumerate(prereq_lines[:2]):
+                    line_surf = self.small_font.render(line, True, prereq_text_color)
+                    screen.blit(line_surf, (prereq_rect.centerx - line_surf.get_width() // 2, prereq_rect.top + 10 + j * 16))
+
+                # Arrow from prereq to center
+                arrow_start = (prereq_rect.right, prereq_y)
+                arrow_end = (center_rect.left, center_y)
+                pygame.draw.line(screen, prereq_border, arrow_start, arrow_end, 2)
+                # Arrowhead
+                pygame.draw.polygon(screen, prereq_border, [
+                    arrow_end,
+                    (arrow_end[0] - 10, arrow_end[1] - 5),
+                    (arrow_end[0] - 10, arrow_end[1] + 5)
+                ])
+
+        # UNLOCKS (arrows to right - techs that require this one)
+        unlocks = []
+        for tech_id, tech_data in game.tech_tree.technologies.items():
+            if tech_data.get('prereq1') == focused_id or tech_data.get('prereq2') == focused_id:
+                unlocks.append((tech_id, tech_data))
+
+        unlock_x = center_x + tech_box_w // 2 + 200
+        unlock_start_y = center_y - (len(unlocks) - 1) * arrow_spacing // 2
+
+        for i, (unlock_id, unlock_data) in enumerate(unlocks[:3]):  # Max 3 to avoid clutter
+            unlock_y = unlock_start_y + i * arrow_spacing
+
+            # Small unlock box
+            unlock_w, unlock_h = 140, 60
+            unlock_rect = pygame.Rect(unlock_x - unlock_w // 2, unlock_y - unlock_h // 2, unlock_w, unlock_h)
+
+            # Store for click detection
+            self.tech_tree_unlock_rects.append((unlock_rect, unlock_id))
+
+            # Color based on status
+            unlock_status = game.tech_tree.get_tech_status(unlock_id)
+            if unlock_status == "Completed":
+                unlock_bg = (30, 50, 30)
+                unlock_border = (80, 180, 80)
+                unlock_text_color = (200, 220, 200)
+            elif unlock_status == "Available":
+                unlock_bg = (30, 40, 50)
+                unlock_border = (100, 150, 180)
+                unlock_text_color = (180, 200, 220)
+            else:
+                unlock_bg = (25, 25, 25)
+                unlock_border = (60, 60, 60)
+                unlock_text_color = (100, 100, 100)
+
+            # Highlight on hover
+            is_hovered = unlock_rect.collidepoint(pygame.mouse.get_pos())
+            if is_hovered:
+                unlock_border = tuple(min(255, c + 50) for c in unlock_border)
+
+            pygame.draw.rect(screen, unlock_bg, unlock_rect, border_radius=6)
+            pygame.draw.rect(screen, unlock_border, unlock_rect, 2, border_radius=6)
+
+            # Unlock name (wrapped)
+            unlock_lines = self._wrap_text(unlock_data['name'], unlock_w - 10, self.small_font)
+            for j, line in enumerate(unlock_lines[:2]):
+                line_surf = self.small_font.render(line, True, unlock_text_color)
+                screen.blit(line_surf, (unlock_rect.centerx - line_surf.get_width() // 2, unlock_rect.top + 10 + j * 16))
+
+            # Arrow from center to unlock
+            arrow_start = (center_rect.right, center_y)
+            arrow_end = (unlock_rect.left, unlock_y)
+            pygame.draw.line(screen, unlock_border, arrow_start, arrow_end, 2)
+            # Arrowhead
+            pygame.draw.polygon(screen, unlock_border, [
+                arrow_end,
+                (arrow_end[0] - 10, arrow_end[1] - 5),
+                (arrow_end[0] - 10, arrow_end[1] + 5)
+            ])
+
+        # Show count if more unlocks exist
+        if len(unlocks) > 3:
+            more_text = self.small_font.render(f"+{len(unlocks) - 3} more", True, (150, 150, 150))
+            screen.blit(more_text, (unlock_x - more_text.get_width() // 2, unlock_start_y + 3 * arrow_spacing - 20))
+
+    def handle_tech_tree_click(self, pos, game):
         """Handle clicks in the Tech Tree screen. Returns 'close' if should exit, None otherwise."""
+        # Check scroll arrows
+        if hasattr(self, 'tech_tree_up_arrow') and self.tech_tree_up_arrow and self.tech_tree_up_arrow.collidepoint(pos):
+            if self.tech_tree_scroll_offset > 0:
+                self.tech_tree_scroll_offset -= 1
+            return None
+
+        if hasattr(self, 'tech_tree_down_arrow') and self.tech_tree_down_arrow and self.tech_tree_down_arrow.collidepoint(pos):
+            all_techs_count = len(game.tech_tree.technologies)
+            visible_lines = 25  # Approximate
+            if self.tech_tree_scroll_offset < all_techs_count - visible_lines:
+                self.tech_tree_scroll_offset += 1
+            return None
+
+        # Check prerequisite boxes (left side of visualization)
+        if hasattr(self, 'tech_tree_prereq_rects'):
+            for rect, tech_id in self.tech_tree_prereq_rects:
+                if rect.collidepoint(pos):
+                    # Focus this tech in the main view
+                    self.tech_tree_focused_tech = tech_id
+                    game.set_status_message(f"Viewing: {game.tech_tree.technologies[tech_id]['name']}")
+                    return None
+
+        # Check unlock boxes (right side of visualization)
+        if hasattr(self, 'tech_tree_unlock_rects'):
+            for rect, tech_id in self.tech_tree_unlock_rects:
+                if rect.collidepoint(pos):
+                    # Focus this tech in the main view
+                    self.tech_tree_focused_tech = tech_id
+                    # If it's available, also set it as current research
+                    status = game.tech_tree.get_tech_status(tech_id)
+                    if status == "Available":
+                        game.tech_tree.set_current_research(tech_id)
+                        category = game.tech_tree.technologies[tech_id].get('category', 'unknown')
+                        category_name = {'explore': 'Explore', 'discover': 'Discover', 'build': 'Build', 'conquer': 'Conquer'}.get(category, 'Unknown')
+                        game.set_status_message(f"Now researching a {category_name} technology")
+                    else:
+                        game.set_status_message(f"Viewing: {game.tech_tree.technologies[tech_id]['name']}")
+                    return None
+
+        # Check tech selection (clicking focuses the tech)
+        if hasattr(self, 'tech_tree_selection_rects'):
+            for rect, tech_id in self.tech_tree_selection_rects:
+                if rect.collidepoint(pos):
+                    # Focus this tech in the main view
+                    self.tech_tree_focused_tech = tech_id
+
+                    # If it's available, also set it as current research
+                    status = game.tech_tree.get_tech_status(tech_id)
+                    if status == "Available":
+                        game.tech_tree.set_current_research(tech_id)
+                        category = game.tech_tree.technologies[tech_id].get('category', 'unknown')
+                        category_name = {'explore': 'Explore', 'discover': 'Discover', 'build': 'Build', 'conquer': 'Conquer'}.get(category, 'Unknown')
+                        game.set_status_message(f"Now researching a {category_name} technology")
+                    return None
+
         # Check OK button
         if hasattr(self, 'tech_tree_ok_rect') and self.tech_tree_ok_rect.collidepoint(pos):
             self.tech_tree_open = False

@@ -1,5 +1,7 @@
 # game.py
 import constants
+import facilities
+import social_engineering
 from map import GameMap
 from unit import Unit
 from base import Base
@@ -40,7 +42,20 @@ class Game:
 
         # Technology
         self.tech_tree = TechTree()  # Player's tech tree
+        self.tech_tree.auto_select_research()  # Start with an active research
         self.ai_tech_trees = {1: TechTree()}  # AI tech trees by player_id
+        self.ai_tech_trees[1].auto_select_research()  # AI starts researching too
+
+        # Facilities and Projects
+        self.built_projects = set()  # Global set of secret projects built (one per game)
+
+        # Social Engineering (player selections)
+        self.se_selections = {
+            'Politics': 0,  # 0=Frontier, 1=Police State, 2=Democratic, 3=Fundamentalist
+            'Economics': 0,  # 0=Simple, 1=Free Market, 2=Planned, 3=Green
+            'Values': 0,  # 0=Survival, 1=Power, 2=Knowledge, 3=Wealth
+            'Future Society': 0  # 0=None, 1=Cybernetic, 2=Eudaimonic, 3=Thought Control
+        }
 
         # Territory
         self.territory = TerritoryManager(self.game_map)
@@ -79,50 +94,26 @@ class Game:
 
         print(f"Found {len(land_tiles)} land tiles, {len(ocean_tiles)} ocean tiles")
 
-        # Spawn player units: 1 land unit, 1 land colony pod, 1 sea unit, 1 sea colony pod
+        # Spawn player units: Scout Patrol and Colony Pod only (land units)
         if len(land_tiles) >= 2:
-            # Land unit
+            # Scout Patrol
             x, y = land_tiles[0]
             unit = Unit(x, y, UNIT_LAND, self.player_id, "Scout Patrol")
             self.units.append(unit)
             self.game_map.set_unit_at(x, y, unit)
             print(f"Spawned Scout Patrol at ({x}, {y})")
 
-            # Land colony pod
+            # Colony Pod
             x, y = land_tiles[2]
             unit = Unit(x, y, UNIT_COLONY_POD_LAND, self.player_id, "Colony Pod")
             self.units.append(unit)
             self.game_map.set_unit_at(x, y, unit)
             print(f"Spawned Colony Pod at ({x}, {y})")
 
-        # Spawn player sea units
-        if len(ocean_tiles) >= 2:
-            # Sea unit
-            x, y = ocean_tiles[0]
-            unit = Unit(x, y, UNIT_SEA, self.player_id, "Gunship Foil")
-            self.units.append(unit)
-            self.game_map.set_unit_at(x, y, unit)
-            print(f"Spawned Gunship Foil at ({x}, {y})")
-
-            # Sea colony pod
-            x, y = ocean_tiles[1]
-            unit = Unit(x, y, UNIT_COLONY_POD_SEA, self.player_id, "Sea Colony Pod")
-            self.units.append(unit)
-            self.game_map.set_unit_at(x, y, unit)
-            print(f"Spawned Sea Colony Pod at ({x}, {y})")
-
-        # Spawn player air unit (for testing - fast movement)
-        if len(land_tiles) >= 4:
-            x, y = land_tiles[1]
-            unit = Unit(x, y, UNIT_AIR, self.player_id, "Gunship Needlejet")
-            self.units.append(unit)
-            self.game_map.set_unit_at(x, y, unit)
-            print(f"Spawned Gunship Needlejet at ({x}, {y})")
-
-        # Spawn AI units (same as player: 1 land unit, 1 land colony pod, 1 sea unit, 1 sea colony pod, 1 air)
+        # Spawn AI units: Scout Patrol and Colony Pod only (land units)
         ai_player_id = 1
         if len(land_tiles) >= 10:
-            # AI land unit
+            # AI Scout Patrol
             x, y = land_tiles[-1]
             unit = Unit(x, y, UNIT_LAND, ai_player_id, "AI Scout Patrol")
             self.units.append(unit)
@@ -136,31 +127,6 @@ class Game:
                 self.units.append(unit)
                 self.game_map.set_unit_at(x, y, unit)
                 print(f"Spawned AI Colony Pod at ({x}, {y})")
-
-        # AI sea units
-        if len(ocean_tiles) >= 5:
-            # AI sea unit
-            x, y = ocean_tiles[-1]
-            unit = Unit(x, y, UNIT_SEA, ai_player_id, "AI Gunship Foil")
-            self.units.append(unit)
-            self.game_map.set_unit_at(x, y, unit)
-            print(f"Spawned AI Gunship Foil at ({x}, {y})")
-
-            # AI sea colony pod
-            if len(ocean_tiles) >= 6:
-                x, y = ocean_tiles[-2]
-                unit = Unit(x, y, UNIT_COLONY_POD_SEA, ai_player_id, "AI Sea Colony Pod")
-                self.units.append(unit)
-                self.game_map.set_unit_at(x, y, unit)
-                print(f"Spawned AI Sea Colony Pod at ({x}, {y})")
-
-        # AI air unit (for testing)
-        if len(land_tiles) >= 14:
-            x, y = land_tiles[-5]
-            unit = Unit(x, y, UNIT_AIR, ai_player_id, "AI Gunship Needlejet")
-            self.units.append(unit)
-            self.game_map.set_unit_at(x, y, unit)
-            print(f"Spawned AI Gunship Needlejet at ({x}, {y})")
 
         print(f"Total units spawned: {len(self.units)}")
 
@@ -736,6 +702,13 @@ class Game:
 
         # Create the base
         base = Base(unit.x, unit.y, unit.owner, base_name)
+
+        # Check if this is the player's first base - if so, add Headquarters
+        player_bases = [b for b in self.bases if b.owner == unit.owner]
+        if len(player_bases) == 0:
+            base.facilities.append('Headquarters')
+            print(f"First base founded - Headquarters added automatically")
+
         self.bases.append(base)
 
         # Update the tile
@@ -763,13 +736,28 @@ class Game:
             base (Base): The base that completed production
             item_name (str): Name of the unit or facility to create
         """
-        # Handle facilities (non-unit production)
+        # Handle Stockpile Energy
         if item_name == "Stockpile Energy":
             # Convert production to energy
             energy_gained = 1 + base.population
             self.energy_credits += energy_gained
             self.set_status_message(f"{base.name}: Stockpile Energy +{energy_gained}")
             print(f"{base.name} stockpiled {energy_gained} energy")
+            return
+
+        # Check if it's a facility or secret project
+        facility_data = facilities.get_facility_by_name(item_name)
+        if facility_data:
+            # Facilities are already added to base.facilities in base.process_turn()
+            # Check if it's a secret project
+            project_data = facilities.get_facility_by_id(facility_data['id'])
+            if project_data in facilities.SECRET_PROJECTS:
+                # Mark as globally built
+                self.built_projects.add(facility_data['id'])
+                self.set_status_message(f"{base.name} completed {item_name}!")
+                print(f"SECRET PROJECT COMPLETED: {item_name}")
+            else:
+                self.set_status_message(f"{base.name} built {item_name}")
             return
 
         # Map unit names to unit types

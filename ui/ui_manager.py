@@ -271,12 +271,12 @@ class UIManager:
                 return True
 
             if self.active_screen == "TECH_TREE":
-                result = self.social_screens.handle_tech_tree_click(event.pos)
+                result = self.social_screens.handle_tech_tree_click(event.pos, game)
                 if result == 'close':
                     self.active_screen = "GAME"
                 return True
             elif self.active_screen == "SOCIAL_ENGINEERING":
-                result = self.social_screens.handle_social_engineering_click(event.pos)
+                result = self.social_screens.handle_social_engineering_click(event.pos, game)
                 if result == 'close':
                     self.active_screen = "GAME"
                 return True
