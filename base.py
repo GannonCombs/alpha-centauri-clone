@@ -240,3 +240,64 @@ class Base:
     def is_friendly(self, player_id):
         """Check if base belongs to given player."""
         return self.owner == player_id
+
+    def to_dict(self, unit_index_map):
+        """Serialize base to dictionary.
+
+        Args:
+            unit_index_map (dict): Map from unit objects to indices
+
+        Returns:
+            dict: Base data as dictionary
+        """
+        # Convert garrison units to indices
+        garrison_indices = [unit_index_map[u] for u in self.garrison if u in unit_index_map]
+
+        return {
+            'x': self.x,
+            'y': self.y,
+            'owner': self.owner,
+            'name': self.name,
+            'population': self.population,
+            'facilities': list(self.facilities),
+            'garrison_unit_indices': garrison_indices,
+            'current_production': self.current_production,
+            'production_progress': self.production_progress,
+            'nutrients_accumulated': self.nutrients_accumulated
+        }
+
+    @classmethod
+    def from_dict(cls, data, units_list):
+        """Reconstruct base from dictionary.
+
+        Args:
+            data (dict): Base data dictionary
+            units_list (list): List of all units (for resolving garrison indices)
+
+        Returns:
+            Base: Reconstructed base instance
+        """
+        base = cls.__new__(cls)
+
+        # Copy basic attributes
+        base.x = data['x']
+        base.y = data['y']
+        base.owner = data['owner']
+        base.name = data['name']
+        base.population = data['population']
+        base.facilities = data['facilities']
+        base.current_production = data['current_production']
+        base.production_progress = data['production_progress']
+        base.nutrients_accumulated = data['nutrients_accumulated']
+
+        # Rebuild garrison from indices
+        base.garrison = [units_list[idx] for idx in data['garrison_unit_indices']]
+
+        # Initialize derived/calculated values
+        base.supported_units = []
+        base.production_cost = base._get_production_cost(base.current_production)
+        base.production_turns_remaining = base._calculate_production_turns()
+        base.nutrients_needed = base._calculate_nutrients_needed()
+        base.growth_turns_remaining = base._calculate_growth_turns()
+
+        return base

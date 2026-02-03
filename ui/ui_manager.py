@@ -11,6 +11,7 @@ from .diplomacy import DiplomacyManager
 from .council import CouncilManager
 from .social_screens import SocialScreensManager
 from .base_screens import BaseScreenManager
+from .save_load_dialog import SaveLoadDialogManager
 from .data import FACTIONS
 
 
@@ -35,6 +36,7 @@ class UIManager:
         self.council = CouncilManager(self.font, self.small_font)
         self.social_screens = SocialScreensManager(self.font, self.small_font)
         self.base_screens = BaseScreenManager(self.font, self.small_font)
+        self.save_load_dialog = SaveLoadDialogManager(self.font, self.small_font)
 
         # Layout - will be initialized properly after screen size is known
         self.main_menu_button = None
@@ -76,7 +78,7 @@ class UIManager:
         # Minimap & Commlink Positioning - right side of UI panel
         minimap_size = 120
         minimap_x = constants.SCREEN_WIDTH - 320  # Left edge of right area
-        minimap_y = constants.UI_PANEL_Y + 10
+        minimap_y = constants.UI_PANEL_Y + 25  # More spacing from top to fit label
         self.minimap_rect = pygame.Rect(minimap_x, minimap_y, minimap_size, minimap_size)
 
         # Commlink button to the RIGHT of the minimap
@@ -90,7 +92,7 @@ class UIManager:
         self.faction_buttons = []
         for i, f in enumerate(FACTIONS[1:]):  # Factions 1-6
             btn = Button(self.commlink_menu_rect.x + 5, self.commlink_menu_rect.y + 5 + (i * 38),
-                         menu_w - 10, 32, f["name"], f["color"], COLOR_BLACK)
+                         menu_w - 10, 32, f["full_name"], f["color"], COLOR_BLACK)
             self.faction_buttons.append(btn)
 
         self.council_btn = Button(self.commlink_menu_rect.x + 5, self.commlink_menu_rect.bottom - 45, menu_w - 10, 38,
@@ -103,6 +105,31 @@ class UIManager:
 
         # 1. Handle Overlays First (Hotkeys)
         if event.type == pygame.KEYDOWN:
+            # Check for Ctrl+S and Ctrl+L first (highest priority shortcuts)
+            if event.key == pygame.K_s and (event.mod & pygame.KMOD_CTRL):
+                if self.active_screen == "GAME" and not game.processing_ai:
+                    self.save_load_dialog.show_save_dialog(game)
+                return True
+            elif event.key == pygame.K_l and (event.mod & pygame.KMOD_CTRL):
+                if self.active_screen == "GAME" and not game.processing_ai:
+                    self.save_load_dialog.show_load_dialog()
+                return True
+
+            # Handle save/load dialog events if open
+            if self.save_load_dialog.mode is not None:
+                result = self.save_load_dialog.handle_event(event, game)
+                if result == 'save_complete':
+                    # Game was saved successfully
+                    game.set_status_message("Game saved successfully")
+                    return True
+                elif isinstance(result, tuple) and result[0] == 'load_complete':
+                    # Game was loaded - return signal to main.py
+                    return ('load_game', result[1])
+                elif result == 'close':
+                    # Dialog closed without action
+                    return True
+                return True  # Dialog consumed event
+
             # Handle text input for base naming
             if self.active_screen == "BASE_NAMING":
                 result = self.base_screens.handle_base_naming_event(event, game)
@@ -218,6 +245,19 @@ class UIManager:
 
         # 2. Mouse Logic
         if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+            # Handle save/load dialog clicks if open
+            if self.save_load_dialog.mode is not None:
+                result = self.save_load_dialog.handle_event(event, game)
+                if result == 'save_complete':
+                    game.set_status_message("Game saved successfully")
+                    return True
+                elif isinstance(result, tuple) and result[0] == 'load_complete':
+                    # Game was loaded - return signal to main.py
+                    return ('load_game', result[1])
+                elif result == 'close':
+                    return True
+                return True  # Dialog consumed event
+
             # Game over screen takes highest priority
             if game.game_over:
                 if self.game_over_new_game_rect and self.game_over_new_game_rect.collidepoint(event.pos):
@@ -352,6 +392,39 @@ class UIManager:
                 else:
                     self.commlink_open = False  # Clicked outside
 
+            # Handle minimap clicks - center camera on clicked location
+            if self.minimap_rect and self.minimap_rect.collidepoint(event.pos):
+                # Calculate which tile was clicked
+                map_width = game.game_map.width
+                map_height = game.game_map.height
+
+                # Calculate scale and offset (same as in _draw_minimap)
+                scale_x = self.minimap_rect.width / map_width
+                scale_y = self.minimap_rect.height / map_height
+                scale = min(scale_x, scale_y)
+
+                scaled_width = int(map_width * scale)
+                scaled_height = int(map_height * scale)
+                offset_x = self.minimap_rect.x + (self.minimap_rect.width - scaled_width) // 2
+                offset_y = self.minimap_rect.y + (self.minimap_rect.height - scaled_height) // 2
+
+                # Convert click position to map coordinates
+                click_x = event.pos[0] - offset_x
+                click_y = event.pos[1] - offset_y
+
+                # Check if click is within the scaled map area
+                if 0 <= click_x < scaled_width and 0 <= click_y < scaled_height:
+                    tile_x = int(click_x / scale)
+                    tile_y = int(click_y / scale)
+
+                    # Clamp to map bounds
+                    tile_x = max(0, min(tile_x, map_width - 1))
+                    tile_y = max(0, min(tile_y, map_height - 1))
+
+                    # Center on this tile
+                    game.center_camera_on_tile = (tile_x, tile_y)
+                    return True
+
             if self.end_turn_button.handle_event(event):
                 game.end_turn()
                 return True
@@ -371,7 +444,7 @@ class UIManager:
 
         return False
 
-    def draw(self, screen, game):
+    def draw(self, screen, game, renderer=None):
         """Render the UI panel with game info, buttons, and active modals."""
         self._init_layout()
 
@@ -388,7 +461,7 @@ class UIManager:
         screen.blit(mm_label, (self.minimap_rect.x, self.minimap_rect.y - 18))
 
         # Draw minimap contents
-        self._draw_minimap(screen, game)
+        self._draw_minimap(screen, game, renderer)
 
         # Mission Year and Energy Credits - below minimap
         info_x = self.minimap_rect.x
@@ -401,6 +474,17 @@ class UIManager:
 
         # Layer 3: Fixed Buttons
         self.main_menu_button.draw(screen, self.font)
+
+        # End Turn button with glow effect if all units have moved
+        if game.all_friendly_units_moved() and not game.processing_ai:
+            # Draw glowing border around button
+            import math
+            # Pulse effect based on time
+            pulse = abs(math.sin(pygame.time.get_ticks() / 300.0))
+            glow_color = (100 + int(155 * pulse), 200 + int(55 * pulse), 100)
+            glow_rect = self.end_turn_button.rect.inflate(8, 8)
+            pygame.draw.rect(screen, glow_color, glow_rect, 4, border_radius=8)
+
         self.end_turn_button.draw(screen, self.font)
         self.commlink_button.draw(screen, self.small_font)
 
@@ -502,7 +586,11 @@ class UIManager:
         if game.game_over:
             self._draw_game_over(screen, game)
 
-    def _draw_minimap(self, screen, game):
+        # Save/Load dialog (top of everything)
+        if self.save_load_dialog.mode is not None:
+            self.save_load_dialog.draw(screen)
+
+    def _draw_minimap(self, screen, game, renderer=None):
         """Draw a miniature version of the map showing terrain and bases."""
         # Calculate scale to fit entire map in minimap
         map_width = game.game_map.width
@@ -537,7 +625,12 @@ class UIManager:
         # Draw bases as small dots
         base_colors = {
             0: (50, 205, 50),   # Player - Gaian green
-            1: (255, 80, 80)    # AI - red
+            1: (255, 80, 80),   # AI - red
+            2: (255, 255, 255), # AI - white
+            3: (255, 215, 0),   # AI - gold
+            4: (139, 69, 19),   # AI - brown
+            5: (255, 165, 0),   # AI - orange
+            6: (180, 140, 230)  # AI - purple
         }
 
         for base in game.bases:
@@ -549,6 +642,70 @@ class UIManager:
             radius = max(2, int(scale * 0.5))
             pygame.draw.circle(screen, color, (base_x, base_y), radius)
             pygame.draw.circle(screen, COLOR_BLACK, (base_x, base_y), radius, 1)
+
+        # Draw viewport indicator - transparent white-bordered rectangle
+        # showing the currently visible section of the map (with wrapping support)
+        if renderer:
+            visible_tiles_x = constants.SCREEN_WIDTH // constants.TILE_SIZE
+            visible_tiles_y = constants.MAP_AREA_HEIGHT // constants.TILE_SIZE
+
+            # Get camera position from renderer
+            camera_x = renderer.camera_offset_x % map_width  # Wrap horizontally
+            camera_y = renderer.camera_offset_y
+
+            # Check if viewport wraps around the horizontal edge
+            viewport_end_x = camera_x + visible_tiles_x
+            wraps = viewport_end_x > map_width
+
+            if wraps:
+                # Draw two rectangles: one from camera_x to map edge, one from 0 to overflow
+                # First rectangle: right portion
+                viewport_map_w1 = map_width - camera_x
+                viewport_map_h = min(visible_tiles_y, map_height - camera_y)
+
+                viewport_x1 = offset_x + int(camera_x * scale)
+                viewport_y1 = offset_y + int(camera_y * scale)
+                viewport_w1 = int(viewport_map_w1 * scale)
+                viewport_h1 = int(viewport_map_h * scale)
+
+                if viewport_w1 > 0 and viewport_h1 > 0:
+                    viewport_rect1 = pygame.Rect(viewport_x1, viewport_y1, viewport_w1, viewport_h1)
+                    viewport_surface1 = pygame.Surface((viewport_w1, viewport_h1), pygame.SRCALPHA)
+                    viewport_surface1.fill((255, 255, 255, 50))
+                    screen.blit(viewport_surface1, (viewport_x1, viewport_y1))
+                    pygame.draw.rect(screen, (255, 255, 255), viewport_rect1, 2)
+
+                # Second rectangle: left portion (wrapped)
+                viewport_map_w2 = viewport_end_x - map_width
+                viewport_x2 = offset_x
+                viewport_y2 = offset_y + int(camera_y * scale)
+                viewport_w2 = int(viewport_map_w2 * scale)
+                viewport_h2 = int(viewport_map_h * scale)
+
+                if viewport_w2 > 0 and viewport_h2 > 0:
+                    viewport_rect2 = pygame.Rect(viewport_x2, viewport_y2, viewport_w2, viewport_h2)
+                    viewport_surface2 = pygame.Surface((viewport_w2, viewport_h2), pygame.SRCALPHA)
+                    viewport_surface2.fill((255, 255, 255, 50))
+                    screen.blit(viewport_surface2, (viewport_x2, viewport_y2))
+                    pygame.draw.rect(screen, (255, 255, 255), viewport_rect2, 2)
+            else:
+                # No wrapping - draw single rectangle
+                viewport_map_x = camera_x
+                viewport_map_y = camera_y
+                viewport_map_w = min(visible_tiles_x, map_width - camera_x)
+                viewport_map_h = min(visible_tiles_y, map_height - camera_y)
+
+                viewport_x = offset_x + int(viewport_map_x * scale)
+                viewport_y = offset_y + int(viewport_map_y * scale)
+                viewport_w = int(viewport_map_w * scale)
+                viewport_h = int(viewport_map_h * scale)
+
+                if viewport_w > 0 and viewport_h > 0:
+                    viewport_rect = pygame.Rect(viewport_x, viewport_y, viewport_w, viewport_h)
+                    viewport_surface = pygame.Surface((viewport_w, viewport_h), pygame.SRCALPHA)
+                    viewport_surface.fill((255, 255, 255, 50))
+                    screen.blit(viewport_surface, (viewport_x, viewport_y))
+                    pygame.draw.rect(screen, (255, 255, 255), viewport_rect, 2)
 
     def _draw_game_over(self, screen, game):
         """Draw the game over screen with victory/defeat message and buttons."""

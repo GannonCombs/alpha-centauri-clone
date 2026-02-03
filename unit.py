@@ -309,3 +309,63 @@ class Unit:
                 old_morale = self.get_morale_name()
                 self.morale_level = next_level
                 print(f"{self.name} promoted from {old_morale} to {self.get_morale_name()}!")
+
+    def to_dict(self):
+        """Serialize unit to dictionary.
+
+        Returns:
+            dict: Unit data as dictionary
+        """
+        return {
+            'x': self.x,
+            'y': self.y,
+            'unit_type': self.unit_type,
+            'owner': self.owner,
+            'name': self.name,
+            'moves_remaining': self.moves_remaining,
+            'weapon': self.weapon,
+            'armor': self.armor,
+            'reactor_level': self.reactor_level,
+            'current_health': self.current_health,
+            'max_health': self.max_health,
+            'morale_level': self.morale_level,
+            'experience': self.experience,
+            'kills': self.kills,
+            'weapon_mode': self.weapon_mode,
+            'armor_mode': self.armor_mode
+        }
+
+    @classmethod
+    def from_dict(cls, data):
+        """Reconstruct unit from dictionary.
+
+        Args:
+            data (dict): Unit data dictionary
+
+        Returns:
+            Unit: Reconstructed unit instance
+        """
+        unit = cls.__new__(cls)
+
+        # Copy all attributes from data dict
+        unit.x = data['x']
+        unit.y = data['y']
+        unit.unit_type = data['unit_type']
+        unit.owner = data['owner']
+        unit.name = data['name']
+        unit.moves_remaining = data['moves_remaining']
+        unit.weapon = data['weapon']
+        unit.armor = data['armor']
+        unit.reactor_level = data['reactor_level']
+        unit.current_health = data['current_health']
+        unit.max_health = data['max_health']
+        unit.morale_level = data['morale_level']
+        unit.experience = data['experience']
+        unit.kills = data['kills']
+        unit.weapon_mode = data['weapon_mode']
+        unit.armor_mode = data['armor_mode']
+
+        # Reset per-turn state
+        unit.has_moved = False
+
+        return unit

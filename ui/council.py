@@ -28,6 +28,7 @@ class CouncilManager:
         self.vote_option_rects = []
         self.council_too_recent_ok_rect = None
         self.council_ok_rect = None
+        self.council_exit_rect = None
 
     def open_council(self):
         """Start a council session."""
@@ -38,7 +39,7 @@ class CouncilManager:
     def draw(self, screen, game):
         """Render the appropriate council screen based on stage."""
         if self.council_stage == "select_proposal":
-            self._draw_council_selection(screen)
+            self._draw_council_selection(screen, game)
         elif self.council_stage == "too_recent":
             self._draw_council_too_recent(screen, game)
         elif self.council_stage == "voting":
@@ -49,6 +50,10 @@ class CouncilManager:
     def handle_click(self, pos, game):
         """Process clicks on council interface. Returns 'close' if should exit, None otherwise."""
         if self.council_stage == "select_proposal":
+            # Check exit button first
+            if self.council_exit_rect and self.council_exit_rect.collidepoint(pos):
+                return 'close'
+
             for rect, prop in self.proposal_rects:
                 if rect.collidepoint(pos):
                     self.selected_proposal = prop
@@ -80,15 +85,27 @@ class CouncilManager:
 
         return None
 
-    def _draw_council_selection(self, screen):
+    def _draw_council_selection(self, screen, game=None):
         """Draw Planetary Council proposal selection screen."""
         screen.fill(COLOR_COUNCIL_BG)
         pygame.draw.rect(screen, (20, 40, 30), (0, 40, constants.SCREEN_WIDTH, 60))
         t = self.font.render("PLANETARY COUNCIL - SELECT PROPOSAL", True, COLOR_COUNCIL_ACCENT)
         screen.blit(t, (constants.SCREEN_WIDTH // 2 - t.get_width() // 2, 60))
 
+        # Filter proposals by discovered techs
+        available_proposals = []
+        for prop in PROPOSALS:
+            required_tech = prop.get('required_tech')
+            if required_tech is None or (game and game.tech_tree.has_tech(required_tech)):
+                available_proposals.append(prop)
+
+        if not available_proposals:
+            # No proposals available
+            no_prop_text = self.font.render("No motions available at this time.", True, COLOR_TEXT)
+            screen.blit(no_prop_text, (constants.SCREEN_WIDTH // 2 - no_prop_text.get_width() // 2, 300))
+
         self.proposal_rects = []
-        for i, prop in enumerate(PROPOSALS):
+        for i, prop in enumerate(available_proposals):
             rect = pygame.Rect(constants.SCREEN_WIDTH // 2 - 400, 150 + i * 90, 800, 75)
             self.proposal_rects.append((rect, prop))
             is_hover = rect.collidepoint(pygame.mouse.get_pos())
@@ -98,6 +115,15 @@ class CouncilManager:
             screen.blit(self.font.render(prop["name"], True, COLOR_COUNCIL_ACCENT), (rect.x + 25, rect.y + 18))
             if "desc" in prop:
                 screen.blit(self.small_font.render(prop["desc"], True, (180, 220, 200)), (rect.x + 25, rect.y + 45))
+
+        # Exit button
+        self.council_exit_rect = pygame.Rect(constants.SCREEN_WIDTH // 2 - 100, constants.SCREEN_HEIGHT - 100, 200, 55)
+        is_hover = self.council_exit_rect.collidepoint(pygame.mouse.get_pos())
+        pygame.draw.rect(screen, (50, 35, 35) if is_hover else (35, 25, 25), self.council_exit_rect, border_radius=8)
+        pygame.draw.rect(screen, (180, 100, 100), self.council_exit_rect, 3, border_radius=8)
+        exit_text = self.font.render("Exit", True, COLOR_TEXT)
+        screen.blit(exit_text, (self.council_exit_rect.centerx - exit_text.get_width() // 2,
+                                self.council_exit_rect.centery - 10))
 
     def _draw_council_too_recent(self, screen, game):
         """Draw error screen when trying to vote on proposal in cooldown."""
@@ -187,7 +213,7 @@ class CouncilManager:
         for f in FACTIONS[1:]:
             v = random.choice(opts)
             self.council_votes.append(
-                {"name": f["name"].split('(')[0].strip(), "color": f["color"], "vote": v, "votes": f["votes"]})
+                {"name": f["leader"], "color": f["color"], "vote": v, "votes": f["votes"]})
 
     def _get_top_candidates(self):
         """Get top two faction candidates for leader elections."""

@@ -60,7 +60,7 @@ class DiplomacyManager:
         pygame.draw.rect(screen, (15, 22, 28), info_panel)
         pygame.draw.rect(screen, COLOR_BUTTON_BORDER, info_panel, 2)
 
-        name_surf = self.font.render(self.target_faction['name'], True, self.target_faction['color'])
+        name_surf = self.font.render(self.target_faction['full_name'], True, self.target_faction['color'])
         screen.blit(name_surf, (info_x, info_y))
 
         faction_id = next((i for i, f in enumerate(FACTIONS) if f['name'] == self.target_faction['name']), None)

@@ -127,3 +127,51 @@ class GameMap:
             tile.displayed_unit_index = (tile.displayed_unit_index + 1) % len(tile.units)
             return tile.units[tile.displayed_unit_index]
         return None
+
+    def to_dict(self):
+        """Serialize map (terrain only, not units/bases).
+
+        Returns:
+            dict: Map data as dictionary
+        """
+        tiles_data = []
+        for row in self.tiles:
+            row_data = []
+            for tile in row:
+                row_data.append({
+                    'terrain': tile.terrain_type,
+                    'supply_pod': tile.supply_pod
+                })
+            tiles_data.append(row_data)
+
+        return {
+            'width': self.width,
+            'height': self.height,
+            'tiles': tiles_data
+        }
+
+    @classmethod
+    def from_dict(cls, data):
+        """Reconstruct map from dictionary.
+
+        Args:
+            data (dict): Map data dictionary
+
+        Returns:
+            GameMap: Reconstructed map instance
+        """
+        game_map = cls.__new__(cls)
+        game_map.width = data['width']
+        game_map.height = data['height']
+
+        # Rebuild tiles
+        game_map.tiles = []
+        for y, row_data in enumerate(data['tiles']):
+            row = []
+            for x, tile_data in enumerate(row_data):
+                tile = Tile(x, y, tile_data['terrain'])
+                tile.supply_pod = tile_data['supply_pod']
+                row.append(tile)
+            game_map.tiles.append(row)
+
+        return game_map

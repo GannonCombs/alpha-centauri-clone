@@ -5,6 +5,7 @@ from constants import (TILE_SIZE, COLOR_OCEAN, COLOR_LAND, COLOR_GRID, COLOR_BLA
                        COLOR_UNIT_SELECTED, COLOR_UNIT_FRIENDLY, COLOR_UNIT_ENEMY,
                        COLOR_BASE_FRIENDLY, COLOR_BASE_ENEMY, COLOR_BASE_BORDER,
                        UNIT_COLONY_POD_LAND, UNIT_COLONY_POD_SEA)
+from ui.data import FACTIONS
 
 
 class Camera:
@@ -32,32 +33,75 @@ class Renderer:
         self.screen = screen
         self.camera = Camera()
         self.camera_offset_x = 0  # Horizontal scroll in tiles (for wrapping)
+        self.camera_offset_y = 0  # Vertical scroll in tiles (no wrapping, with bounds)
         self.base_offset_x = 0  # Centering offset in pixels
 
     def _update_offsets(self, game_map):
         """Calculate horizontal offset to center the map."""
         map_pixel_width = game_map.width * TILE_SIZE
-        # Half of the leftover horizontal space
-        self.base_offset_x = (constants.SCREEN_WIDTH - map_pixel_width) // 2
+        # Only center if map is smaller than screen, otherwise no offset
+        if map_pixel_width < constants.SCREEN_WIDTH:
+            self.base_offset_x = (constants.SCREEN_WIDTH - map_pixel_width) // 2
+        else:
+            self.base_offset_x = 0
 
-    def scroll_camera(self, dx):
-        """Scroll the camera horizontally (wraps around)."""
+    def scroll_camera(self, dx, dy=0):
+        """Scroll the camera horizontally (wraps around) and vertically (hard borders).
+
+        Args:
+            dx: Horizontal scroll delta (wraps)
+            dy: Vertical scroll delta (bounded)
+        """
         self.camera_offset_x += dx
-        # No clamping - we allow infinite scrolling with wrapping
+        # No clamping for X - we allow infinite scrolling with wrapping
+
+        # Update Y offset with bounds checking (will be validated when drawing)
+        self.camera_offset_y += dy
+
+    def center_on_tile(self, tile_x, tile_y, game_map):
+        """Center the camera on a specific tile position.
+
+        Args:
+            tile_x: Tile X coordinate
+            tile_y: Tile Y coordinate
+            game_map: The game map
+        """
+        # Horizontal centering (always possible due to wrapping)
+        visible_tiles_x = constants.SCREEN_WIDTH // TILE_SIZE
+        center_offset_x = visible_tiles_x // 2
+        self.camera_offset_x = (tile_x - center_offset_x) % game_map.width
+
+        # Vertical centering (bounded by map edges)
+        visible_tiles_y = constants.MAP_AREA_HEIGHT // TILE_SIZE
+        center_offset_y = visible_tiles_y // 2
+        target_y = tile_y - center_offset_y
+
+        # Apply bounds
+        max_y_offset = max(0, game_map.height - visible_tiles_y)
+        self.camera_offset_y = max(0, min(target_y, max_y_offset))
 
     def draw_map(self, game_map, territory=None):
         """Draw all map tiles with horizontal wrapping and territory borders."""
         self._update_offsets(game_map)
 
+        # Calculate visible tiles (only complete tiles, no partial)
+        visible_tiles_y = constants.MAP_AREA_HEIGHT // TILE_SIZE
+        max_y_offset = max(0, game_map.height - visible_tiles_y)
+        self.camera_offset_y = max(0, min(self.camera_offset_y, max_y_offset))
+
         # Calculate visible tile range with wrapping
         visible_tiles_x = (constants.SCREEN_WIDTH // TILE_SIZE) + 2
 
-        for y in range(game_map.height):
+        for screen_y_idx in range(visible_tiles_y):
+            map_y = self.camera_offset_y + screen_y_idx
+            if map_y >= game_map.height:
+                continue
+
             for screen_x_idx in range(visible_tiles_x):
                 # Calculate actual map x with wrapping
                 map_x = (self.camera_offset_x + screen_x_idx) % game_map.width
-                tile = game_map.get_tile(map_x, y)
-                self.draw_tile_at_screen_pos(tile, screen_x_idx, y)
+                tile = game_map.get_tile(map_x, map_y)
+                self.draw_tile_at_screen_pos(tile, screen_x_idx, screen_y_idx)
 
         # Draw territory borders after tiles
         if territory:
@@ -65,6 +109,9 @@ class Renderer:
 
         # Draw supply pods
         self.draw_supply_pods(game_map)
+
+        # Draw map edge indicators
+        self.draw_map_edge_indicators(game_map)
 
     def draw_tile_at_screen_pos(self, tile, screen_x_idx, screen_y_idx):
         """Draw a tile at a specific screen position."""
@@ -88,12 +135,12 @@ class Renderer:
         pygame.draw.rect(self.screen, color, rect)
         pygame.draw.rect(self.screen, COLOR_GRID, rect, 1)
 
-    def draw_units(self, units, selected_unit, player_id, game_map):
+    def draw_units(self, units, selected_unit, player_id, game_map, faction_assignments=None):
         """Draw all units on the map."""
         for unit in units:
-            self.draw_unit(unit, selected_unit, player_id, game_map)
+            self.draw_unit(unit, selected_unit, player_id, game_map, faction_assignments)
 
-    def draw_unit(self, unit, selected_unit, player_id, game_map):
+    def draw_unit(self, unit, selected_unit, player_id, game_map, faction_assignments=None):
         """Draw a single unit with health bar if selected."""
         # Only draw if this is the displayed unit for its tile
         tile = game_map.get_tile(unit.x, unit.y)
@@ -110,16 +157,35 @@ class Renderer:
         # Calculate wrapped screen position
         wrapped_x = (unit.x - self.camera_offset_x) % game_map.width
         screen_x = (wrapped_x * TILE_SIZE) + self.base_offset_x
-        screen_y = (unit.y * TILE_SIZE)
+        screen_y = (unit.y - self.camera_offset_y) * TILE_SIZE
 
-        # Only draw if on screen
+        # Only draw if on screen (excluding border areas)
         if screen_x < -TILE_SIZE or screen_x > constants.SCREEN_WIDTH:
             return
+
+        # Calculate visible area
+        visible_tiles_y = constants.MAP_AREA_HEIGHT // TILE_SIZE
+        max_y_offset = max(0, game_map.height - visible_tiles_y)
+
+        # Don't draw in top border area (when at top of map)
+        if self.camera_offset_y == 0 and screen_y < TILE_SIZE:
+            return
+
+        # Don't draw in bottom border area (when at bottom of map)
+        if self.camera_offset_y >= max_y_offset and max_y_offset > 0:
+            bottom_border_y = (visible_tiles_y - 1) * TILE_SIZE
+            if screen_y >= bottom_border_y:
+                return
+
+        # Don't draw if completely off screen
         if screen_y < 0 or screen_y >= constants.MAP_AREA_HEIGHT:
             return
 
-        # Determine unit color (not yellow for selected anymore)
-        if unit.is_friendly(player_id):
+        # Determine unit color based on faction
+        if faction_assignments and unit.owner in faction_assignments:
+            faction_id = faction_assignments[unit.owner]
+            color = FACTIONS[faction_id]['color']
+        elif unit.is_friendly(player_id):
             color = COLOR_UNIT_FRIENDLY
         else:
             color = COLOR_UNIT_ENEMY
@@ -227,25 +293,44 @@ class Renderer:
 
                 pygame.draw.rect(self.screen, seg_color, seg_rect)
 
-    def draw_bases(self, bases, player_id, game_map):
+    def draw_bases(self, bases, player_id, game_map, faction_assignments=None):
         """Draw all bases on the map."""
         for base in bases:
-            self.draw_base(base, player_id, game_map)
+            self.draw_base(base, player_id, game_map, faction_assignments)
 
-    def draw_base(self, base, player_id, game_map):
+    def draw_base(self, base, player_id, game_map, faction_assignments=None):
         """Draw a single base."""
         wrapped_x = (base.x - self.camera_offset_x) % game_map.width
         screen_x = (wrapped_x * TILE_SIZE) + self.base_offset_x
-        screen_y = (base.y * TILE_SIZE)
+        screen_y = (base.y - self.camera_offset_y) * TILE_SIZE
 
-        # Only draw if on screen
+        # Only draw if on screen (excluding border areas)
         if screen_x < -TILE_SIZE or screen_x > constants.SCREEN_WIDTH:
             return
+
+        # Calculate visible area
+        visible_tiles_y = constants.MAP_AREA_HEIGHT // TILE_SIZE
+        max_y_offset = max(0, game_map.height - visible_tiles_y)
+
+        # Don't draw in top border area (when at top of map)
+        if self.camera_offset_y == 0 and screen_y < TILE_SIZE:
+            return
+
+        # Don't draw in bottom border area (when at bottom of map)
+        if self.camera_offset_y >= max_y_offset and max_y_offset > 0:
+            bottom_border_y = (visible_tiles_y - 1) * TILE_SIZE
+            if screen_y >= bottom_border_y:
+                return
+
+        # Don't draw if completely off screen
         if screen_y < 0 or screen_y >= constants.MAP_AREA_HEIGHT:
             return
 
-        # Determine color based on ownership
-        if base.is_friendly(player_id):
+        # Determine color based on faction
+        if faction_assignments and base.owner in faction_assignments:
+            faction_id = faction_assignments[base.owner]
+            color = FACTIONS[faction_id]['color']
+        elif base.is_friendly(player_id):
             color = COLOR_BASE_FRIENDLY
         else:
             color = COLOR_BASE_ENEMY
@@ -276,7 +361,12 @@ class Renderer:
 
         # Only draw background fill if there are garrisoned units
         if len(base.garrison) > 0:
-            pop_color = COLOR_BASE_FRIENDLY if base.is_friendly(player_id) else COLOR_BASE_ENEMY
+            # Use faction color for garrison indicator
+            if faction_assignments and base.owner in faction_assignments:
+                faction_id = faction_assignments[base.owner]
+                pop_color = FACTIONS[faction_id]['color']
+            else:
+                pop_color = COLOR_BASE_FRIENDLY if base.is_friendly(player_id) else COLOR_BASE_ENEMY
             pygame.draw.rect(self.screen, pop_color, pop_rect)
 
         # Always draw black outline (thicker for visibility)
@@ -314,26 +404,36 @@ class Renderer:
         # Get player colors
         player_colors = {
             0: (50, 205, 50),   # Player - Gaian green
-            1: (255, 80, 80)    # AI - red
+            1: (255, 80, 80),   # AI - red
+            2: (255, 255, 255), # AI - white
+            3: (255, 215, 0),   # AI - gold
+            4: (139, 69, 19),   # AI - brown
+            5: (255, 165, 0),   # AI - orange
+            6: (180, 140, 230)  # AI - purple
         }
 
         # Calculate visible range with wrapping
         visible_tiles_x = (constants.SCREEN_WIDTH // TILE_SIZE) + 2
+        visible_tiles_y = constants.MAP_AREA_HEIGHT // TILE_SIZE
 
         # For each visible tile, draw border edges
-        for y in range(territory.game_map.height):
+        for screen_y_idx in range(visible_tiles_y):
+            map_y = self.camera_offset_y + screen_y_idx
+            if map_y >= game_map.height:
+                continue
+
             for screen_x_idx in range(visible_tiles_x):
                 map_x = (self.camera_offset_x + screen_x_idx) % game_map.width
-                owner = territory.get_tile_owner(map_x, y)
+                owner = territory.get_tile_owner(map_x, map_y)
                 if owner is None:
                     continue
 
-                border_edges = territory.get_border_edges(map_x, y)
+                border_edges = territory.get_border_edges(map_x, map_y)
                 if not border_edges:
                     continue
 
                 color = player_colors.get(owner, (150, 150, 150))
-                self._draw_tile_borders_at_screen_pos(screen_x_idx, y, border_edges, color)
+                self._draw_tile_borders_at_screen_pos(screen_x_idx, screen_y_idx, border_edges, color)
 
     def _draw_tile_borders_at_screen_pos(self, screen_x_idx, screen_y_idx, edges, color):
         """Draw dotted borders on specified edges of a tile at screen position.
@@ -440,32 +540,38 @@ class Renderer:
         """Check if click is on the population square of a base."""
         wrapped_x = (base.x - self.camera_offset_x) % game_map.width
         base_screen_x = (wrapped_x * TILE_SIZE) + self.base_offset_x
-        base_screen_y = base.y * TILE_SIZE
+        base_screen_y = (base.y - self.camera_offset_y) * TILE_SIZE
 
         pop_size = 20
         pop_rect = pygame.Rect(base_screen_x + 2, base_screen_y + 2, pop_size, pop_size)
         return pop_rect.collidepoint(screen_x, screen_y)
 
     def screen_to_tile(self, screen_x, screen_y, game_map):
-        """Convert screen to tile, accounting for camera wrapping."""
+        """Convert screen to tile, accounting for camera wrapping and vertical offset."""
         screen_tile_x = (screen_x - self.base_offset_x) // TILE_SIZE
         tile_x = (self.camera_offset_x + screen_tile_x) % game_map.width
-        tile_y = screen_y // TILE_SIZE
+        screen_tile_y = screen_y // TILE_SIZE
+        tile_y = self.camera_offset_y + screen_tile_y
         return int(tile_x), int(tile_y)
 
     def draw_supply_pods(self, game_map):
         """Draw supply pods on the map."""
         visible_tiles_x = (constants.SCREEN_WIDTH // TILE_SIZE) + 2
+        visible_tiles_y = constants.MAP_AREA_HEIGHT // TILE_SIZE
 
-        for y in range(game_map.height):
+        for screen_y_idx in range(visible_tiles_y):
+            map_y = self.camera_offset_y + screen_y_idx
+            if map_y >= game_map.height:
+                continue
+
             for screen_x_idx in range(visible_tiles_x):
                 map_x = (self.camera_offset_x + screen_x_idx) % game_map.width
-                tile = game_map.get_tile(map_x, y)
+                tile = game_map.get_tile(map_x, map_y)
 
                 if tile and tile.supply_pod:
                     # Calculate screen position
                     screen_x = (screen_x_idx * TILE_SIZE) + self.base_offset_x
-                    screen_y = y * TILE_SIZE
+                    screen_y = screen_y_idx * TILE_SIZE
 
                     # Only draw if on screen
                     if screen_x < -TILE_SIZE or screen_x > constants.SCREEN_WIDTH:
@@ -480,3 +586,21 @@ class Renderer:
 
                     pygame.draw.circle(self.screen, (150, 150, 150), (center_x, center_y), radius)
                     pygame.draw.circle(self.screen, (80, 80, 80), (center_x, center_y), radius, 2)
+
+    def draw_map_edge_indicators(self, game_map):
+        """Draw full tile height black bars at top and bottom when map edges are visible."""
+        visible_tiles_y = constants.MAP_AREA_HEIGHT // TILE_SIZE
+        max_y_offset = max(0, game_map.height - visible_tiles_y)
+
+        # Top border: when at y=0, show 1 tile of black at top
+        if self.camera_offset_y == 0:
+            border_rect = pygame.Rect(0, 0, constants.SCREEN_WIDTH, TILE_SIZE)
+            pygame.draw.rect(self.screen, COLOR_BLACK, border_rect)
+
+        # Bottom border: when at max scroll, show 1 tile of black instead of last tile row
+        # Same logic as top: occupy the space where the last visible tile row would be
+        if self.camera_offset_y >= max_y_offset and max_y_offset > 0:
+            # Draw black rectangle at the position of the last tile row (visible_tiles_y - 1)
+            bottom_border_y = (visible_tiles_y - 1) * TILE_SIZE
+            border_rect = pygame.Rect(0, bottom_border_y, constants.SCREEN_WIDTH, TILE_SIZE)
+            pygame.draw.rect(self.screen, COLOR_BLACK, border_rect)

@@ -14,11 +14,19 @@ from constants import UNIT_LAND, UNIT_SEA, UNIT_AIR, UNIT_COLONY_POD_LAND, UNIT_
 class Game:
     """Main game state manager."""
 
-    def __init__(self):
+    def __init__(self, player_faction_id=0, player_name=None):
+        """Initialize a new game.
+
+        Args:
+            player_faction_id (int): Faction ID for the player (0-6)
+            player_name (str): Player's custom name (optional)
+        """
         self.game_map = GameMap(constants.MAP_WIDTH, constants.MAP_HEIGHT)
         self.turn = 1
         self.running = True
-        self.player_id = 0  # Human player
+        self.player_id = 0  # Human player (always ID 0)
+        self.player_faction_id = player_faction_id  # Which faction the player chose
+        self.player_name = player_name  # Player's custom name
         self.mission_year = 2100  # Starting year
         self.energy_credits = 0  # Starting credits
 
@@ -43,8 +51,10 @@ class Game:
         # Technology
         self.tech_tree = TechTree()  # Player's tech tree
         self.tech_tree.auto_select_research()  # Start with an active research
-        self.ai_tech_trees = {1: TechTree()}  # AI tech trees by player_id
-        self.ai_tech_trees[1].auto_select_research()  # AI starts researching too
+        self.ai_tech_trees = {}  # AI tech trees by player_id
+        for ai_id in range(1, 7):  # AI players 1-6
+            self.ai_tech_trees[ai_id] = TechTree()
+            self.ai_tech_trees[ai_id].auto_select_research()
 
         # Facilities and Projects
         self.built_projects = set()  # Global set of secret projects built (one per game)
@@ -60,8 +70,12 @@ class Game:
         # Territory
         self.territory = TerritoryManager(self.game_map)
 
-        # AI players
-        self.ai_players = [AIPlayer(1)]  # One AI opponent with player_id = 1
+        # AI players (6 AI opponents with player_ids 1-6)
+        self.ai_players = [AIPlayer(i) for i in range(1, 7)]
+
+        # Faction assignments: Map player IDs to faction IDs
+        # Player 0 gets the selected faction, AI players 1-6 get the remaining factions
+        self.faction_assignments = self._assign_factions(player_faction_id)
 
         # Turn state
         self.processing_ai = False
@@ -75,11 +89,36 @@ class Game:
         self.player_ever_had_base = False  # Track if player has founded at least one base
         self.enemy_ever_had_base = False  # Track if enemy has founded at least one base
 
+        # Camera control
+        self.center_camera_on_selected = False  # Flag to center camera on selected unit
+        self.center_camera_on_tile = None  # Tuple (x, y) to center camera on specific tile
+
         # Spawn some initial units for testing
         self._spawn_test_units()
 
+    def _assign_factions(self, player_faction_id):
+        """Assign factions to all players (player and 6 AI).
+
+        Args:
+            player_faction_id: The faction ID selected by the player (0-6)
+
+        Returns:
+            dict: Mapping of player_id to faction_id
+        """
+        # Player 0 gets the selected faction
+        faction_assignments = {0: player_faction_id}
+
+        # Remaining 6 factions go to AI players 1-6
+        all_factions = list(range(7))  # All 7 faction IDs
+        all_factions.remove(player_faction_id)  # Remove player's faction
+
+        for ai_idx, ai_player_id in enumerate(range(1, 7)):
+            faction_assignments[ai_player_id] = all_factions[ai_idx]
+
+        return faction_assignments
+
     def _spawn_test_units(self):
-        """Create some test units on the map."""
+        """Create starting units for all 7 factions."""
         # Find some land tiles for land units
         land_tiles = []
         ocean_tiles = []
@@ -94,39 +133,38 @@ class Game:
 
         print(f"Found {len(land_tiles)} land tiles, {len(ocean_tiles)} ocean tiles")
 
-        # Spawn player units: Scout Patrol and Colony Pod only (land units)
-        if len(land_tiles) >= 2:
-            # Scout Patrol
-            x, y = land_tiles[0]
-            unit = Unit(x, y, UNIT_LAND, self.player_id, "Scout Patrol")
-            self.units.append(unit)
-            self.game_map.set_unit_at(x, y, unit)
-            print(f"Spawned Scout Patrol at ({x}, {y})")
+        # Need at least 14 land tiles (7 factions * 2 units each)
+        if len(land_tiles) < 14:
+            print("Warning: Not enough land tiles to spawn all faction units")
+            return
 
-            # Colony Pod
-            x, y = land_tiles[2]
-            unit = Unit(x, y, UNIT_COLONY_POD_LAND, self.player_id, "Colony Pod")
-            self.units.append(unit)
-            self.game_map.set_unit_at(x, y, unit)
-            print(f"Spawned Colony Pod at ({x}, {y})")
+        # Distribute starting positions across the map
+        # Each faction gets a Scout Patrol and a Colony Pod on the same tile
+        import random
+        random.shuffle(land_tiles)  # Randomize spawn positions
 
-        # Spawn AI units: Scout Patrol and Colony Pod only (land units)
-        ai_player_id = 1
-        if len(land_tiles) >= 10:
-            # AI Scout Patrol
-            x, y = land_tiles[-1]
-            unit = Unit(x, y, UNIT_LAND, ai_player_id, "AI Scout Patrol")
-            self.units.append(unit)
-            self.game_map.set_unit_at(x, y, unit)
-            print(f"Spawned AI Scout Patrol at ({x}, {y})")
+        tile_idx = 0
+        for player_id in range(7):  # All 7 players (0 = human, 1-6 = AI)
+            # Get faction name for unit naming
+            faction_id = self.faction_assignments[player_id]
+            faction_prefix = "Player" if player_id == 0 else f"AI{player_id}"
 
-            # AI Colony Pod
-            if len(land_tiles) >= 12:
-                x, y = land_tiles[-3]
-                unit = Unit(x, y, UNIT_COLONY_POD_LAND, ai_player_id, "AI Colony Pod")
+            # Both units spawn on the same tile
+            if tile_idx < len(land_tiles):
+                x, y = land_tiles[tile_idx]
+                tile_idx += 1  # Move to next tile for next faction
+
+                # Scout Patrol
+                unit = Unit(x, y, UNIT_LAND, player_id, f"{faction_prefix} Scout Patrol")
                 self.units.append(unit)
                 self.game_map.set_unit_at(x, y, unit)
-                print(f"Spawned AI Colony Pod at ({x}, {y})")
+                print(f"Spawned {faction_prefix} Scout Patrol at ({x}, {y})")
+
+                # Colony Pod (same tile)
+                unit = Unit(x, y, UNIT_COLONY_POD_LAND, player_id, f"{faction_prefix} Colony Pod")
+                self.units.append(unit)
+                self.game_map.set_unit_at(x, y, unit)
+                print(f"Spawned {faction_prefix} Colony Pod at ({x}, {y})")
 
         print(f"Total units spawned: {len(self.units)}")
 
@@ -134,6 +172,7 @@ class Game:
         friendly_units = [u for u in self.units if u.is_friendly(self.player_id)]
         if friendly_units:
             self.selected_unit = friendly_units[0]
+            self.center_camera_on_selected = True  # Flag to center camera on game start
             print(f"Selected {self.selected_unit.name}")
 
     def handle_input(self, renderer):
@@ -726,6 +765,11 @@ class Game:
         # Update territory
         self.territory.update_territory(self.bases)
 
+        # Center camera on newly founded base
+        if unit.owner != self.player_id:
+            # AI founded a base - center on it
+            self.center_camera_on_tile = (base.x, base.y)
+
         print(f"Founded base '{base_name}' at ({base.x}, {base.y})")
         return True
 
@@ -803,6 +847,8 @@ class Game:
             tile = self.game_map.get_tile(self.selected_unit.x, self.selected_unit.y)
             if tile and self.selected_unit in tile.units:
                 tile.displayed_unit_index = tile.units.index(self.selected_unit)
+            # Center camera on newly selected unit
+            self.center_camera_on_selected = True
 
     def end_turn(self):
         """End current turn and start next."""
@@ -856,6 +902,15 @@ class Game:
                 self.turn += 1
                 print(f"Turn {self.turn} started!")
 
+                # Select a friendly unit if none selected
+                if not self.selected_unit:
+                    friendly_units = [u for u in self.units if u.is_friendly(self.player_id)]
+                    if friendly_units:
+                        self.selected_unit = friendly_units[0]
+
+                # Center camera on player's selected unit at start of their turn
+                self.center_camera_on_selected = True
+
                 # Check for victory/defeat
                 self.check_victory()
 
@@ -865,6 +920,9 @@ class Game:
         if self.ai_current_unit_index < len(self.ai_unit_queue):
             unit = self.ai_unit_queue[self.ai_current_unit_index]
             ai_player = self.ai_players[self.current_ai_index]
+
+            # Center camera on AI unit
+            self.center_camera_on_tile = (unit.x, unit.y)
 
             # Move this unit
             ai_player._move_unit(unit, self)
@@ -926,6 +984,17 @@ class Game:
             return f"AI Player {ai.player_id} is thinking..."
         return None
 
+    def all_friendly_units_moved(self):
+        """Check if all friendly units have exhausted their movement.
+
+        Returns:
+            bool: True if all friendly units have moves_remaining <= 0
+        """
+        friendly_units = [u for u in self.units if u.is_friendly(self.player_id)]
+        if not friendly_units:
+            return False
+        return all(u.moves_remaining <= 0 for u in friendly_units)
+
     def check_victory(self):
         """Check if the game is over due to conquest victory/defeat."""
         # Count bases by owner
@@ -952,10 +1021,23 @@ class Game:
             print("VICTORY: All enemy bases destroyed!")
             return
 
-    def new_game(self):
-        """Start a fresh game."""
+    def new_game(self, player_faction_id=None, player_name=None):
+        """Start a fresh game.
+
+        Args:
+            player_faction_id (int): Faction ID for the player (0-6)
+            player_name (str): Player's custom name (optional)
+        """
+        # Update player info if provided
+        if player_faction_id is not None:
+            self.player_faction_id = player_faction_id
+        if player_name is not None:
+            self.player_name = player_name
+
         self.game_map = GameMap(constants.MAP_WIDTH, constants.MAP_HEIGHT)
         self.turn = 1
+        self.mission_year = 2100
+        self.energy_credits = 0
         self.units = []
         self.bases = []
         self.selected_unit = None
@@ -973,8 +1055,145 @@ class Game:
         self.player_ever_had_base = False
         self.enemy_ever_had_base = False
         self.tech_tree = TechTree()
-        self.ai_tech_trees = {1: TechTree()}
+        self.tech_tree.auto_select_research()
+        self.ai_tech_trees = {}
+        for ai_id in range(1, 7):
+            self.ai_tech_trees[ai_id] = TechTree()
+            self.ai_tech_trees[ai_id].auto_select_research()
         self.territory = TerritoryManager(self.game_map)
+        self.built_projects = set()
+        self.se_selections = {
+            'Politics': 0,
+            'Economics': 0,
+            'Values': 0,
+            'Future Society': 0
+        }
+        self.faction_assignments = self._assign_factions(self.player_faction_id)
+        self.ai_players = [AIPlayer(i) for i in range(1, 7)]
+        self.center_camera_on_selected = False
+        self.center_camera_on_tile = None
         self._spawn_test_units()
         # Update territory after spawning (in case any bases were created)
         self.territory.update_territory(self.bases)
+
+    def to_dict(self):
+        """Serialize entire game state to dictionary.
+
+        Returns:
+            dict: Complete game state as dictionary
+        """
+        from datetime import datetime
+
+        # Build unit index map for references
+        unit_index_map = {unit: idx for idx, unit in enumerate(self.units)}
+
+        return {
+            'version': '1.0',
+            'save_timestamp': datetime.now().isoformat(),
+            'game_state': {
+                'turn': self.turn,
+                'mission_year': self.mission_year,
+                'energy_credits': self.energy_credits,
+                'player_id': self.player_id,
+                'player_faction_id': self.player_faction_id,
+                'player_name': self.player_name,
+                'built_projects': list(self.built_projects),
+                'se_selections': self.se_selections.copy(),
+                'game_over': self.game_over,
+                'winner': self.winner,
+                'player_ever_had_base': self.player_ever_had_base,
+                'enemy_ever_had_base': self.enemy_ever_had_base,
+                'faction_assignments': self.faction_assignments
+            },
+            'map': self.game_map.to_dict(),
+            'units': [u.to_dict() for u in self.units],
+            'bases': [b.to_dict(unit_index_map) for b in self.bases],
+            'tech_tree': self.tech_tree.to_dict(),
+            'ai_players': [
+                {
+                    'player_id': ai.player_id,
+                    'tech_tree': self.ai_tech_trees[ai.player_id].to_dict()
+                }
+                for ai in self.ai_players
+            ],
+            'selected_unit_index': unit_index_map.get(self.selected_unit, None)
+        }
+
+    @classmethod
+    def from_dict(cls, data):
+        """Reconstruct game state from dictionary.
+
+        Args:
+            data (dict): Game state dictionary
+
+        Returns:
+            Game: Reconstructed game instance
+        """
+        # Create empty game without initialization
+        game = cls.__new__(cls)
+
+        # Restore simple state
+        gs = data['game_state']
+        game.turn = gs['turn']
+        game.mission_year = gs['mission_year']
+        game.energy_credits = gs['energy_credits']
+        game.player_id = gs['player_id']
+        game.player_faction_id = gs.get('player_faction_id', 0)  # Default to 0 for old saves
+        game.player_name = gs.get('player_name', None)
+        game.built_projects = set(gs['built_projects'])
+        game.se_selections = gs['se_selections']
+        game.game_over = gs['game_over']
+        game.winner = gs['winner']
+        game.player_ever_had_base = gs['player_ever_had_base']
+        game.enemy_ever_had_base = gs['enemy_ever_had_base']
+        game.faction_assignments = gs.get('faction_assignments', {0: game.player_faction_id})
+
+        # Rebuild complex objects
+        game.game_map = GameMap.from_dict(data['map'])
+        game.units = [Unit.from_dict(u) for u in data['units']]
+        game.bases = [Base.from_dict(b, game.units) for b in data['bases']]
+
+        # Rebuild tile references (units and bases)
+        for unit in game.units:
+            tile = game.game_map.get_tile(unit.x, unit.y)
+            if tile:
+                tile.units.append(unit)
+
+        for base in game.bases:
+            tile = game.game_map.get_tile(base.x, base.y)
+            if tile:
+                tile.base = base
+
+        # Restore tech trees
+        game.tech_tree = TechTree.from_dict(data['tech_tree'])
+        game.ai_tech_trees = {}
+        for ai_data in data['ai_players']:
+            player_id = ai_data['player_id']
+            game.ai_tech_trees[player_id] = TechTree.from_dict(ai_data['tech_tree'])
+
+        # Restore AI players
+        game.ai_players = [AIPlayer(ai_data['player_id']) for ai_data in data['ai_players']]
+
+        # Restore selected unit
+        sel_idx = data.get('selected_unit_index')
+        game.selected_unit = game.units[sel_idx] if sel_idx is not None else None
+
+        # Restore territory
+        game.territory = TerritoryManager(game.game_map)
+        game.territory.update_territory(game.bases)
+
+        # Initialize runtime state (not saved)
+        game.running = True
+        game.status_message = ""
+        game.status_message_timer = 0
+        game.supply_pod_message = None
+        game.pending_battle = None
+        game.active_battle = None
+        game.processing_ai = False
+        game.current_ai_index = 0
+        game.ai_unit_queue = []
+        game.ai_current_unit_index = 0
+        game.center_camera_on_selected = True  # Center on selected unit when loading
+        game.center_camera_on_tile = None
+
+        return game

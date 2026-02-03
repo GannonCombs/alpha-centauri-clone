@@ -341,3 +341,37 @@ class TechTree:
             bool: True if discovered
         """
         return tech_id in self.discovered_techs
+
+    def to_dict(self):
+        """Serialize tech tree to dictionary.
+
+        Returns:
+            dict: Tech tree data as dictionary
+        """
+        return {
+            'discovered_techs': list(self.discovered_techs),
+            'current_research': self.current_research,
+            'research_accumulated': self.research_accumulated
+        }
+
+    @classmethod
+    def from_dict(cls, data):
+        """Reconstruct tech tree from dictionary.
+
+        Args:
+            data (dict): Tech tree data dictionary
+
+        Returns:
+            TechTree: Reconstructed tech tree instance
+        """
+        tree = cls.__new__(cls)
+
+        # Initialize with full tech tree
+        tree.__init__()
+
+        # Restore research state
+        tree.discovered_techs = set(data['discovered_techs'])
+        tree.current_research = data['current_research']
+        tree.research_accumulated = data['research_accumulated']
+
+        return tree
