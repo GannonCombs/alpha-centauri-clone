@@ -30,20 +30,49 @@ class Tile:
 class GameMap:
     """Handles map generation and tile management."""
 
-    def __init__(self, width, height):
+    def __init__(self, width, height, land_percentage=None):
+        """Initialize map with specified dimensions and land percentage.
+
+        Args:
+            width (int): Map width in tiles
+            height (int): Map height in tiles
+            land_percentage (int): Percentage of land tiles (30-90), None for default
+        """
         self.width = width
         self.height = height
         self.tiles = []
+        self.land_percentage = land_percentage if land_percentage is not None else int(LAND_PROBABILITY * 100)
         self.generate_random_map()
 
     def generate_random_map(self):
-        """Generate a simple random map with land and ocean."""
+        """Generate a map with specified land percentage using percentile-based approach."""
+        # Generate random values for all tiles
+        random_values = []
+        for y in range(self.height):
+            row = []
+            for x in range(self.width):
+                value = random.random()
+                row.append(value)
+            random_values.append(row)
+
+        # Calculate threshold at desired percentile for exact land percentage
+        # Flatten all values to sort them
+        all_values = []
+        for row in random_values:
+            all_values.extend(row)
+        all_values.sort()
+
+        # Get threshold at the land percentage percentile
+        # If we want X% land, then values >= threshold become land
+        threshold_index = int(len(all_values) * (1.0 - self.land_percentage / 100.0))
+        threshold = all_values[threshold_index] if threshold_index < len(all_values) else 1.0
+
+        # Assign terrain based on threshold
         self.tiles = []
         for y in range(self.height):
             row = []
             for x in range(self.width):
-                # Random land/ocean assignment
-                terrain = 'land' if random.random() < LAND_PROBABILITY else 'ocean'
+                terrain = 'land' if random_values[y][x] >= threshold else 'ocean'
                 tile = Tile(x, y, terrain)
                 row.append(tile)
             self.tiles.append(row)

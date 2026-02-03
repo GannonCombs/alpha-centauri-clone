@@ -20,12 +20,16 @@ class IntroScreenManager:
         self.title_font = pygame.font.Font(None, 48)
 
         # Screen state
-        self.mode = 'intro'  # 'intro', 'map_select', 'faction_select', 'name_input', None (game started)
+        self.mode = 'intro'  # 'intro', 'map_select', 'map_size', 'land_composition', 'faction_select', 'name_input', None (game started)
         self.selected_faction_id = None
         self.player_name_input = ""
         self.cursor_visible = True
         self.cursor_timer = 0
         self.show_exit_confirm = False  # Exit confirmation dialog
+
+        # Map customization settings
+        self.selected_map_size = 'standard'  # Only standard for now
+        self.selected_land_percentage = None  # Will be set when land composition is selected
 
         # UI elements
         self.new_game_button_rect = None
@@ -33,6 +37,8 @@ class IntroScreenManager:
         self.exit_game_button_rect = None
         self.random_map_button_rect = None
         self.custom_map_button_rect = None
+        self.map_size_button_rects = []  # Map size selection buttons
+        self.land_comp_button_rects = []  # Land composition selection buttons
         self.faction_button_rects = []
         self.ok_button_rect = None
         self.cancel_button_rect = None
@@ -52,6 +58,10 @@ class IntroScreenManager:
             self._draw_intro(screen, screen_width, screen_height)
         elif self.mode == 'map_select':
             self._draw_map_select(screen, screen_width, screen_height)
+        elif self.mode == 'map_size':
+            self._draw_map_size(screen, screen_width, screen_height)
+        elif self.mode == 'land_composition':
+            self._draw_land_composition(screen, screen_width, screen_height)
         elif self.mode == 'faction_select':
             self._draw_faction_select(screen, screen_width, screen_height)
         elif self.mode == 'name_input':
@@ -163,7 +173,7 @@ class IntroScreenManager:
         screen.blit(random_text, (self.random_map_button_rect.centerx - random_text.get_width() // 2,
                                  self.random_map_button_rect.centery - 10))
 
-        # Customize Map button (grayed out)
+        # Customize Map button (now enabled)
         custom_y = start_y + button_h + button_spacing
         self.custom_map_button_rect = pygame.Rect(
             screen_width // 2 - button_w // 2,
@@ -171,17 +181,122 @@ class IntroScreenManager:
             button_w,
             button_h
         )
-        pygame.draw.rect(screen, (35, 40, 45), self.custom_map_button_rect, border_radius=8)
-        pygame.draw.rect(screen, (80, 90, 100), self.custom_map_button_rect, 2, border_radius=8)
+        custom_hover = self.custom_map_button_rect.collidepoint(pygame.mouse.get_pos())
+        pygame.draw.rect(screen, (70, 90, 110) if custom_hover else (45, 55, 65),
+                        self.custom_map_button_rect, border_radius=8)
+        pygame.draw.rect(screen, (120, 180, 200), self.custom_map_button_rect, 3, border_radius=8)
 
-        custom_text = self.font.render("Customize Map", True, (120, 130, 140))
+        custom_text = self.font.render("Customize Map", True, (220, 230, 240))
         screen.blit(custom_text, (self.custom_map_button_rect.centerx - custom_text.get_width() // 2,
                                  self.custom_map_button_rect.centery - 10))
 
-        # "(Coming Soon)" text under Customize Map
-        coming_soon = self.small_font.render("(Coming Soon)", True, (100, 110, 120))
-        screen.blit(coming_soon, (self.custom_map_button_rect.centerx - coming_soon.get_width() // 2,
-                                 self.custom_map_button_rect.bottom + 10))
+    def _draw_map_size(self, screen, screen_width, screen_height):
+        """Draw map size selection screen."""
+        # Background
+        screen.fill((10, 15, 25))
+
+        # Title
+        title_text = "Select Map Size"
+        title_surf = self.title_font.render(title_text, True, (100, 200, 255))
+        screen.blit(title_surf, (screen_width // 2 - title_surf.get_width() // 2, 100))
+
+        # Map size options
+        map_sizes = [
+            ('tiny', 'Tiny Map', False),
+            ('small', 'Small Map', False),
+            ('standard', 'Standard Map', True),  # Only this one is enabled
+            ('large', 'Large Map', False),
+            ('huge', 'Huge Map', False)
+        ]
+
+        button_w = 400
+        button_h = 70
+        button_spacing = 20
+        start_y = 240
+
+        self.map_size_button_rects = []
+
+        for i, (size_id, size_name, enabled) in enumerate(map_sizes):
+            button_y = start_y + i * (button_h + button_spacing)
+            button_rect = pygame.Rect(
+                screen_width // 2 - button_w // 2,
+                button_y,
+                button_w,
+                button_h
+            )
+
+            if enabled:
+                is_hover = button_rect.collidepoint(pygame.mouse.get_pos())
+                bg_color = (70, 90, 110) if is_hover else (45, 55, 65)
+                border_color = (120, 180, 200)
+                text_color = (220, 230, 240)
+            else:
+                bg_color = (30, 35, 40)
+                border_color = (80, 90, 100)
+                text_color = (100, 110, 120)
+
+            pygame.draw.rect(screen, bg_color, button_rect, border_radius=8)
+            pygame.draw.rect(screen, border_color, button_rect, 2 if enabled else 1, border_radius=8)
+
+            text_surf = self.font.render(size_name, True, text_color)
+            screen.blit(text_surf, (button_rect.centerx - text_surf.get_width() // 2,
+                                   button_rect.centery - 10))
+
+            self.map_size_button_rects.append((button_rect, size_id, enabled))
+
+    def _draw_land_composition(self, screen, screen_width, screen_height):
+        """Draw land composition selection screen."""
+        # Background
+        screen.fill((10, 15, 25))
+
+        # Title
+        title_text = "Select Planet Composition"
+        title_surf = self.title_font.render(title_text, True, (100, 200, 255))
+        screen.blit(title_surf, (screen_width // 2 - title_surf.get_width() // 2, 120))
+
+        # Subtitle
+        subtitle_text = "Choose the percentage of land on your planet"
+        subtitle_surf = self.small_font.render(subtitle_text, True, (150, 180, 200))
+        screen.blit(subtitle_surf, (screen_width // 2 - subtitle_surf.get_width() // 2, 190))
+
+        # Land composition options
+        land_compositions = [
+            ((30, 50), '30-50% Land', 'Wet Planet - Archipelagos and small continents'),
+            ((50, 70), '50-70% Land', 'Balanced - Mix of land and sea'),
+            ((70, 90), '70-90% Land', 'Dry Planet - Large continents and inland seas')
+        ]
+
+        button_w = 600
+        button_h = 90
+        button_spacing = 30
+        start_y = 280
+
+        self.land_comp_button_rects = []
+
+        for i, (range_tuple, range_name, description) in enumerate(land_compositions):
+            button_y = start_y + i * (button_h + button_spacing)
+            button_rect = pygame.Rect(
+                screen_width // 2 - button_w // 2,
+                button_y,
+                button_w,
+                button_h
+            )
+
+            is_hover = button_rect.collidepoint(pygame.mouse.get_pos())
+            bg_color = (70, 90, 110) if is_hover else (45, 55, 65)
+
+            pygame.draw.rect(screen, bg_color, button_rect, border_radius=8)
+            pygame.draw.rect(screen, (120, 180, 200), button_rect, 3, border_radius=8)
+
+            # Main text
+            text_surf = self.font.render(range_name, True, (220, 230, 240))
+            screen.blit(text_surf, (button_rect.x + 20, button_rect.y + 15))
+
+            # Description
+            desc_surf = self.small_font.render(description, True, (150, 170, 190))
+            screen.blit(desc_surf, (button_rect.x + 20, button_rect.y + 50))
+
+            self.land_comp_button_rects.append((button_rect, range_tuple))
 
     def _draw_faction_select(self, screen, screen_width, screen_height):
         """Draw faction selection screen."""
@@ -421,6 +536,10 @@ class IntroScreenManager:
             return self._handle_intro_event(event)
         elif self.mode == 'map_select':
             return self._handle_map_select_event(event)
+        elif self.mode == 'map_size':
+            return self._handle_map_size_event(event)
+        elif self.mode == 'land_composition':
+            return self._handle_land_composition_event(event)
         elif self.mode == 'faction_select':
             return self._handle_faction_select_event(event)
         elif self.mode == 'name_input':
@@ -446,11 +565,43 @@ class IntroScreenManager:
         """Handle map selection events."""
         if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
             if self.random_map_button_rect and self.random_map_button_rect.collidepoint(event.pos):
-                # Proceed to faction selection with random map
+                # Proceed to faction selection with random/default map settings
                 self.mode = 'faction_select'
                 self.selected_faction_id = None
+                self.selected_land_percentage = None  # Use default (40%)
                 return None
-            # Customize Map button is disabled for now
+            elif self.custom_map_button_rect and self.custom_map_button_rect.collidepoint(event.pos):
+                # Go to map size selection
+                self.mode = 'map_size'
+                return None
+
+        return None
+
+    def _handle_map_size_event(self, event):
+        """Handle map size selection events."""
+        if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+            for button_rect, size_id, enabled in self.map_size_button_rects:
+                if enabled and button_rect.collidepoint(event.pos):
+                    self.selected_map_size = size_id
+                    # Proceed to land composition
+                    self.mode = 'land_composition'
+                    return None
+
+        return None
+
+    def _handle_land_composition_event(self, event):
+        """Handle land composition selection events."""
+        if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+            for button_rect, range_tuple in self.land_comp_button_rects:
+                if button_rect.collidepoint(event.pos):
+                    # Generate random percentage in the selected range
+                    import random
+                    min_pct, max_pct = range_tuple
+                    self.selected_land_percentage = random.randint(min_pct, max_pct)
+                    # Proceed to faction selection
+                    self.mode = 'faction_select'
+                    self.selected_faction_id = None
+                    return None
 
         return None
 
@@ -482,7 +633,7 @@ class IntroScreenManager:
             elif event.key == pygame.K_RETURN:
                 # Start game
                 if self.player_name_input.strip():
-                    return ('start_game', self.selected_faction_id, self.player_name_input.strip())
+                    return ('start_game', self.selected_faction_id, self.player_name_input.strip(), self.selected_land_percentage)
             elif len(self.player_name_input) < 50:
                 # Add character
                 char = event.unicode
@@ -493,7 +644,7 @@ class IntroScreenManager:
             if self.ok_button_rect and self.ok_button_rect.collidepoint(event.pos):
                 # Start game
                 if self.player_name_input.strip():
-                    return ('start_game', self.selected_faction_id, self.player_name_input.strip())
+                    return ('start_game', self.selected_faction_id, self.player_name_input.strip(), self.selected_land_percentage)
             elif self.cancel_button_rect and self.cancel_button_rect.collidepoint(event.pos):
                 # Back to faction select
                 self.mode = 'faction_select'

@@ -14,14 +14,15 @@ from constants import UNIT_LAND, UNIT_SEA, UNIT_AIR, UNIT_COLONY_POD_LAND, UNIT_
 class Game:
     """Main game state manager."""
 
-    def __init__(self, player_faction_id=0, player_name=None):
+    def __init__(self, player_faction_id=0, player_name=None, land_percentage=None):
         """Initialize a new game.
 
         Args:
             player_faction_id (int): Faction ID for the player (0-6)
             player_name (str): Player's custom name (optional)
+            land_percentage (int): Percentage of land tiles (30-90), None for default (40%)
         """
-        self.game_map = GameMap(constants.MAP_WIDTH, constants.MAP_HEIGHT)
+        self.game_map = GameMap(constants.MAP_WIDTH, constants.MAP_HEIGHT, land_percentage)
         self.turn = 1
         self.running = True
         self.player_id = 0  # Human player (always ID 0)

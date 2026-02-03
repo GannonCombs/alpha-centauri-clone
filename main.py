@@ -103,9 +103,9 @@ def main():
                     # Exit the game
                     running = False
                 elif isinstance(intro_result, tuple) and intro_result[0] == 'start_game':
-                    # Start new game with selected faction and name
-                    _, faction_id, player_name = intro_result
-                    game = Game(faction_id, player_name)
+                    # Start new game with selected faction, name, and land percentage
+                    _, faction_id, player_name, land_percentage = intro_result
+                    game = Game(faction_id, player_name, land_percentage)
                     renderer = Renderer(screen)
                     ui_panel = UIManager()
                     intro_screen.mode = None
