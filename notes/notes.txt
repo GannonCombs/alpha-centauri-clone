@@ -1,0 +1,107 @@
+Things I "added" but haven't tested to ensure correctness.
+
+First, the meta-issue. I created a debug mode to be able to test anything.
+Use it to test the following issues, but also test debug mode along the way.
+
+✅
+
+ 2. Energy Allocation System
+  - Split energy production between Economy, Labs, and Psych
+  - Economy → Energy reserves (treasury)
+  - Labs → Research speed
+  - Psych → Talent creation (happiness)
+  - Adjustable slider/percentage allocation
+
+  3. Psych, Drones, and Talents System
+  - Drones = unhappy citizens (appear based on difficulty and base size)
+  - Talents = happy citizens (created via Psych allocation or facilities)
+  - Drone Riots occur when Drones > Talents (production stops)
+  - Facilities like Recreation Commons reduce drones
+  - Police units can suppress drones (based on POLICE social engineering)
+
+    5. Unit Support & Maintenance
+  - Units cost minerals to support (based on SUPPORT social engineering)
+  - Free support levels (2 units per base by default)
+  - Exceeding support level drains minerals from production
+  - "Clean Reactor" ability eliminates support costs
+
+  9. Air Units & Fuel/Range
+  - Air units have limited range (must return to base/airbase)
+  - Range measured in turns from base
+  - Needlejets: 2 turn range, Copters: 1 turn range
+  - Airbases allow refueling
+  - Air superiority combat (+100% vs. air, -50% vs. ground)
+
+     Feature 12: Special Unit Abilities
+
+  - Clean Reactor: No support cost
+  - AAA Tracking: +100% vs air units
+  - Comm Jammer: +50% attack
+  - Blink Displacer: Ignores base defense
+  - Empath Song: +50% vs psi armor
+  - Framework ready for Cloaking, Drop Pods, Amphibious Pods, Fungal Payload
+
+
+    13. Probe Teams
+  - Infiltrate datalinks
+  - Steal technology
+  - Sabotage facilities
+  - Incite drone riots
+  - Mind control units/bases
+  - Success rate based on PROBE social engineering
+
+     Feature 14: Sea Transport & Loading
+
+  - Sea units can carry up to 4 land units
+  - Loaded units move with transport automatically
+  - Unload to adjacent land tiles
+  - Loaded units destroyed if transport is destroyed
+
+
+    Feature 15: Disengage Mechanic
+
+  - Fast units can escape when damaged to 50% or less HP
+  - Requires 2+ movement advantage over opponent
+  - Success chance: 50% base + morale bonuses + speed bonuses
+  - Units retreat to safe adjacent tiles
+
+   Feature 24: Base Conquest (Disloyal Citizens)                                                              ─
+
+  - Captured bases have disloyal citizens for 50 turns
+  - Formula: 5 - (turns_since_capture // 10), capped by base size
+  - Extra drones make conquered bases harder to manage
+  - Works with both combat conquest and probe mind control
+
+
+   Feature 25: Planetary Council Proposals
+
+  - Added 5 proposals: Unity Core, Global Trade Pact, Solar Shade, Melt Polar Caps, Atrocity Prohibitions
+  - Voting UI fully functional
+  - Effects implemented (some stubbed for future work)
+
+   Feature 26: Victory Conditions
+
+  - Conquest: Eliminate all enemies
+  - Diplomatic: 20 turns as Supreme Leader
+  - Economic: 50k credits + Economic Victory project
+  - Transcendence: Complete Ascent to Transcendence
+
+  Feature x: Artillery
+  - Right click
+  - Some hot key also activates
+
+
+Notes:
+(several of these are POSSIBLY fixed)
+1 The amount of time units/facilities take to produce is hardcoded. Need to make dynamic. Check game files for details.
+2 Once we get the commlink of every living faction, give a popup that we now have them all, and thus can now call council.
+3 If another unit gets all contacts first, they may call council. Add to the AI behavior that encourages them to call things
+that they like. Examples: remove atrocity prohibitions if their faction is warlike, elect governor if they are a candidate, etc.
+4 In the tech screen, there is a little text box inside the tech that is colored the correct category of the tech (it's 4x color).
+This is great. However, the outline for the tech box itself is always yellow. It should be the same 4x color.
+5 There's something odd where the 7 starting techs are all white in the tech view, but we don't have access to their perks.
+We should NOT be starting with the 7 starting techs. Each 1 is the starting tech for a particular faction. Check game files for details.
+6 Whenever there is a new technology that improves a unit, the game should automatically make some stored designs.
+For example, in the latest playthrough, I discovered Industrial Base, giving Synthmetal Armor. The game should know to make a new
+1-2-1 unit.
+7 Hold unit isn't working. Still in W cycle, and End Turn still doesn't activate correctly after.

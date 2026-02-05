@@ -1,4 +1,15 @@
-# map.py
+"""Map generation and tile management.
+
+This module handles the game map including:
+- Tile creation and properties (terrain, elevation, resources)
+- Map generation with configurable ocean percentage
+- Special terrain features (monoliths, supply pods, fungus)
+- Unit placement and stacking on tiles
+- Tile state management (base, units, displayed unit index)
+
+The Map class creates and manages the 2D grid of Tile objects that
+represent the game world.
+"""
 import random
 from constants import LAND_PROBABILITY
 
@@ -16,6 +27,7 @@ class Tile:
         self.units = []  # Changed from single unit to list for stacking
         self.base = None
         self.supply_pod = False  # Unity supply pods
+        self.monolith = False  # Alien monolith
         self.displayed_unit_index = 0  # Which unit in stack to display
 
     def is_land(self):
@@ -30,22 +42,23 @@ class Tile:
 class GameMap:
     """Handles map generation and tile management."""
 
-    def __init__(self, width, height, land_percentage=None):
-        """Initialize map with specified dimensions and land percentage.
+    def __init__(self, width, height, ocean_percentage=None):
+        """Initialize map with specified dimensions and ocean percentage.
 
         Args:
             width (int): Map width in tiles
             height (int): Map height in tiles
-            land_percentage (int): Percentage of land tiles (30-90), None for default
+            ocean_percentage (int): Percentage of ocean tiles (30-90), None for default
         """
         self.width = width
         self.height = height
         self.tiles = []
-        self.land_percentage = land_percentage if land_percentage is not None else int(LAND_PROBABILITY * 100)
+        # Default to 70% ocean (equivalent to old default of 30% land)
+        self.ocean_percentage = ocean_percentage if ocean_percentage is not None else int((1.0 - LAND_PROBABILITY) * 100)
         self.generate_random_map()
 
     def generate_random_map(self):
-        """Generate a map with specified land percentage using percentile-based approach."""
+        """Generate a map with specified ocean percentage using percentile-based approach."""
         # Generate random values for all tiles
         random_values = []
         for y in range(self.height):
@@ -55,24 +68,24 @@ class GameMap:
                 row.append(value)
             random_values.append(row)
 
-        # Calculate threshold at desired percentile for exact land percentage
+        # Calculate threshold at desired percentile for exact ocean percentage
         # Flatten all values to sort them
         all_values = []
         for row in random_values:
             all_values.extend(row)
         all_values.sort()
 
-        # Get threshold at the land percentage percentile
-        # If we want X% land, then values >= threshold become land
-        threshold_index = int(len(all_values) * (1.0 - self.land_percentage / 100.0))
-        threshold = all_values[threshold_index] if threshold_index < len(all_values) else 1.0
+        # Get threshold at the ocean percentage percentile
+        # If we want X% ocean, then values < threshold become ocean
+        threshold_index = int(len(all_values) * (self.ocean_percentage / 100.0))
+        threshold = all_values[threshold_index] if threshold_index < len(all_values) else 0.0
 
         # Assign terrain based on threshold
         self.tiles = []
         for y in range(self.height):
             row = []
             for x in range(self.width):
-                terrain = 'land' if random_values[y][x] >= threshold else 'ocean'
+                terrain = 'ocean' if random_values[y][x] < threshold else 'land'
                 tile = Tile(x, y, terrain)
                 row.append(tile)
             self.tiles.append(row)
@@ -80,8 +93,11 @@ class GameMap:
         # Place supply pods on 3% of tiles
         self._place_supply_pods()
 
+        # Place monoliths on 1% of land tiles
+        self._place_monoliths()
+
     def _place_supply_pods(self):
-        """Place supply pods randomly on 3% of tiles."""
+        """Place supply pods randomly on 3% of tiles (excluding edge rows)."""
         total_tiles = self.width * self.height
         num_pods = int(total_tiles * 0.03)
 
@@ -91,7 +107,7 @@ class GameMap:
 
         while placed < num_pods and attempts < max_attempts:
             x = random.randint(0, self.width - 1)
-            y = random.randint(0, self.height - 1)
+            y = random.randint(1, self.height - 2)  # Avoid first and last rows
             tile = self.get_tile(x, y)
 
             if tile and not tile.supply_pod:
@@ -101,6 +117,31 @@ class GameMap:
             attempts += 1
 
         print(f"Placed {placed} supply pods on the map")
+
+    def _place_monoliths(self):
+        """Place monoliths randomly on 1% of land tiles (excluding edge rows)."""
+        # Count land tiles (excluding edge rows)
+        land_tiles = sum(1 for y, row in enumerate(self.tiles) for tile in row
+                        if tile.is_land() and 0 < y < self.height - 1)
+        num_monoliths = max(3, int(land_tiles * 0.01))  # At least 3 monoliths
+
+        placed = 0
+        attempts = 0
+        max_attempts = num_monoliths * 20
+
+        while placed < num_monoliths and attempts < max_attempts:
+            x = random.randint(0, self.width - 1)
+            y = random.randint(1, self.height - 2)  # Avoid first and last rows
+            tile = self.get_tile(x, y)
+
+            # Only place on land, and not on supply pods or other monoliths
+            if tile and tile.is_land() and not tile.supply_pod and not tile.monolith:
+                tile.monolith = True
+                placed += 1
+
+            attempts += 1
+
+        print(f"Placed {placed} monoliths on the map")
 
     def get_tile(self, x, y):
         """Safely get a tile at coordinates."""
@@ -169,7 +210,8 @@ class GameMap:
             for tile in row:
                 row_data.append({
                     'terrain': tile.terrain_type,
-                    'supply_pod': tile.supply_pod
+                    'supply_pod': tile.supply_pod,
+                    'monolith': tile.monolith
                 })
             tiles_data.append(row_data)
 
@@ -199,7 +241,8 @@ class GameMap:
             row = []
             for x, tile_data in enumerate(row_data):
                 tile = Tile(x, y, tile_data['terrain'])
-                tile.supply_pod = tile_data['supply_pod']
+                tile.supply_pod = tile_data.get('supply_pod', False)
+                tile.monolith = tile_data.get('monolith', False)
                 row.append(tile)
             game_map.tiles.append(row)
 

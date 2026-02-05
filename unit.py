@@ -5,7 +5,7 @@ This module defines the Unit class representing all mobile units in the game
 including military units, colony pods, and transports. Units can move across
 the map, garrison in bases, and respect terrain restrictions.
 """
-from constants import UNIT_LAND, UNIT_SEA, UNIT_AIR, UNIT_COLONY_POD_LAND, UNIT_COLONY_POD_SEA
+from constants import UNIT_LAND, UNIT_SEA, UNIT_AIR, UNIT_COLONY_POD_LAND, UNIT_COLONY_POD_SEA, UNIT_ARTIFACT, UNIT_PROBE_TEAM
 
 
 class Unit:
@@ -41,6 +41,7 @@ class Unit:
         self.name = name
         self.moves_remaining = self.max_moves()
         self.has_moved = False
+        self.held = False  # If True, unit won't be auto-cycled for actions
 
         # Set unit stats based on type (weapon-armor-moves*reactor_level)
         if unit_type == UNIT_COLONY_POD_LAND:
@@ -73,6 +74,18 @@ class Unit:
             self.reactor_level = 1
             self.weapon_mode = 'missile'     # Air units default to missile
             self.armor_mode = 'projectile'
+        elif unit_type == UNIT_ARTIFACT:
+            self.weapon = 0
+            self.armor = 1
+            self.reactor_level = 1
+            self.weapon_mode = 'noncombat'
+            self.armor_mode = 'projectile'
+        elif unit_type == UNIT_PROBE_TEAM:
+            self.weapon = 0
+            self.armor = 1
+            self.reactor_level = 1
+            self.weapon_mode = 'noncombat'
+            self.armor_mode = 'projectile'
         else:
             # Default for unknown types
             self.weapon = 1
@@ -89,6 +102,52 @@ class Unit:
         self.experience = 0
         self.morale_level = 2  # Start at Green (0=Very Very Green, 1=Very Green, 2=Green, 3=Disciplined, 4=Hardened, 5=Veteran, 6=Commando, 7=Elite)
         self.kills = 0  # Track total kills for promotion logic
+        self.monolith_upgrade = False  # Has this unit received a monolith morale upgrade?
+
+        # Artillery capability
+        self.has_artillery = False  # Set to True for artillery units
+        self.artillery_mode = False  # Toggle for artillery firing mode
+
+        # Air unit fuel system (for UNIT_AIR only)
+        if self.unit_type == UNIT_AIR:
+            self.fuel = 10             # Remaining fuel
+            self.max_fuel = 10         # Maximum fuel capacity
+            self.operational_range = 2  # Turns from base/airbase
+            self.last_refuel_x = x     # Last refuel location
+            self.last_refuel_y = y
+        else:
+            self.fuel = None
+            self.max_fuel = None
+            self.operational_range = None
+            self.last_refuel_x = None
+            self.last_refuel_y = None
+
+        # Unit support system
+        self.home_base = None       # Base that supports this unit
+        self.support_cost = 1       # Minerals per turn (default 1)
+
+        # Probe team system
+        self.is_probe = (unit_type == UNIT_PROBE_TEAM)
+
+        # Transport system (for sea units carrying land units)
+        if self.unit_type == UNIT_SEA:
+            self.transport_capacity = 4  # Can carry 4 land units
+            self.loaded_units = []       # Units currently loaded
+        else:
+            self.transport_capacity = 0
+            self.loaded_units = []
+
+        # Special abilities
+        self.has_cloaking = False           # Invisible to enemies until attacking
+        self.is_cloaked = False             # Current cloak status
+        self.has_drop_pods = False          # Can drop from orbit/air to any tile
+        self.has_amphibious_pods = False    # Can attack from sea
+        self.has_clean_reactor = False      # No support cost
+        self.has_aaa_tracking = False       # +100% vs air units
+        self.has_comm_jammer = False        # -50% enemy defense
+        self.has_blink_displacer = False    # Ignores base defenses
+        self.has_empath_song = False        # +50% vs psi
+        self.has_fungal_payload = False     # Creates fungus on impact
 
     def max_moves(self):
         """Return maximum movement points per turn.
@@ -123,8 +182,8 @@ class Unit:
         if self.moves_remaining <= 0:
             return False
 
-        # Land units and land colony pods can't enter ocean
-        if self.unit_type in [UNIT_LAND, UNIT_COLONY_POD_LAND] and tile.is_ocean():
+        # Land units, land colony pods, and artifacts can't enter ocean
+        if self.unit_type in [UNIT_LAND, UNIT_COLONY_POD_LAND, UNIT_ARTIFACT] and tile.is_ocean():
             return False
 
         # Sea units and sea colony pods can't enter land
@@ -144,6 +203,103 @@ class Unit:
         """
         return self.unit_type in [UNIT_COLONY_POD_LAND, UNIT_COLONY_POD_SEA]
 
+    def can_artillery_fire_at(self, target_x, target_y):
+        """Check if this unit can fire artillery at target coordinates.
+
+        Args:
+            target_x (int): Target X coordinate
+            target_y (int): Target Y coordinate
+
+        Returns:
+            bool: True if target is within artillery range (2 squares)
+        """
+        if not hasattr(self, 'has_artillery') or not self.has_artillery:
+            return False
+
+        # Calculate distance (max of dx and dy for square grid)
+        dx = abs(target_x - self.x)
+        dy = abs(target_y - self.y)
+        distance = max(dx, dy)
+
+        # Artillery range is 2 squares, can't fire at self
+        return 1 <= distance <= 2
+
+    def is_air_unit(self):
+        """Check if this is an air unit.
+
+        Returns:
+            bool: True if unit is an air unit
+        """
+        return self.unit_type == UNIT_AIR
+
+    def consume_fuel(self, amount=1):
+        """Consume fuel for movement (air units only).
+
+        Args:
+            amount (int): Amount of fuel to consume (default 1)
+
+        Returns:
+            bool: True if fuel was consumed, False if no fuel system
+        """
+        if not self.is_air_unit() or self.fuel is None:
+            return False
+
+        self.fuel = max(0, self.fuel - amount)
+        return True
+
+    def refuel(self, x=None, y=None):
+        """Refuel at a base or airbase (air units only).
+
+        Args:
+            x (int): X coordinate of refuel location (optional)
+            y (int): Y coordinate of refuel location (optional)
+        """
+        if not self.is_air_unit():
+            return
+
+        self.fuel = self.max_fuel
+        if x is not None and y is not None:
+            self.last_refuel_x = x
+            self.last_refuel_y = y
+
+    def is_out_of_fuel(self):
+        """Check if air unit is out of fuel.
+
+        Returns:
+            bool: True if fuel is depleted
+        """
+        if not self.is_air_unit():
+            return False
+
+        return self.fuel is not None and self.fuel <= 0
+
+    def can_reach_refuel_point(self, game_map, bases):
+        """Check if unit can reach a refuel point (base or airbase).
+
+        Args:
+            game_map: GameMap instance
+            bases: List of all bases
+
+        Returns:
+            bool: True if a refuel point is reachable
+        """
+        if not self.is_air_unit() or self.fuel is None:
+            return True  # Non-air units always return True
+
+        # Check distance to nearest friendly base
+        min_distance = float('inf')
+        for base in bases:
+            if base.owner == self.owner:
+                dx = abs(base.x - self.x)
+                dy = abs(base.y - self.y)
+                distance = max(dx, dy)  # Chebyshev distance
+                min_distance = min(min_distance, distance)
+
+        # TODO: Also check for airbases when terrain improvements are implemented
+
+        # Can we reach it with current fuel?
+        return self.fuel >= min_distance
+
     def move_to(self, x, y):
         """Move unit to new position and consume movement points.
 
@@ -156,10 +312,123 @@ class Unit:
         self.moves_remaining -= 1
         self.has_moved = True
 
+        # Air units consume fuel when moving
+        if self.is_air_unit():
+            self.consume_fuel(1)
+
+        # Move loaded units with transport
+        if hasattr(self, 'loaded_units'):
+            for unit in self.loaded_units:
+                unit.x = x
+                unit.y = y
+
+    def can_load_unit(self, unit):
+        """Check if this transport can load another unit.
+
+        Args:
+            unit (Unit): Unit to check if it can be loaded
+
+        Returns:
+            bool: True if unit can be loaded
+        """
+        if self.transport_capacity == 0:
+            return False
+
+        if len(self.loaded_units) >= self.transport_capacity:
+            return False
+
+        # Only land units can be loaded onto transports
+        if unit.unit_type not in [UNIT_LAND, UNIT_COLONY_POD_LAND]:
+            return False
+
+        return True
+
+    def load_unit(self, unit):
+        """Load a unit onto this transport.
+
+        Args:
+            unit (Unit): Unit to load
+
+        Returns:
+            bool: True if unit was successfully loaded
+        """
+        if not self.can_load_unit(unit):
+            return False
+
+        self.loaded_units.append(unit)
+        # Unit's position will be updated to match transport in game logic
+        return True
+
+    def unload_unit(self, unit, x, y):
+        """Unload a unit from this transport.
+
+        Args:
+            unit (Unit): Unit to unload
+            x (int): X coordinate to unload to
+            y (int): Y coordinate to unload to
+
+        Returns:
+            bool: True if unit was successfully unloaded
+        """
+        if unit not in self.loaded_units:
+            return False
+
+        self.loaded_units.remove(unit)
+        unit.x = x
+        unit.y = y
+        unit.moves_remaining = 0  # Unloading consumes all moves
+        return True
+
+    def can_heal(self, in_friendly_base=False):
+        """Check if unit can heal.
+
+        Args:
+            in_friendly_base (bool): Whether unit is in a friendly base
+
+        Returns:
+            tuple: (can_heal, heal_amount, reason) - reason is string explaining why/why not
+        """
+        # Can't heal if at full health
+        if self.current_health >= self.max_health:
+            return (False, 0, "Already at full health")
+
+        # Can't heal if unit moved this turn
+        if self.has_moved:
+            return (False, 0, "Unit has moved this turn")
+
+        # In base: can heal 20% per turn, can reach full health
+        if in_friendly_base:
+            heal_amount = max(1, int(self.max_health * 0.20))
+            return (True, heal_amount, f"Healing {heal_amount} HP in base")
+
+        # In field: can heal 10% per turn, but only up to 80% health
+        current_pct = self.current_health / self.max_health
+        if current_pct >= 0.80:
+            return (False, 0, "Can only heal to 80% in field")
+
+        heal_amount = max(1, int(self.max_health * 0.10))
+        return (True, heal_amount, f"Healing {heal_amount} HP")
+
+    def heal(self, amount):
+        """Heal unit by specified amount (capped at max_health).
+
+        Args:
+            amount (int): Amount to heal
+
+        Returns:
+            int: Actual amount healed
+        """
+        old_health = self.current_health
+        self.current_health = min(self.max_health, self.current_health + amount)
+        return self.current_health - old_health
+
     def end_turn(self):
         """Reset movement points and flags for a new turn."""
         self.moves_remaining = self.max_moves()
         self.has_moved = False
+
+        # Note: Refueling happens in game logic, not here
+        # (game checks if unit is at base/airbase and calls refuel())
 
     def is_friendly(self, player_id):
         """Check if unit belongs to given player.
@@ -332,7 +601,29 @@ class Unit:
             'experience': self.experience,
             'kills': self.kills,
             'weapon_mode': self.weapon_mode,
-            'armor_mode': self.armor_mode
+            'armor_mode': self.armor_mode,
+            'monolith_upgrade': self.monolith_upgrade,
+            'has_artillery': getattr(self, 'has_artillery', False),
+            'artillery_mode': getattr(self, 'artillery_mode', False),
+            'fuel': getattr(self, 'fuel', None),
+            'max_fuel': getattr(self, 'max_fuel', None),
+            'operational_range': getattr(self, 'operational_range', None),
+            'last_refuel_x': getattr(self, 'last_refuel_x', None),
+            'last_refuel_y': getattr(self, 'last_refuel_y', None),
+            'home_base_coords': (self.home_base.x, self.home_base.y) if self.home_base else None,
+            'support_cost': getattr(self, 'support_cost', 1),
+            'transport_capacity': getattr(self, 'transport_capacity', 0),
+            'loaded_unit_indices': [id(u) for u in getattr(self, 'loaded_units', [])],  # Will be resolved in game.py
+            'has_cloaking': getattr(self, 'has_cloaking', False),
+            'is_cloaked': getattr(self, 'is_cloaked', False),
+            'has_drop_pods': getattr(self, 'has_drop_pods', False),
+            'has_amphibious_pods': getattr(self, 'has_amphibious_pods', False),
+            'has_clean_reactor': getattr(self, 'has_clean_reactor', False),
+            'has_aaa_tracking': getattr(self, 'has_aaa_tracking', False),
+            'has_comm_jammer': getattr(self, 'has_comm_jammer', False),
+            'has_blink_displacer': getattr(self, 'has_blink_displacer', False),
+            'has_empath_song': getattr(self, 'has_empath_song', False),
+            'has_fungal_payload': getattr(self, 'has_fungal_payload', False)
         }
 
     @classmethod
@@ -364,6 +655,31 @@ class Unit:
         unit.kills = data['kills']
         unit.weapon_mode = data['weapon_mode']
         unit.armor_mode = data['armor_mode']
+        unit.monolith_upgrade = data.get('monolith_upgrade', False)
+        unit.has_artillery = data.get('has_artillery', False)
+        unit.artillery_mode = data.get('artillery_mode', False)
+        unit.fuel = data.get('fuel', None)
+        unit.max_fuel = data.get('max_fuel', None)
+        unit.operational_range = data.get('operational_range', None)
+        unit.last_refuel_x = data.get('last_refuel_x', None)
+        unit.last_refuel_y = data.get('last_refuel_y', None)
+        unit.home_base = None  # Will be reconstructed from base.supported_units
+        unit.support_cost = data.get('support_cost', 1)
+        unit.transport_capacity = data.get('transport_capacity', 0)
+        unit.loaded_units = []  # Will be reconstructed in game.py from loaded_unit_indices
+        unit.is_probe = data.get('is_probe', unit.unit_type == UNIT_PROBE_TEAM)
+
+        # Special abilities
+        unit.has_cloaking = data.get('has_cloaking', False)
+        unit.is_cloaked = data.get('is_cloaked', False)
+        unit.has_drop_pods = data.get('has_drop_pods', False)
+        unit.has_amphibious_pods = data.get('has_amphibious_pods', False)
+        unit.has_clean_reactor = data.get('has_clean_reactor', False)
+        unit.has_aaa_tracking = data.get('has_aaa_tracking', False)
+        unit.has_comm_jammer = data.get('has_comm_jammer', False)
+        unit.has_blink_displacer = data.get('has_blink_displacer', False)
+        unit.has_empath_song = data.get('has_empath_song', False)
+        unit.has_fungal_payload = data.get('has_fungal_payload', False)
 
         # Reset per-turn state
         unit.has_moved = False

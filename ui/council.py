@@ -5,7 +5,7 @@ import random
 import constants
 from constants import (COLOR_TEXT, COLOR_COUNCIL_BG, COLOR_COUNCIL_ACCENT,
                        COLOR_COUNCIL_BORDER, COLOR_COUNCIL_BOX)
-from .data import FACTIONS, PROPOSALS
+from .data import FACTIONS, PROPOSALS, FACTION_COUNCIL_PREFERENCES
 
 
 class CouncilManager:
@@ -206,12 +206,30 @@ class CouncilManager:
         screen.blit(self.small_font.render("Calculating results...", True, (100, 150, 100)), (50, y + 40))
 
     def _generate_ai_votes(self):
-        """Generate random votes for all AI factions."""
+        """Generate votes for all AI factions based on their preferences."""
         self.council_votes = []
         is_yesno = self.selected_proposal['type'] == 'yesno'
         opts = ["YES", "NO", "ABSTAIN"] if is_yesno else self._get_top_candidates()
+
         for f in FACTIONS[1:]:
-            v = random.choice(opts)
+            if is_yesno:
+                # Get faction preference for this proposal
+                preference = self._get_faction_preference(f['name'], self.selected_proposal['id'])
+
+                # Vote based on preference with some randomness
+                if preference >= 1:
+                    # Strongly favor - 80% yes, 15% abstain, 5% no
+                    v = random.choices(["YES", "ABSTAIN", "NO"], weights=[80, 15, 5])[0]
+                elif preference <= -1:
+                    # Strongly oppose - 80% no, 15% abstain, 5% yes
+                    v = random.choices(["NO", "ABSTAIN", "YES"], weights=[80, 15, 5])[0]
+                else:
+                    # Neutral - 40% yes, 40% no, 20% abstain
+                    v = random.choices(["YES", "NO", "ABSTAIN"], weights=[40, 40, 20])[0]
+            else:
+                # Candidate vote - random for now (could be based on alliances)
+                v = random.choice(opts)
+
             self.council_votes.append(
                 {"name": f["leader"], "color": f["color"], "vote": v, "votes": f["votes"]})
 
@@ -219,3 +237,139 @@ class CouncilManager:
         """Get top two faction candidates for leader elections."""
         sorted_f = sorted(FACTIONS, key=lambda x: x['votes'], reverse=True)
         return [sorted_f[0]['short'], sorted_f[1]['short']]
+
+    def _get_faction_preference(self, faction_name, proposal_id):
+        """Get a faction's preference value for a proposal.
+
+        Args:
+            faction_name (str): Name of the faction
+            proposal_id (str): ID of the proposal
+
+        Returns:
+            int: Preference value (-2 to 2, 0 = neutral)
+        """
+        if faction_name in FACTION_COUNCIL_PREFERENCES:
+            return FACTION_COUNCIL_PREFERENCES[faction_name].get(proposal_id, 0)
+        return 0
+
+    def check_ai_council_call(self, ai_player_id, game):
+        """Check if an AI player wants to call a council this turn.
+
+        AI will call council if:
+        - They have a strong preference (>=1) for an available proposal
+        - The proposal is not on cooldown
+        - Random chance based on preference strength
+
+        Args:
+            ai_player_id (int): The AI player's ID (1-6)
+            game: The game state object
+
+        Returns:
+            str or None: Proposal ID to call, or None if not calling
+        """
+        # AI only calls council occasionally (20% base chance per turn)
+        if random.random() > 0.2:
+            return None
+
+        # Get faction for this AI
+        faction_id = game.faction_assignments.get(ai_player_id)
+        if faction_id is None or faction_id >= len(FACTIONS):
+            return None
+
+        faction = FACTIONS[faction_id]
+        faction_name = faction['name']
+
+        # Get available proposals
+        available_proposals = []
+        for prop in PROPOSALS:
+            # Check tech requirement
+            required_tech = prop.get('required_tech')
+            if required_tech and ai_player_id in game.ai_tech_trees:
+                if not game.ai_tech_trees[ai_player_id].has_tech(required_tech):
+                    continue
+
+            # Check cooldown
+            last_voted = prop.get('last_voted', -99)
+            if game.turn - last_voted < prop['cooldown']:
+                continue
+
+            available_proposals.append(prop)
+
+        if not available_proposals:
+            return None
+
+        # Find proposals this faction strongly favors
+        favored_proposals = []
+        for prop in available_proposals:
+            preference = self._get_faction_preference(faction_name, prop['id'])
+            if preference >= 1:  # Favor or strongly favor
+                # Add multiple times for strong preference (increases chance)
+                for _ in range(abs(preference)):
+                    favored_proposals.append(prop)
+
+        if not favored_proposals:
+            return None
+
+        # Randomly select a favored proposal to call
+        selected = random.choice(favored_proposals)
+        print(f"AI {faction_name} calling council for: {selected['name']}")
+        return selected['id']
+
+    def ai_call_council(self, proposal_id, game):
+        """AI initiates a council vote for a specific proposal.
+
+        Args:
+            proposal_id (str): The ID of the proposal to vote on
+            game: The game state object
+
+        Returns:
+            bool: True if council was called successfully
+        """
+        # Find the proposal
+        proposal = None
+        for prop in PROPOSALS:
+            if prop['id'] == proposal_id:
+                proposal = prop
+                break
+
+        if not proposal:
+            return False
+
+        # Set up the council vote
+        self.selected_proposal = proposal
+        self.council_stage = "voting"
+        self.player_vote = None
+
+        # Generate AI votes
+        self._generate_ai_votes()
+
+        # Auto-generate player vote (neutral/abstain for AI-called councils)
+        if proposal['type'] == 'yesno':
+            self.player_vote = "ABSTAIN"
+        else:
+            # For candidate votes, pick one of the top candidates randomly
+            candidates = self._get_top_candidates()
+            self.player_vote = random.choice(candidates)
+
+        # Add player vote to results
+        self.council_votes.insert(0, {
+            "name": "You",
+            "color": FACTIONS[0]['color'],
+            "vote": self.player_vote,
+            "votes": FACTIONS[0]['votes']
+        })
+
+        # Mark proposal as voted
+        proposal['last_voted'] = game.turn
+
+        # Move to results immediately (no player interaction needed)
+        self.council_stage = "results"
+
+        # Add to upkeep events so player sees the results
+        game.upkeep_events.append({
+            'type': 'ai_council',
+            'proposal_name': proposal['name'],
+            'results': list(self.council_votes)  # Copy the results
+        })
+
+        return True

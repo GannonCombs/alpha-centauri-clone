@@ -1,0 +1,186 @@
+=============================================================================
+                        ARTILLERY FIRE SYSTEM
+=============================================================================
+
+OVERVIEW
+--------
+Artillery-capable units can fire at enemy units within a 2-square range
+without moving to their location. This allows for long-range bombardment
+without risking direct combat.
+
+=============================================================================
+ARTILLERY CAPABILITIES
+=============================================================================
+
+Units with Artillery:
+- Currently: Debug-spawned land units (for testing)
+- Future: Units designed with artillery weapons in the Design Workshop
+- Artillery capability is stored in unit.has_artillery boolean flag
+
+=============================================================================
+USING ARTILLERY
+=============================================================================
+
+Step 1: Enable Artillery Mode
+------------------------------
+- Select your artillery unit
+- Press 'F' key to toggle artillery firing mode ON
+- Status message will confirm: "Artillery mode enabled for [Unit Name]"
+- Artillery mode is a toggle - press 'F' again to disable
+
+Step 2: Target Enemy Unit
+--------------------------
+- Right-click on an enemy unit within 2 squares
+- A context menu will appear with "Long Range Fire" option
+- If the option doesn't appear, the target is invalid (see Range below)
+
+Step 3: Fire Artillery
+-----------------------
+- Click "Long Range Fire" in the context menu
+- Artillery fires immediately
+- Target takes damage based on your weapon strength
+- Status message shows damage dealt
+- Your unit's turn ends after firing
+- Artillery mode is automatically disabled after firing
+
+=============================================================================
+ARTILLERY MECHANICS
+=============================================================================
+
+Range:
+------
+- Minimum: 1 square (can't fire at own location)
+- Maximum: 2 squares in any direction (including diagonals)
+- Distance is measured using "Chebyshev distance" (max of dx, dy)
+
+Examples:
+  X = Artillery unit, T = Valid target, . = Out of range
+
+  . T T T .       Artillery at center can target
+  T T X T T       all T positions (8 adjacent + 16 at range 2)
+  T T T T T
+  T T T T T
+  . T T T .
+
+Damage Calculation:
+-------------------
+- Base damage = weapon strength × random(1-3)
+- Artillery penalty = Base damage × 0.5 (50% reduction)
+- Minimum damage = 1 (always does at least 1 damage)
+- Example: Weapon 4 unit → 4 × 2 × 0.5 = 4 damage
+
+Advantages:
+-----------
+- No risk to firing unit (stays at current location)
+- Can attack without moving adjacent to target
+- Can target units behind enemy lines
+- Firing unit doesn't take return fire
+
+Disadvantages:
+--------------
+- 50% damage penalty compared to direct combat
+- Limited to 2-square range
+- Consumes unit's entire turn (can't move after firing)
+- Must enable artillery mode before right-clicking
+- Can only fire once per turn
+
+=============================================================================
+CONTEXT MENU SYSTEM
+=============================================================================
+
+The right-click context menu is a new UI feature that displays available
+actions for the clicked location:
+
+- Menu appears at mouse cursor position
+- Automatically repositions if it would go off-screen
+- Shows available actions based on game state
+- Currently implemented: "Long Range Fire" for artillery
+- Future: Could add more actions (Air Strike, Paradrop, etc.)
+
+Usage:
+------
+- Right-click on map tile
+- Menu appears if valid actions are available
+- Click menu option to execute action
+- Click outside menu to cancel
+
+Technical:
+----------
+- Implemented in ui/context_menu.py
+- Integrated into UIManager
+- Drawn on top of all other UI elements
+- Supports hover highlighting
+- Callbacks execute game actions
+
+=============================================================================
+TESTING ARTILLERY (DEBUG MODE)
+=============================================================================
+
+Quick Test:
+-----------
+1. Enable debug mode (Ctrl+Shift+D)
+2. Spawn friendly unit: Ctrl+U, then 1 (has artillery)
+3. Spawn enemy unit nearby: Ctrl+U, then 1 twice (change owner manually)
+   OR move away and spawn enemy at different location
+4. Select your artillery unit
+5. Press 'F' to enable artillery mode
+6. Right-click enemy unit within 2 squares
+7. Click "Long Range Fire"
+8. Observe damage dealt and status messages
+
+Creating Enemy Units:
+---------------------
+Since debug mode spawns friendly units, you'll need to:
+- Use Ctrl+U to spawn units at different locations
+- Manually change ownership in code, OR
+- Wait for AI to spawn units naturally, OR
+- Test with existing enemy units on the map
+
+=============================================================================
+TECHNICAL IMPLEMENTATION
+=============================================================================
+
+Files Modified:
+---------------
+- unit.py: Added has_artillery, artillery_mode, can_artillery_fire_at()
+- game.py: Added toggle_artillery_mode(), can_artillery_fire_at(),
+           execute_artillery_fire()
+- ui/context_menu.py: NEW - Context menu system
+- ui/ui_manager.py: Integrated context menu
+- main.py: Added 'F' key handling, right-click context menu
+- debug.py: Give land units artillery for testing
+
+Key Attributes:
+---------------
+unit.has_artillery (bool) - Does this unit have artillery capability?
+unit.artillery_mode (bool) - Is artillery firing mode currently enabled?
+
+Key Methods:
+------------
+game.toggle_artillery_mode(unit) - Enable/disable artillery mode
+game.can_artillery_fire_at(unit, x, y) - Check if target is valid
+game.execute_artillery_fire(unit, x, y) - Fire artillery at target
+unit.can_artillery_fire_at(x, y) - Check range (1-2 squares)
+
+=============================================================================
+FUTURE ENHANCEMENTS
+=============================================================================
+
+Potential additions:
+- Artillery vs. fortified units (additional damage)
+- Counter-battery fire (artillery can target enemy artillery)
+- Ammunition/supply system (limited shots per turn)
+- Artillery suppression (reduce target's combat effectiveness)
+- Area of effect damage (hit multiple units in target square)
+- Different artillery types (howitzer, missile launcher, etc.)
+- Spotting mechanics (need line of sight from another unit)
+- Weather effects on accuracy
+- Terrain modifiers (high ground bonus, forest penalty)
+
+Design Workshop Integration:
+- Add "Artillery" weapon type option
+- Set artillery range in unit design
+- Balance artillery cost vs. combat units
+- Prerequisites: Certain technologies required
+
+=============================================================================

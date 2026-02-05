@@ -238,11 +238,23 @@ class TechTree:
         tech_id = random.choice([t[0] for t in available])
         self.set_current_research(tech_id)
 
+    def add_research(self, amount):
+        """Add research points from base labs output.
+
+        Args:
+            amount (int): Research points to add this turn
+        """
+        # Update research_per_turn for accurate turn estimates
+        self.research_per_turn = amount
+
+        if self.current_research is not None:
+            self.research_accumulated += amount
+
     def process_turn(self):
         """Process research for one turn.
 
-        Adds research points and checks for tech completion.
-        Auto-selects next research if none active.
+        Checks for tech completion and auto-selects next research.
+        Note: Research points should be added via add_research() before calling this.
 
         Returns:
             str or None: Tech ID of completed tech, or None if no completion
@@ -253,7 +265,7 @@ class TechTree:
             if self.current_research is None:
                 return None
 
-        self.research_accumulated += self.research_per_turn
+        # No longer add research_per_turn here - it comes from bases via add_research()
 
         # Check for tech completion
         if self.research_accumulated >= self.get_research_cost():

@@ -576,7 +576,8 @@ $LINK<Talents=37>, a $LINK<Drone Riot=9> may result.
 
 #CONCEPT37
 {Talents} are prosperous, highly educated citizens, your intellectual
-elite. Talents are created as the result of favorable social conditions
+elite. Talents are created as the result of favorable social
+
 and the diversion of energy to $LINK<Psych=38>. As long as a base has at least
 as many Talents as $LINK<Drones=36>, no $LINK<Drone Riot=9> will occur.
 

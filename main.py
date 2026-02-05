@@ -1,4 +1,16 @@
-# main.py
+"""Main game loop and entry point.
+
+This is the entry point for the Alpha Centauri clone game. It handles:
+- Pygame initialization and window setup
+- Main game loop with event handling
+- Frame rate management and timing
+- Intro screen and game state transitions
+- Input handling for game and UI interactions
+- Rendering coordination between game state and UI
+
+The game loop runs at 60 FPS and processes input, updates game state,
+and renders the screen each frame.
+"""
 import pygame
 import sys
 import constants
@@ -88,6 +100,8 @@ def main():
                         game = result[1]
                         renderer = Renderer(screen)
                         ui_panel = UIManager()
+                        # Give game reference to UI for accessing design workshop
+                        game.ui_manager = ui_panel
                         intro_screen.mode = None
                         intro_load_dialog.mode = None
                     elif result == 'close':
@@ -103,11 +117,13 @@ def main():
                     # Exit the game
                     running = False
                 elif isinstance(intro_result, tuple) and intro_result[0] == 'start_game':
-                    # Start new game with selected faction, name, and land percentage
-                    _, faction_id, player_name, land_percentage = intro_result
-                    game = Game(faction_id, player_name, land_percentage)
+                    # Start new game with selected faction, name, and ocean percentage
+                    _, faction_id, player_name, ocean_percentage = intro_result
+                    game = Game(faction_id, player_name, ocean_percentage)
                     renderer = Renderer(screen)
                     ui_panel = UIManager()
+                    # Give game reference to UI for accessing design workshop
+                    game.ui_manager = ui_panel
                     intro_screen.mode = None
                 continue
 
@@ -133,11 +149,37 @@ def main():
                         menu_dialog.hide()
                     continue
 
+                # Check if design workshop rename popup is open
+                if ui_panel.active_screen == "DESIGN_WORKSHOP":
+                    if ui_panel.social_screens.design_workshop_screen.rename_popup_open:
+                        if ui_panel.social_screens.design_workshop_screen.handle_design_workshop_keypress(event):
+                            continue
+
                 # Check for Escape - close overlays first, then show exit dialog
                 if event.key == pygame.K_ESCAPE:
+                    # Check if base view has any popups open
+                    if ui_panel.active_screen == "BASE_VIEW":
+                        if (ui_panel.base_screens.hurry_production_open or
+                            ui_panel.base_screens.production_selection_open or
+                            ui_panel.base_screens.queue_management_open):
+                            # Let the base view handler close the popup
+                            ui_panel.handle_event(event, game)
+                            continue
+
+                    # Check if design workshop has a popup/panel open
+                    if ui_panel.active_screen == "DESIGN_WORKSHOP":
+                        if ui_panel.social_screens.design_workshop_screen.rename_popup_open:
+                            # Close rename popup
+                            ui_panel.social_screens.design_workshop_screen.rename_popup_open = False
+                            continue
+                        if ui_panel.social_screens.design_workshop_screen.dw_editing_panel is not None:
+                            # Let the ui_panel handler close the component panel
+                            ui_panel.handle_event(event, game)
+                            continue
+
                     # Check if any overlay is active and close it instead of exiting
                     if ui_panel.active_screen != "GAME":
-                        ui_panel.active_screen = "GAME"
+                        ui_panel.handle_event(event, game)
                         continue
                     # No overlay active - show exit dialog
                     exit_dialog.show()
@@ -149,12 +191,22 @@ def main():
                     menu_dialog.show()
                     continue
 
+                # Check for Ctrl+Shift+D to toggle debug mode
+                if event.key == pygame.K_d and (mods & pygame.KMOD_CTRL) and (mods & pygame.KMOD_SHIFT):
+                    game.debug.toggle()
+                    continue
+
+                # Let debug mode handle events first (if enabled)
+                if game.debug.handle_event(event, game):
+                    continue
+
                 # Let UI handle keys first (for overlay controls)
                 ui_handled = ui_panel.handle_event(event, game)
                 # Check if it's a load game result
                 if isinstance(ui_handled, tuple) and ui_handled[0] == 'load_game':
                     game = ui_handled[1]  # Replace game instance
                     renderer = Renderer(screen)  # Recreate renderer with new game
+                    game.ui_manager = ui_panel  # Restore UI reference
                 elif not ui_handled:
                     # UI didn't handle it - process game keys
                     if event.key == pygame.K_n:
@@ -166,9 +218,55 @@ def main():
                         if game.selected_unit and game.selected_unit.is_colony_pod():
                             can_found, error_msg = game.can_found_base(game.selected_unit)
                             if can_found:
-                                ui_panel.show_base_naming_dialog(game.selected_unit)
+                                ui_panel.show_base_naming_dialog(game.selected_unit, game)
                             else:
                                 game.set_status_message(f"Cannot found base: {error_msg}")
+                    elif event.key == pygame.K_f:
+                        # Toggle artillery mode for selected unit
+                        if game.selected_unit and game.selected_unit.owner == game.player_id:
+                            game.toggle_artillery_mode(game.selected_unit)
+                    elif event.key == pygame.K_h:
+                        # Toggle hold status for selected unit
+                        if game.selected_unit and game.selected_unit.owner == game.player_id:
+                            held_unit = game.selected_unit
+                            held_unit.held = not held_unit.held
+
+                            if held_unit.held:
+                                # When holding, skip to next unit (but don't end turn)
+                                game.set_status_message(f"{held_unit.name} held (will skip in cycling)")
+
+                                # Auto-cycle to next unit
+                                game.cycle_units()
+
+                                # If we're still on the held unit (no other units with moves), deselect
+                                if game.selected_unit == held_unit:
+                                    game.selected_unit = None
+                            else:
+                                # Unheld - unit can now be cycled to again
+                                game.set_status_message(f"{held_unit.name} unheld")
+                    elif event.key == pygame.K_SPACE:
+                        # Try to heal unit, or end movement if can't heal
+                        if game.selected_unit and game.selected_unit.owner == game.player_id:
+                            # Check if unit is in a friendly base
+                            in_base = game.is_unit_in_friendly_base(game.selected_unit)
+
+                            # Check if unit can heal
+                            can_heal, heal_amount, reason = game.selected_unit.can_heal(in_base)
+
+                            if can_heal:
+                                # Heal the unit
+                                actual_heal = game.selected_unit.heal(heal_amount)
+                                game.selected_unit.moves_remaining = 0
+                                game.selected_unit.has_moved = True
+                                game.set_status_message(f"{game.selected_unit.name} healed {actual_heal} HP")
+                            else:
+                                # Just end movement
+                                game.selected_unit.moves_remaining = 0
+                                game.selected_unit.has_moved = True
+                                game.set_status_message(f"{game.selected_unit.name} movement ended")
+
+                            # Auto-cycle to next unit
+                            game.cycle_units()
                     # Arrow key movement (8 directions)
                     elif game.selected_unit:
                         dx, dy = 0, 0
@@ -233,14 +331,38 @@ def main():
                 if isinstance(ui_handled, tuple) and ui_handled[0] == 'load_game':
                     game = ui_handled[1]  # Replace game instance
                     renderer = Renderer(screen)  # Recreate renderer with new game
+                    game.ui_manager = ui_panel  # Restore UI reference
                 elif not ui_handled:
                     # UI didn't handle it - pass to game if in map area
                     if mouse_y < constants.MAP_AREA_HEIGHT:
-                        result = game.handle_click(mouse_x, mouse_y, renderer)
-                        if result and result[0] == 'base_click':
-                            clicked_base = result[1]
-                            if clicked_base.is_friendly(game.player_id):
-                                ui_panel.show_base_view(clicked_base)
+                        # Right-click - show context menu for artillery
+                        if event.button == 3:  # Right mouse button
+                            # Convert screen coordinates to map coordinates
+                            map_x, map_y = renderer.screen_to_map(mouse_x, mouse_y, game.game_map)
+
+                            # Check if we have artillery unit selected
+                            if (game.selected_unit and
+                                game.selected_unit.owner == game.player_id and
+                                hasattr(game.selected_unit, 'has_artillery') and
+                                game.selected_unit.has_artillery):
+
+                                # Check if target is valid for artillery
+                                can_fire, _ = game.can_artillery_fire_at(game.selected_unit, map_x, map_y)
+                                if can_fire:
+                                    # Show context menu with Long Range Fire option
+                                    def fire_artillery():
+                                        game.execute_artillery_fire(game.selected_unit, map_x, map_y)
+
+                                    ui_panel.context_menu.show(mouse_x, mouse_y, [
+                                        ("Long Range Fire", fire_artillery)
+                                    ])
+                        # Left-click - regular game handling
+                        else:
+                            result = game.handle_click(mouse_x, mouse_y, renderer)
+                            if result and result[0] == 'base_click':
+                                clicked_base = result[1]
+                                if clicked_base.is_friendly(game.player_id):
+                                    ui_panel.show_base_view(clicked_base)
 
             # Let UI handle hover events (MOUSEMOTION), but NOT clicks again
             elif event.type == pygame.MOUSEMOTION:
@@ -270,12 +392,25 @@ def main():
         # Handle continuous input (camera movement)
         game.handle_input(renderer)
 
-        # Process AI turns with delay
+        # Check for auto-cycle to next unit after delay
+        game.check_auto_cycle()
+
+        # Process AI turns with delay (but not if popup is blocking)
         if game.processing_ai:
-            current_time = pygame.time.get_ticks()
-            if current_time - last_ai_action >= ai_turn_delay:
-                game.process_ai_turns()
-                last_ai_action = current_time
+            # Check if any blocking popup is active
+            popups_blocking = (ui_panel.commlink_request_active or
+                             ui_panel.commlink_open or
+                             ui_panel.elimination_popup_active or
+                             ui_panel.new_designs_popup_active or
+                             game.upkeep_phase_active or
+                             game.pending_battle is not None or
+                             game.active_battle is not None)
+
+            if not popups_blocking:
+                current_time = pygame.time.get_ticks()
+                if current_time - last_ai_action >= ai_turn_delay:
+                    game.process_ai_turns()
+                    last_ai_action = current_time
 
         # Handle map scrolling when mouse is at edges (only in map area)
         mouse_x, mouse_y = pygame.mouse.get_pos()
@@ -320,11 +455,15 @@ def main():
 
         # Render (ORDER MATTERS!)
         screen.fill((0, 0, 0))  # Clear screen first
-        renderer.draw_map(game.game_map, game.territory)  # Draw map tiles and territory
+        renderer.draw_map(game.game_map, game.territory, game.faction_assignments)  # Draw map tiles and territory
         renderer.draw_bases(game.bases, game.player_id, game.game_map, game.faction_assignments)  # Draw bases
         renderer.draw_units(game.units, game.selected_unit, game.player_id, game.game_map, game.faction_assignments)  # Draw units on top
         renderer.draw_status_message(game)  # Draw status message
         ui_panel.draw(screen, game, renderer)  # Draw UI last
+
+        # Draw debug overlay if enabled
+        if game.debug.enabled:
+            game.debug.draw_overlay(screen, pygame.font.Font(None, 20))
 
         # Draw exit dialog on top of everything if showing
         if exit_dialog.show_dialog:

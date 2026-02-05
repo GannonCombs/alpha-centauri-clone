@@ -42,6 +42,10 @@ class DiplomacyManager:
 
     def draw(self, screen):
         """Render diplomacy screen with faction portrait and dialogue."""
+        # Safety check - don't draw if target_faction not set
+        if not self.target_faction or not isinstance(self.target_faction, dict):
+            return
+
         screen.fill((8, 12, 18))
 
         face_size = 200

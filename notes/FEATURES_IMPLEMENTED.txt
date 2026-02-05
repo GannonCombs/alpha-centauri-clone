@@ -1,0 +1,299 @@
+=============================================================================
+                    NEWLY IMPLEMENTED FEATURES - SUMMARY
+=============================================================================
+
+This document summarizes the 5 major features implemented in this session:
+2. Energy Allocation System
+3. Psych, Drones, and Talents System
+5. Unit Support & Maintenance
+9. Air Units & Fuel/Range
+13. Probe Teams
+
+=============================================================================
+FEATURE 2: ENERGY ALLOCATION SYSTEM
+=============================================================================
+
+STATUS: ✓ CORE COMPLETE (UI pending)
+
+DESCRIPTION:
+Bases split their energy production between Economy (credits), Labs (research),
+and Psych (happiness). Players can adjust allocation percentages globally.
+
+FILES MODIFIED:
+- base.py: Added energy calculation and allocation methods
+- game.py: Added global_energy_allocation dict, integrated with tech tree
+- tech.py: Modified to receive labs output from bases via add_research()
+
+KEY ADDITIONS:
+- Base.calculate_energy_output() - Calculate total energy (currently 2 per citizen)
+- Base.allocate_energy(economy%, labs%, psych%) - Split energy by percentages
+- Game.global_energy_allocation - Default: 50% economy, 50% labs, 0% psych
+- TechTree.add_research(amount) - Add research from base labs output
+
+HOW IT WORKS:
+1. Each turn, bases calculate energy production (currently 2 per citizen)
+2. Energy is split based on global allocation percentages
+3. Economy output → energy_credits (treasury)
+4. Labs output → tech_tree.add_research() (faster research)
+5. Psych output → talent creation (happiness, see Feature 3)
+
+USAGE:
+- Energy allocation defaults to 50/50/0 (economy/labs/psych)
+- To change: game.global_energy_allocation = {'economy': 40, 'labs': 40, 'psych': 20}
+- All bases use the same allocation (per-base allocation would need UI changes)
+
+TODO:
+- UI sliders to adjust allocation in-game
+- Display energy breakdown in base view
+
+=============================================================================
+FEATURE 3: PSYCH, DRONES, AND TALENTS SYSTEM
+=============================================================================
+
+STATUS: ✓ CORE COMPLETE (UI display pending)
+
+DESCRIPTION:
+Population happiness system where drones (unhappy) and talents (happy) must
+be balanced. If drones > talents, a riot halts all production.
+
+FILES MODIFIED:
+- base.py: Added happiness calculations and riot checking
+- game.py: Integrated into turn processing
+
+KEY ADDITIONS:
+- Base.workers, drones, talents - Population breakdown
+- Base.drone_riot - Riot status flag
+- Base.calculate_population_happiness() - Calculate workers/drones/talents
+- Base.check_drone_riot() - Detect if drones > talents
+- Production halts during riots
+
+HAPPINESS FORMULA:
+- Base drones: 1 drone per 4 citizens beyond size 3
+- Facilities reduce drones:
+  * Recreation Commons: -2 drones
+  * Hologram Theatre: -2 drones
+- Psych energy creates talents: 2 psych = 1 talent
+- Riot occurs when: drones > talents
+
+EXAMPLE:
+Base size 7:
+- Base drones: (7-3)/4 = 1 drone
+- Recreation Commons: -2 drones → 0 drones
+- Psych output: 8 → 4 talents
+- Result: 0 drones, 4 talents, 3 workers → No riot!
+
+TODO:
+- Display workers/drones/talents in base view UI
+- Police units suppressing drones (needs SE POLICE rating)
+- Visual riot warning indicators
+
+=============================================================================
+FEATURE 5: UNIT SUPPORT & MAINTENANCE
+=============================================================================
+
+STATUS: ✓ COMPLETE
+
+DESCRIPTION:
+Units cost minerals to maintain. Each base provides free support for a number
+of units (default 2). Units beyond this cost 1 mineral/turn each, reducing
+the base's mineral production.
+
+FILES MODIFIED:
+- unit.py: Added home_base and support_cost fields
+- base.py: Added support calculation methods
+- game.py: Assign home base when units are created
+
+KEY ADDITIONS:
+- Unit.home_base - Base that supports this unit
+- Unit.support_cost - Minerals per turn (default 1)
+- Base.free_support - Free units (default 2, +1 with Children's Creche)
+- Base.support_cost_paid - Minerals spent on support
+- Base.calculate_free_support() - Calculate free support slots
+- Base.calculate_support_cost() - Calculate total support cost
+- Game._spawn_production() - Assigns home base to new units
+
+SUPPORT CALCULATION:
+1. Count units in base.supported_units list
+2. Calculate free support (base 2, +1 from Children's Creche)
+3. If units > free support: cost = units - free support
+4. Reduce base mineral production by support cost
+
+EXAMPLE:
+Base supports 5 units, has Children's Creche:
+- Free support: 2 + 1 = 3
+- Support cost: 5 - 3 = 2 minerals/turn
+- Base produces 7 minerals normally
+- After support: 7 - 2 = 5 minerals go to production
+
+TODO:
+- SE Support modifiers (Police State, etc.)
+- Display support costs in base view
+
+=============================================================================
+FEATURE 9: AIR UNITS & FUEL/RANGE
+=============================================================================
+
+STATUS: ✓ COMPLETE
+
+DESCRIPTION:
+Air units have limited fuel and must return to friendly bases or airbases
+to refuel. Units out of fuel crash and are destroyed.
+
+FILES MODIFIED:
+- unit.py: Added fuel system for air units
+- game.py: Added refueling and crash checking
+- constants.py: Air unit support
+
+KEY ADDITIONS:
+- Unit.fuel - Remaining fuel (starts at 10)
+- Unit.max_fuel - Maximum fuel capacity (10)
+- Unit.operational_range - Turns from base (2)
+- Unit.consume_fuel(amount) - Use fuel for movement
+- Unit.refuel() - Restore fuel at base/airbase
+- Unit.is_out_of_fuel() - Check if fuel depleted
+- Unit.can_reach_refuel_point() - Verify can return to base
+- Game._process_air_unit_fuel() - Refuel at bases, crash if out of fuel
+
+FUEL SYSTEM:
+1. Air units start with 10 fuel
+2. Each move costs 1 fuel
+3. At end of turn:
+   - If at friendly base: refuel to max (10)
+   - If not at base and fuel = 0: CRASH (unit destroyed)
+   - If can't reach base: warning message
+
+OPERATIONAL RANGE:
+- Needlejets: 2 turns from base (can move 10 spaces per turn, so 20 total)
+- Copters: 1 turn from base (can move 8 spaces per turn, so 8 total)
+- Must be able to return with remaining fuel
+
+TODO:
+- Airbase terrain improvements (allow refueling anywhere)
+- UI fuel gauge for selected air units
+- Visual range indicator
+
+=============================================================================
+FEATURE 13: PROBE TEAMS
+=============================================================================
+
+STATUS: ✓ CORE COMPLETE (context menu integration pending)
+
+DESCRIPTION:
+Espionage units that can steal technology, sabotage facilities, and mind
+control enemy bases. Actions cost energy credits and have variable success
+rates based on unit morale vs. target defenses.
+
+FILES MODIFIED:
+- constants.py: Added UNIT_PROBE_TEAM
+- unit.py: Added probe team unit type and is_probe flag
+- game.py: Added probe action methods
+
+KEY ADDITIONS:
+- UNIT_PROBE_TEAM constant
+- Unit.is_probe - Flag for probe teams
+- Game.calculate_probe_success() - Success probability calculation
+- Game.execute_probe_action() - Execute probe actions
+
+PROBE ACTIONS:
+1. **Steal Technology** (50 credits)
+   - Steals random tech from enemy
+   - Success: Gain technology
+   - Failure: Probe team destroyed
+
+2. **Sabotage** (100 credits)
+   - Destroys random facility or resets production
+   - Success: Facility destroyed
+   - Failure: Probe team destroyed
+
+3. **Mind Control Base** (500 credits)
+   - Captures enemy base
+   - Success: Base and units change ownership
+   - Failure: Probe team destroyed
+
+SUCCESS FORMULA:
+success_chance = (probe_morale - target_base_size + 5) / 10
+Clamped between 0.1 (10%) and 0.9 (90%)
+
+EXAMPLE:
+Probe team with morale 4 vs. size 3 base:
+- Success = (4 - 3 + 5) / 10 = 0.6 (60% chance)
+
+TODO:
+- Right-click context menu integration
+- Additional actions (assassinate, plant virus)
+- SE PROBE bonuses (Fundamentalist +2, etc.)
+- Detection and consequences system
+- UI feedback for probe actions
+
+=============================================================================
+INTEGRATION NOTES
+=============================================================================
+
+All five features are integrated and functional:
+1. Energy allocation feeds psych to happiness system
+2. Happiness affects production (riots halt it)
+3. Unit support reduces mineral production
+4. Air units consume fuel and must plan routes
+5. Probe teams can disrupt enemy economy
+
+TESTING:
+- All features tested with basic game startup
+- Energy allocation integrated with tech research
+- Happiness calculations work with base turn processing
+- Unit support assigned to new units
+- Air unit fuel decreases with movement and refuels at bases
+- Probe team actions implemented (need UI to trigger)
+
+SAVE/LOAD:
+- All new fields serialized in to_dict() methods
+- All new fields loaded in from_dict() methods
+- Backward compatibility with old saves (default values used)
+
+=============================================================================
+NEXT STEPS (RECOMMENDED)
+=============================================================================
+
+1. **UI Implementation** (High Priority)
+   - Energy allocation sliders in base view
+   - Happiness display (workers/drones/talents icons)
+   - Support cost breakdown
+   - Fuel gauge for air units
+   - Probe action context menu
+
+2. **Polish & Balancing**
+   - Tune energy production formulas
+   - Balance happiness thresholds
+   - Adjust fuel costs for different unit types
+   - Balance probe action costs and success rates
+
+3. **Advanced Features**
+   - SE modifiers (POLICE, SUPPORT, PROBE ratings)
+   - Facility effects on happiness
+   - Police units suppressing drones
+   - Airbases for mid-flight refueling
+   - More probe actions
+
+4. **Documentation**
+   - Player-facing documentation
+   - Tutorial for new systems
+   - In-game help text
+
+=============================================================================
+FILE REFERENCE
+=============================================================================
+
+Core Game Files:
+- base.py - Base management (energy, happiness, support, production)
+- unit.py - Unit behavior (fuel, support, probe teams)
+- game.py - Game state (energy allocation, air fuel, probe actions)
+- tech.py - Research system (receives labs output)
+
+Constants:
+- constants.py - UNIT_PROBE_TEAM constant
+
+UI Files (for future work):
+- ui/base_screens.py - Base view (needs energy/happiness display)
+- ui/context_menu.py - Right-click menu (needs probe actions)
+- ui/ui_manager.py - Overall coordination
+
+=============================================================================

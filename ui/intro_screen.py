@@ -20,7 +20,7 @@ class IntroScreenManager:
         self.title_font = pygame.font.Font(None, 48)
 
         # Screen state
-        self.mode = 'intro'  # 'intro', 'map_select', 'map_size', 'land_composition', 'faction_select', 'name_input', None (game started)
+        self.mode = 'intro'  # 'intro', 'map_select', 'map_size', 'land_composition', 'erosive_forces', 'alien_life', 'skill_level', 'faction_select', 'name_input', None (game started)
         self.selected_faction_id = None
         self.player_name_input = ""
         self.cursor_visible = True
@@ -29,7 +29,10 @@ class IntroScreenManager:
 
         # Map customization settings
         self.selected_map_size = 'standard'  # Only standard for now
-        self.selected_land_percentage = None  # Will be set when land composition is selected
+        self.selected_ocean_percentage = None  # Will be set when ocean composition is selected
+        self.selected_erosive_forces = None  # 'abundant', 'average', 'desert'
+        self.selected_alien_life = None  # 'abundant', 'average', 'rare'
+        self.selected_skill_level = None  # 1-6
 
         # UI elements
         self.new_game_button_rect = None
@@ -39,6 +42,9 @@ class IntroScreenManager:
         self.custom_map_button_rect = None
         self.map_size_button_rects = []  # Map size selection buttons
         self.land_comp_button_rects = []  # Land composition selection buttons
+        self.erosive_forces_button_rects = []  # Erosive forces selection buttons
+        self.alien_life_button_rects = []  # Alien life form selection buttons
+        self.skill_level_button_rects = []  # Skill level selection buttons
         self.faction_button_rects = []
         self.ok_button_rect = None
         self.cancel_button_rect = None
@@ -62,6 +68,12 @@ class IntroScreenManager:
             self._draw_map_size(screen, screen_width, screen_height)
         elif self.mode == 'land_composition':
             self._draw_land_composition(screen, screen_width, screen_height)
+        elif self.mode == 'erosive_forces':
+            self._draw_erosive_forces(screen, screen_width, screen_height)
+        elif self.mode == 'alien_life':
+            self._draw_alien_life(screen, screen_width, screen_height)
+        elif self.mode == 'skill_level':
+            self._draw_skill_level(screen, screen_width, screen_height)
         elif self.mode == 'faction_select':
             self._draw_faction_select(screen, screen_width, screen_height)
         elif self.mode == 'name_input':
@@ -245,7 +257,7 @@ class IntroScreenManager:
             self.map_size_button_rects.append((button_rect, size_id, enabled))
 
     def _draw_land_composition(self, screen, screen_width, screen_height):
-        """Draw land composition selection screen."""
+        """Draw ocean composition selection screen."""
         # Background
         screen.fill((10, 15, 25))
 
@@ -255,15 +267,15 @@ class IntroScreenManager:
         screen.blit(title_surf, (screen_width // 2 - title_surf.get_width() // 2, 120))
 
         # Subtitle
-        subtitle_text = "Choose the percentage of land on your planet"
+        subtitle_text = "Choose the percentage of ocean on your planet"
         subtitle_surf = self.small_font.render(subtitle_text, True, (150, 180, 200))
         screen.blit(subtitle_surf, (screen_width // 2 - subtitle_surf.get_width() // 2, 190))
 
-        # Land composition options
+        # Ocean composition options
         land_compositions = [
-            ((30, 50), '30-50% Land', 'Wet Planet - Archipelagos and small continents'),
-            ((50, 70), '50-70% Land', 'Balanced - Mix of land and sea'),
-            ((70, 90), '70-90% Land', 'Dry Planet - Large continents and inland seas')
+            ((30, 50), '30-50% Ocean', 'Dry Planet - Large continents and inland seas'),
+            ((50, 70), '50-70% Ocean', 'Balanced - Mix of land and sea'),
+            ((70, 90), '70-90% Ocean', 'Wet Planet - Archipelagos and small continents')
         ]
 
         button_w = 600
@@ -297,6 +309,165 @@ class IntroScreenManager:
             screen.blit(desc_surf, (button_rect.x + 20, button_rect.y + 50))
 
             self.land_comp_button_rects.append((button_rect, range_tuple))
+
+    def _draw_erosive_forces(self, screen, screen_width, screen_height):
+        """Draw erosive forces selection screen."""
+        # Background
+        screen.fill((10, 15, 25))
+
+        # Title
+        title_text = "Adjust Erosive Forces"
+        title_surf = self.title_font.render(title_text, True, (100, 200, 255))
+        screen.blit(title_surf, (screen_width // 2 - title_surf.get_width() // 2, 150))
+
+        # Erosive forces options (only first one enabled)
+        erosive_options = [
+            ('abundant', 'Abundant', True),  # Only this is enabled
+            ('average', 'Average', False),
+            ('desert', 'Desert', False)
+        ]
+
+        button_w = 400
+        button_h = 70
+        button_spacing = 30
+        start_y = 300
+
+        self.erosive_forces_button_rects = []
+
+        for i, (erosive_id, erosive_name, enabled) in enumerate(erosive_options):
+            button_y = start_y + i * (button_h + button_spacing)
+            button_rect = pygame.Rect(
+                screen_width // 2 - button_w // 2,
+                button_y,
+                button_w,
+                button_h
+            )
+
+            if enabled:
+                is_hover = button_rect.collidepoint(pygame.mouse.get_pos())
+                bg_color = (70, 90, 110) if is_hover else (45, 55, 65)
+                border_color = (120, 180, 200)
+                text_color = (220, 230, 240)
+            else:
+                bg_color = (30, 35, 40)
+                border_color = (80, 90, 100)
+                text_color = (100, 110, 120)
+
+            pygame.draw.rect(screen, bg_color, button_rect, border_radius=8)
+            pygame.draw.rect(screen, border_color, button_rect, 3 if enabled else 1, border_radius=8)
+
+            text_surf = self.font.render(erosive_name, True, text_color)
+            screen.blit(text_surf, (button_rect.centerx - text_surf.get_width() // 2,
+                                   button_rect.centery - 10))
+
+            self.erosive_forces_button_rects.append((button_rect, erosive_id, enabled))
+
+    def _draw_alien_life(self, screen, screen_width, screen_height):
+        """Draw alien life form prominence selection screen."""
+        # Background
+        screen.fill((10, 15, 25))
+
+        # Title
+        title_text = "Alien Life Form Prominence"
+        title_surf = self.title_font.render(title_text, True, (100, 200, 255))
+        screen.blit(title_surf, (screen_width // 2 - title_surf.get_width() // 2, 150))
+
+        # Alien life options (only first one enabled)
+        alien_options = [
+            ('abundant', 'Abundant', True),  # Only this is enabled
+            ('average', 'Average', False),
+            ('rare', 'Rare', False)
+        ]
+
+        button_w = 400
+        button_h = 70
+        button_spacing = 30
+        start_y = 300
+
+        self.alien_life_button_rects = []
+
+        for i, (alien_id, alien_name, enabled) in enumerate(alien_options):
+            button_y = start_y + i * (button_h + button_spacing)
+            button_rect = pygame.Rect(
+                screen_width // 2 - button_w // 2,
+                button_y,
+                button_w,
+                button_h
+            )
+
+            if enabled:
+                is_hover = button_rect.collidepoint(pygame.mouse.get_pos())
+                bg_color = (70, 90, 110) if is_hover else (45, 55, 65)
+                border_color = (120, 180, 200)
+                text_color = (220, 230, 240)
+            else:
+                bg_color = (30, 35, 40)
+                border_color = (80, 90, 100)
+                text_color = (100, 110, 120)
+
+            pygame.draw.rect(screen, bg_color, button_rect, border_radius=8)
+            pygame.draw.rect(screen, border_color, button_rect, 3 if enabled else 1, border_radius=8)
+
+            text_surf = self.font.render(alien_name, True, text_color)
+            screen.blit(text_surf, (button_rect.centerx - text_surf.get_width() // 2,
+                                   button_rect.centery - 10))
+
+            self.alien_life_button_rects.append((button_rect, alien_id, enabled))
+
+    def _draw_skill_level(self, screen, screen_width, screen_height):
+        """Draw skill level selection screen."""
+        # Background
+        screen.fill((10, 15, 25))
+
+        # Title
+        title_text = "Skill Level"
+        title_surf = self.title_font.render(title_text, True, (100, 200, 255))
+        screen.blit(title_surf, (screen_width // 2 - title_surf.get_width() // 2, 100))
+
+        # Skill level options (only first one enabled)
+        skill_options = [
+            (1, '1', True),  # Only this is enabled
+            (2, '2', False),
+            (3, '3', False),
+            (4, '4', False),
+            (5, '5', False),
+            (6, '6 (hardest)', False)
+        ]
+
+        button_w = 300
+        button_h = 60
+        button_spacing = 20
+        start_y = 220
+
+        self.skill_level_button_rects = []
+
+        for i, (level, level_text, enabled) in enumerate(skill_options):
+            button_y = start_y + i * (button_h + button_spacing)
+            button_rect = pygame.Rect(
+                screen_width // 2 - button_w // 2,
+                button_y,
+                button_w,
+                button_h
+            )
+
+            if enabled:
+                is_hover = button_rect.collidepoint(pygame.mouse.get_pos())
+                bg_color = (70, 90, 110) if is_hover else (45, 55, 65)
+                border_color = (120, 180, 200)
+                text_color = (220, 230, 240)
+            else:
+                bg_color = (30, 35, 40)
+                border_color = (80, 90, 100)
+                text_color = (100, 110, 120)
+
+            pygame.draw.rect(screen, bg_color, button_rect, border_radius=8)
+            pygame.draw.rect(screen, border_color, button_rect, 3 if enabled else 1, border_radius=8)
+
+            text_surf = self.font.render(level_text, True, text_color)
+            screen.blit(text_surf, (button_rect.centerx - text_surf.get_width() // 2,
+                                   button_rect.centery - 10))
+
+            self.skill_level_button_rects.append((button_rect, level, enabled))
 
     def _draw_faction_select(self, screen, screen_width, screen_height):
         """Draw faction selection screen."""
@@ -540,6 +711,12 @@ class IntroScreenManager:
             return self._handle_map_size_event(event)
         elif self.mode == 'land_composition':
             return self._handle_land_composition_event(event)
+        elif self.mode == 'erosive_forces':
+            return self._handle_erosive_forces_event(event)
+        elif self.mode == 'alien_life':
+            return self._handle_alien_life_event(event)
+        elif self.mode == 'skill_level':
+            return self._handle_skill_level_event(event)
         elif self.mode == 'faction_select':
             return self._handle_faction_select_event(event)
         elif self.mode == 'name_input':
@@ -568,7 +745,7 @@ class IntroScreenManager:
                 # Proceed to faction selection with random/default map settings
                 self.mode = 'faction_select'
                 self.selected_faction_id = None
-                self.selected_land_percentage = None  # Use default (40%)
+                self.selected_ocean_percentage = None  # Use default (70%)
                 return None
             elif self.custom_map_button_rect and self.custom_map_button_rect.collidepoint(event.pos):
                 # Go to map size selection
@@ -597,7 +774,43 @@ class IntroScreenManager:
                     # Generate random percentage in the selected range
                     import random
                     min_pct, max_pct = range_tuple
-                    self.selected_land_percentage = random.randint(min_pct, max_pct)
+                    self.selected_ocean_percentage = random.randint(min_pct, max_pct)
+                    # Proceed to erosive forces
+                    self.mode = 'erosive_forces'
+                    return None
+
+        return None
+
+    def _handle_erosive_forces_event(self, event):
+        """Handle erosive forces selection events."""
+        if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+            for button_rect, erosive_id, enabled in self.erosive_forces_button_rects:
+                if enabled and button_rect.collidepoint(event.pos):
+                    self.selected_erosive_forces = erosive_id
+                    # Proceed to alien life
+                    self.mode = 'alien_life'
+                    return None
+
+        return None
+
+    def _handle_alien_life_event(self, event):
+        """Handle alien life form prominence selection events."""
+        if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+            for button_rect, alien_id, enabled in self.alien_life_button_rects:
+                if enabled and button_rect.collidepoint(event.pos):
+                    self.selected_alien_life = alien_id
+                    # Proceed to skill level
+                    self.mode = 'skill_level'
+                    return None
+
+        return None
+
+    def _handle_skill_level_event(self, event):
+        """Handle skill level selection events."""
+        if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+            for button_rect, level, enabled in self.skill_level_button_rects:
+                if enabled and button_rect.collidepoint(event.pos):
+                    self.selected_skill_level = level
                     # Proceed to faction selection
                     self.mode = 'faction_select'
                     self.selected_faction_id = None
@@ -633,7 +846,7 @@ class IntroScreenManager:
             elif event.key == pygame.K_RETURN:
                 # Start game
                 if self.player_name_input.strip():
-                    return ('start_game', self.selected_faction_id, self.player_name_input.strip(), self.selected_land_percentage)
+                    return ('start_game', self.selected_faction_id, self.player_name_input.strip(), self.selected_ocean_percentage)
             elif len(self.player_name_input) < 50:
                 # Add character
                 char = event.unicode
@@ -644,7 +857,7 @@ class IntroScreenManager:
             if self.ok_button_rect and self.ok_button_rect.collidepoint(event.pos):
                 # Start game
                 if self.player_name_input.strip():
-                    return ('start_game', self.selected_faction_id, self.player_name_input.strip(), self.selected_land_percentage)
+                    return ('start_game', self.selected_faction_id, self.player_name_input.strip(), self.selected_ocean_percentage)
             elif self.cancel_button_rect and self.cancel_button_rect.collidepoint(event.pos):
                 # Back to faction select
                 self.mode = 'faction_select'

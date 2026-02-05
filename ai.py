@@ -46,7 +46,7 @@ class AIPlayer:
         # Check if current location is good for founding
         if self._is_good_base_location(unit.x, unit.y, game):
             # Found a base here
-            base_name = self._generate_base_name(game)
+            base_name = game.generate_base_name(self.player_id)
             game.found_base(unit, base_name)
             print(f"AI founded base '{base_name}' at ({unit.x}, {unit.y})")
             return

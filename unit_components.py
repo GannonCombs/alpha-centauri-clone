@@ -11,6 +11,9 @@ CHASSIS = [
     {
         'id': 'infantry',
         'name': 'Infantry',
+        'offensive_names': ['Squad', 'Sentinels'],  # Low armor / high weapon
+        'defensive_names': ['Garrison', 'Shock Troops'],  # High armor / low weapon
+        'elite_names': ['Elite Guard'],  # High reactor
         'type': 'land',
         'speed': 1,
         'cost': 1,
@@ -20,6 +23,9 @@ CHASSIS = [
     {
         'id': 'speeder',
         'name': 'Speeder',
+        'offensive_names': ['Speeder', 'Rover'],
+        'defensive_names': ['Defensive', 'Skirmisher'],
+        'elite_names': ['Dragon', 'Enforcer'],
         'type': 'land',
         'speed': 2,
         'cost': 2,
@@ -29,6 +35,9 @@ CHASSIS = [
     {
         'id': 'hovertank',
         'name': 'Hovertank',
+        'offensive_names': ['Hovertank', 'Tank'],
+        'defensive_names': ['Skimmer', 'Evasive'],
+        'elite_names': ['Behemoth', 'Guardian'],
         'type': 'land',
         'speed': 3,
         'cost': 3,
@@ -38,6 +47,9 @@ CHASSIS = [
     {
         'id': 'foil',
         'name': 'Foil',
+        'offensive_names': ['Foil', 'Skimship'],
+        'defensive_names': ['Hoverboat', 'Coastal'],
+        'elite_names': ['Megafoil', 'Superfoil'],
         'type': 'sea',
         'speed': 4,
         'cost': 4,
@@ -47,6 +59,9 @@ CHASSIS = [
     {
         'id': 'cruiser',
         'name': 'Cruiser',
+        'offensive_names': ['Cruiser', 'Destroyer'],
+        'defensive_names': ['Cutter', 'Gunboat'],
+        'elite_names': ['Battleship', 'Monitor'],
         'type': 'sea',
         'speed': 6,
         'cost': 6,
@@ -56,6 +71,9 @@ CHASSIS = [
     {
         'id': 'needlejet',
         'name': 'Needlejet',
+        'offensive_names': ['Needlejet', 'Penetrator'],
+        'defensive_names': ['Interceptor', 'Tactical'],
+        'elite_names': ['Thunderbolt', 'Sovereign'],
         'type': 'air',
         'speed': 8,
         'cost': 8,
@@ -65,6 +83,9 @@ CHASSIS = [
     {
         'id': 'copter',
         'name': 'Copter',
+        'offensive_names': ['Copter', 'Chopper'],
+        'defensive_names': ['Rotor', 'Lifter'],
+        'elite_names': ['Gunship', 'Warbird'],
         'type': 'air',
         'speed': 8,
         'cost': 8,
@@ -74,6 +95,9 @@ CHASSIS = [
     {
         'id': 'gravship',
         'name': 'Gravship',
+        'offensive_names': ['Gravship', 'Skybase'],
+        'defensive_names': ['Antigrav', 'Skyfort'],
+        'elite_names': ['Deathsphere', 'Doomwall'],
         'type': 'air',
         'speed': 8,
         'cost': 8,
@@ -83,6 +107,9 @@ CHASSIS = [
     {
         'id': 'missile',
         'name': 'Missile',
+        'offensive_names': ['Missile'],
+        'defensive_names': ['Missile'],
+        'elite_names': ['Missile'],
         'type': 'air',
         'speed': 12,
         'cost': 12,
@@ -171,6 +198,82 @@ def get_armor_by_id(armor_id):
         if armor['id'] == armor_id:
             return armor
     return ARMOR[0]  # Default to no armor
+
+
+def generate_unit_name(weapon_id, chassis_id, armor_id=None, reactor_id='fission'):
+    """Generate a unit name using simplified SMAC naming: <component> <chassis variant>.
+
+    Naming logic:
+    - Offensive units (weapon > armor): <weapon name> <offensive chassis name>
+    - Defensive units (armor >= weapon): <armor name> <defensive chassis name>
+    - This ensures every unit has a unique name based on its components
+
+    Args:
+        weapon_id (str): Weapon component ID
+        chassis_id (str): Chassis component ID
+        armor_id (str): Armor component ID (optional, used for offensive/defensive determination)
+        reactor_id (str): Reactor component ID (optional, not used in current naming)
+
+    Returns:
+        str: Generated unit name
+    """
+    weapon = get_weapon_by_id(weapon_id)
+    chassis = get_chassis_by_id(chassis_id)
+
+    # Special cases for non-combat units
+    if weapon_id == 'colony_pod':
+        if chassis_id == 'foil' or chassis_id == 'cruiser':
+            return "Sea Colony Pod"
+        else:
+            return "Colony Pod"
+
+    if weapon_id == 'terraforming':
+        return "Former"
+
+    if weapon_id == 'probe':
+        return "Probe Team"
+
+    if weapon_id == 'transport':
+        return "Transport"
+
+    if weapon_id == 'supply':
+        return "Supply Crawler"
+
+    # Standard military units: Hand Weapons Infantry = Scout Patrol
+    if weapon_id == 'hand_weapons' and chassis_id == 'infantry' and (armor_id is None or armor_id == 'no_armor'):
+        return "Scout Patrol"
+
+    # For combat units, use <component> <chassis name> format
+    armor = get_armor_by_id(armor_id) if armor_id else ARMOR[0]
+
+    weapon_attack = weapon.get('attack', 0)
+    armor_defense = armor.get('defense', 1)
+
+    # Determine if offensive or defensive based on weapon vs armor
+    # When equal, treat as offensive (use weapon name)
+    is_offensive = weapon_attack >= armor_defense
+
+    # Get clean component name (remove "Armor" suffix from armor names)
+    weapon_name = weapon['name'].replace(' Weapons', '').replace(' Launcher', '')
+    armor_name = armor['name'].replace(' Armor', '')
+
+    if is_offensive:
+        # Offensive unit: use weapon name + offensive chassis variant
+        chassis_names = chassis.get('offensive_names', [chassis['name']])
+        chassis_name = chassis_names[0]
+        return f"{weapon_name} {chassis_name}"
+    else:
+        # Defensive unit: use armor name + defensive chassis variant
+        chassis_names = chassis.get('defensive_names', [chassis['name']])
+        chassis_name = chassis_names[0]
+        return f"{armor_name} {chassis_name}"
+        for ability in special_abilities:
+            name_parts.insert(0, ability)
+
+    # Add chassis name
+    name_parts.append(chassis['name'])
+
+    return " ".join(name_parts)
 
 
 def get_reactor_by_id(reactor_id):

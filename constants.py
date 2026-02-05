@@ -1,5 +1,15 @@
-# constants.py
-# All game-wide constants in one place for easy tweaking
+"""Game-wide constants and configuration values.
+
+This module contains all game constants including:
+- Map and tile dimensions
+- Display and UI settings
+- Color definitions for rendering
+- Unit type identifiers
+- Game balance values (probabilities, costs, etc.)
+- File paths and resource locations
+
+All values are centralized here for easy tuning and configuration.
+"""
 
 # Map settings
 MAP_WIDTH = 1  # tiles (fixed size)
@@ -47,6 +57,8 @@ UNIT_SEA = "sea"
 UNIT_AIR = "air"
 UNIT_COLONY_POD_LAND = "colony_pod_land"
 UNIT_COLONY_POD_SEA = "colony_pod_sea"
+UNIT_ARTIFACT = "artifact"
+UNIT_PROBE_TEAM = "probe_team"
 
 # Base colors
 COLOR_BASE_FRIENDLY = (150, 220, 150)  # Light green

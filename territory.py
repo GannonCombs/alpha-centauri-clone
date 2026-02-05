@@ -84,14 +84,18 @@ class TerritoryManager:
             # All same owner
             return list(owners)[0]
 
-        # Different owners at same distance - use tiebreaker
-        # Tiebreaker: base with higher population wins
-        closest_bases.sort(key=lambda b: b.population, reverse=True)
+        # Different owners at same distance - use multiple tiebreakers
+        # Tiebreaker 1: base with higher population wins
+        closest_bases.sort(key=lambda b: (b.population, -b.x, -b.y), reverse=True)
         if closest_bases[0].population > closest_bases[1].population:
             return closest_bases[0].owner
 
-        # Still tied - leave neutral
-        return None
+        # Tiebreaker 2: Use coordinate-based hash for deterministic but fair distribution
+        # This ensures ties are resolved consistently but distributes tiles fairly
+        # Use a hash of tile coordinates to pick a base deterministically
+        hash_val = (x * 73856093) ^ (y * 19349663)  # Prime number hash
+        winner_idx = hash_val % len(closest_bases)
+        return closest_bases[winner_idx].owner
 
     def _manhattan_distance(self, x1, y1, x2, y2):
         """Calculate Manhattan distance between two points with horizontal wrapping.

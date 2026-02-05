@@ -1,10 +1,22 @@
-# renderer.py
+"""Rendering engine for game graphics.
+
+This module handles all game world rendering including:
+- Map and terrain visualization
+- Unit rendering with health bars and status indicators
+- Base rendering with ownership colors
+- Camera management with scrolling and wrapping
+- Special terrain features (monoliths, supply pods, etc.)
+- Territory borders and zone of control visualization
+
+The Renderer class manages the viewport, handles coordinate transformations,
+and draws all game entities to the screen.
+"""
 import pygame
 import constants
 from constants import (TILE_SIZE, COLOR_OCEAN, COLOR_LAND, COLOR_GRID, COLOR_BLACK,
                        COLOR_UNIT_SELECTED, COLOR_UNIT_FRIENDLY, COLOR_UNIT_ENEMY,
                        COLOR_BASE_FRIENDLY, COLOR_BASE_ENEMY, COLOR_BASE_BORDER,
-                       UNIT_COLONY_POD_LAND, UNIT_COLONY_POD_SEA)
+                       UNIT_COLONY_POD_LAND, UNIT_COLONY_POD_SEA, UNIT_ARTIFACT)
 from ui.data import FACTIONS
 
 
@@ -80,8 +92,14 @@ class Renderer:
         max_y_offset = max(0, game_map.height - visible_tiles_y)
         self.camera_offset_y = max(0, min(target_y, max_y_offset))
 
-    def draw_map(self, game_map, territory=None):
-        """Draw all map tiles with horizontal wrapping and territory borders."""
+    def draw_map(self, game_map, territory=None, faction_assignments=None):
+        """Draw all map tiles with horizontal wrapping and territory borders.
+
+        Args:
+            game_map: The game map
+            territory: TerritoryManager instance (optional)
+            faction_assignments: Dict mapping player_id to faction_id (optional)
+        """
         self._update_offsets(game_map)
 
         # Calculate visible tiles (only complete tiles, no partial)
@@ -105,10 +123,13 @@ class Renderer:
 
         # Draw territory borders after tiles
         if territory:
-            self.draw_territory_borders(territory, game_map)
+            self.draw_territory_borders(territory, game_map, faction_assignments)
 
         # Draw supply pods
         self.draw_supply_pods(game_map)
+
+        # Draw monoliths
+        self.draw_monoliths(game_map)
 
         # Draw map edge indicators
         self.draw_map_edge_indicators(game_map)
@@ -200,9 +221,11 @@ class Renderer:
 
         # Draw unit type letter
         font = pygame.font.Font(None, 28)
-        # Show 'C' for colony pods, otherwise first letter of type
+        # Show 'C' for colony pods, 'A' for artifacts, otherwise first letter of type
         if unit.unit_type in [UNIT_COLONY_POD_LAND, UNIT_COLONY_POD_SEA]:
             type_char = 'C'
+        elif unit.unit_type == UNIT_ARTIFACT:
+            type_char = 'A'
         else:
             type_char = unit.unit_type[0].upper()
         text_surf = font.render(type_char, True, COLOR_BLACK)
@@ -212,6 +235,16 @@ class Renderer:
         text_rect.center = (center_x, center_y)
 
         self.screen.blit(text_surf, text_rect)
+
+        # Draw held indicator if unit is held
+        if hasattr(unit, 'held') and unit.held:
+            held_font = pygame.font.Font(None, 20)
+            held_surf = held_font.render('H', True, (255, 255, 100))
+            held_rect = held_surf.get_rect()
+            held_rect.center = (center_x + radius - 5, center_y - radius + 5)
+            # Draw dark background circle for visibility
+            pygame.draw.circle(self.screen, (50, 50, 50), held_rect.center, 8)
+            self.screen.blit(held_surf, held_rect)
 
         # Draw selection indicator if selected
         if unit == selected_unit:
@@ -394,29 +427,36 @@ class Renderer:
 
             self.screen.blit(text_surf, text_rect)
 
-    def draw_territory_borders(self, territory, game_map):
-        """Draw dotted territory borders for all players.
+    def draw_territory_borders(self, territory, game_map, faction_assignments=None):
+        """Draw dotted territory borders for all players using faction colors.
+
+        When territories abut, draws both faction colors side-by-side on the border.
 
         Args:
             territory (TerritoryManager): Territory management system
             game_map: The game map for wrapping calculations
+            faction_assignments: Dict mapping player_id to faction_id (optional)
         """
-        # Get player colors
-        player_colors = {
-            0: (50, 205, 50),   # Player - Gaian green
-            1: (255, 80, 80),   # AI - red
-            2: (255, 255, 255), # AI - white
-            3: (255, 215, 0),   # AI - gold
-            4: (139, 69, 19),   # AI - brown
-            5: (255, 165, 0),   # AI - orange
-            6: (180, 140, 230)  # AI - purple
-        }
+        from ui.data import FACTIONS
+
+        # Get faction colors for each player
+        def get_player_color(player_id):
+            if faction_assignments and player_id in faction_assignments:
+                faction_id = faction_assignments[player_id]
+                if 0 <= faction_id < len(FACTIONS):
+                    return FACTIONS[faction_id]['color']
+            # Fallback colors if no faction assignment
+            fallback = {
+                0: (50, 205, 50), 1: (100, 100, 255), 2: (255, 255, 255),
+                3: (255, 215, 0), 4: (139, 69, 19), 5: (255, 165, 0), 6: (180, 140, 230)
+            }
+            return fallback.get(player_id, (150, 150, 150))
 
         # Calculate visible range with wrapping
         visible_tiles_x = (constants.SCREEN_WIDTH // TILE_SIZE) + 2
         visible_tiles_y = constants.MAP_AREA_HEIGHT // TILE_SIZE
 
-        # For each visible tile, draw border edges
+        # For each visible tile, draw border edges with dual colors
         for screen_y_idx in range(visible_tiles_y):
             map_y = self.camera_offset_y + screen_y_idx
             if map_y >= game_map.height:
@@ -428,21 +468,44 @@ class Renderer:
                 if owner is None:
                     continue
 
-                border_edges = territory.get_border_edges(map_x, map_y)
-                if not border_edges:
-                    continue
+                # Check each edge and get neighbor owner
+                directions = [
+                    ('N', 0, -1),
+                    ('E', 1, 0),
+                    ('S', 0, 1),
+                    ('W', -1, 0)
+                ]
 
-                color = player_colors.get(owner, (150, 150, 150))
-                self._draw_tile_borders_at_screen_pos(screen_x_idx, screen_y_idx, border_edges, color)
+                for edge_dir, dx, dy in directions:
+                    nx = (map_x + dx) % game_map.width
+                    ny = map_y + dy
 
-    def _draw_tile_borders_at_screen_pos(self, screen_x_idx, screen_y_idx, edges, color):
-        """Draw dotted borders on specified edges of a tile at screen position.
+                    # Skip if out of bounds (Y doesn't wrap)
+                    if ny < 0 or ny >= game_map.height:
+                        neighbor_owner = None
+                    else:
+                        neighbor_owner = territory.get_tile_owner(nx, ny)
+
+                    # Only draw border if owners differ
+                    if neighbor_owner != owner:
+                        my_color = get_player_color(owner)
+                        neighbor_color = get_player_color(neighbor_owner) if neighbor_owner is not None else None
+                        self._draw_dual_color_border_at_screen_pos(
+                            screen_x_idx, screen_y_idx, edge_dir, my_color, neighbor_color
+                        )
+
+    def _draw_dual_color_border_at_screen_pos(self, screen_x_idx, screen_y_idx, edge_dir, my_color, neighbor_color):
+        """Draw territory border with dual colors when territories abut.
+
+        Draws the owner's color on the inside and neighbor's color on the outside.
+        If no neighbor, draws only the owner's color.
 
         Args:
             screen_x_idx (int): Screen X index
             screen_y_idx (int): Screen Y index
-            edges (list): List of edge directions ('N', 'E', 'S', 'W')
-            color (tuple): RGB color for the border
+            edge_dir (str): Edge direction ('N', 'E', 'S', 'W')
+            my_color (tuple): RGB color for this tile's owner
+            neighbor_color (tuple or None): RGB color for neighbor owner (None if no neighbor)
         """
         screen_x = (screen_x_idx * TILE_SIZE) + self.base_offset_x
         screen_y = screen_y_idx * TILE_SIZE
@@ -452,38 +515,57 @@ class Renderer:
         gap_length = 3
         pattern_length = dash_length + gap_length
 
-        for edge in edges:
-            if edge == 'N':
-                # Top edge
-                y_pos = screen_y
-                for i in range(0, TILE_SIZE, pattern_length):
-                    x_start = screen_x + i
-                    x_end = min(screen_x + i + dash_length, screen_x + TILE_SIZE)
-                    pygame.draw.line(self.screen, color, (x_start, y_pos), (x_end, y_pos), 2)
+        if edge_dir == 'N':
+            # Top edge - draw my color below, neighbor color above
+            y_pos_inner = screen_y + 1  # Inside the tile
+            y_pos_outer = screen_y - 1  # Outside the tile
+            for i in range(0, TILE_SIZE, pattern_length):
+                x_start = screen_x + i
+                x_end = min(screen_x + i + dash_length, screen_x + TILE_SIZE)
+                # Draw my color on inner line
+                pygame.draw.line(self.screen, my_color, (x_start, y_pos_inner), (x_end, y_pos_inner), 1)
+                # Draw neighbor color on outer line if exists
+                if neighbor_color:
+                    pygame.draw.line(self.screen, neighbor_color, (x_start, y_pos_outer), (x_end, y_pos_outer), 1)
 
-            elif edge == 'S':
-                # Bottom edge
-                y_pos = screen_y + TILE_SIZE
-                for i in range(0, TILE_SIZE, pattern_length):
-                    x_start = screen_x + i
-                    x_end = min(screen_x + i + dash_length, screen_x + TILE_SIZE)
-                    pygame.draw.line(self.screen, color, (x_start, y_pos), (x_end, y_pos), 2)
+        elif edge_dir == 'S':
+            # Bottom edge - draw my color above, neighbor color below
+            y_pos_inner = screen_y + TILE_SIZE - 1  # Inside the tile
+            y_pos_outer = screen_y + TILE_SIZE + 1  # Outside the tile
+            for i in range(0, TILE_SIZE, pattern_length):
+                x_start = screen_x + i
+                x_end = min(screen_x + i + dash_length, screen_x + TILE_SIZE)
+                # Draw my color on inner line
+                pygame.draw.line(self.screen, my_color, (x_start, y_pos_inner), (x_end, y_pos_inner), 1)
+                # Draw neighbor color on outer line if exists
+                if neighbor_color:
+                    pygame.draw.line(self.screen, neighbor_color, (x_start, y_pos_outer), (x_end, y_pos_outer), 1)
 
-            elif edge == 'W':
-                # Left edge
-                x_pos = screen_x
-                for i in range(0, TILE_SIZE, pattern_length):
-                    y_start = screen_y + i
-                    y_end = min(screen_y + i + dash_length, screen_y + TILE_SIZE)
-                    pygame.draw.line(self.screen, color, (x_pos, y_start), (x_pos, y_end), 2)
+        elif edge_dir == 'W':
+            # Left edge - draw my color right, neighbor color left
+            x_pos_inner = screen_x + 1  # Inside the tile
+            x_pos_outer = screen_x - 1  # Outside the tile
+            for i in range(0, TILE_SIZE, pattern_length):
+                y_start = screen_y + i
+                y_end = min(screen_y + i + dash_length, screen_y + TILE_SIZE)
+                # Draw my color on inner line
+                pygame.draw.line(self.screen, my_color, (x_pos_inner, y_start), (x_pos_inner, y_end), 1)
+                # Draw neighbor color on outer line if exists
+                if neighbor_color:
+                    pygame.draw.line(self.screen, neighbor_color, (x_pos_outer, y_start), (x_pos_outer, y_end), 1)
 
-            elif edge == 'E':
-                # Right edge
-                x_pos = screen_x + TILE_SIZE
-                for i in range(0, TILE_SIZE, pattern_length):
-                    y_start = screen_y + i
-                    y_end = min(screen_y + i + dash_length, screen_y + TILE_SIZE)
-                    pygame.draw.line(self.screen, color, (x_pos, y_start), (x_pos, y_end), 2)
+        elif edge_dir == 'E':
+            # Right edge - draw my color left, neighbor color right
+            x_pos_inner = screen_x + TILE_SIZE - 1  # Inside the tile
+            x_pos_outer = screen_x + TILE_SIZE + 1  # Outside the tile
+            for i in range(0, TILE_SIZE, pattern_length):
+                y_start = screen_y + i
+                y_end = min(screen_y + i + dash_length, screen_y + TILE_SIZE)
+                # Draw my color on inner line
+                pygame.draw.line(self.screen, my_color, (x_pos_inner, y_start), (x_pos_inner, y_end), 1)
+                # Draw neighbor color on outer line if exists
+                if neighbor_color:
+                    pygame.draw.line(self.screen, neighbor_color, (x_pos_outer, y_start), (x_pos_outer, y_end), 1)
 
     def _draw_tile_borders(self, tile_x, tile_y, edges, color):
         """Draw dotted borders on specified edges of a tile.
@@ -586,6 +668,54 @@ class Renderer:
 
                     pygame.draw.circle(self.screen, (150, 150, 150), (center_x, center_y), radius)
                     pygame.draw.circle(self.screen, (80, 80, 80), (center_x, center_y), radius, 2)
+
+    def draw_monoliths(self, game_map):
+        """Draw monoliths on the map (brown towers)."""
+        visible_tiles_x = (constants.SCREEN_WIDTH // TILE_SIZE) + 2
+        visible_tiles_y = constants.MAP_AREA_HEIGHT // TILE_SIZE
+
+        for screen_y_idx in range(visible_tiles_y):
+            map_y = self.camera_offset_y + screen_y_idx
+            if map_y >= game_map.height:
+                continue
+
+            for screen_x_idx in range(visible_tiles_x):
+                map_x = (self.camera_offset_x + screen_x_idx) % game_map.width
+                tile = game_map.get_tile(map_x, map_y)
+
+                if tile and tile.monolith:
+                    # Calculate screen position
+                    screen_x = (screen_x_idx * TILE_SIZE) + self.base_offset_x
+                    screen_y = screen_y_idx * TILE_SIZE
+
+                    # Only draw if on screen
+                    if screen_x < -TILE_SIZE or screen_x > constants.SCREEN_WIDTH:
+                        continue
+                    if screen_y < 0 or screen_y >= constants.MAP_AREA_HEIGHT:
+                        continue
+
+                    # Draw brown square for monolith base
+                    base_size = TILE_SIZE * 2 // 3
+                    base_x = screen_x + (TILE_SIZE - base_size) // 2
+                    base_y = screen_y + (TILE_SIZE - base_size) // 2
+                    pygame.draw.rect(self.screen, (101, 67, 33), (base_x, base_y, base_size, base_size))
+
+                    # Draw dark brown border
+                    pygame.draw.rect(self.screen, (70, 45, 20), (base_x, base_y, base_size, base_size), 2)
+
+                    # Draw tower shape (stacked rectangles getting smaller)
+                    tower_width = base_size * 2 // 3
+                    tower_height = base_size // 4
+                    tower_x = base_x + (base_size - tower_width) // 2
+                    tower_y = base_y + 4
+
+                    # Three stacked segments
+                    for i in range(3):
+                        segment_width = tower_width - (i * 4)
+                        segment_x = tower_x + (i * 2)
+                        segment_y = tower_y + (i * tower_height)
+                        pygame.draw.rect(self.screen, (120, 80, 40), (segment_x, segment_y, segment_width, tower_height))
+                        pygame.draw.rect(self.screen, (80, 55, 25), (segment_x, segment_y, segment_width, tower_height), 1)
 
     def draw_map_edge_indicators(self, game_map):
         """Draw full tile height black bars at top and bottom when map edges are visible."""

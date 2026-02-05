@@ -1,0 +1,112 @@
+=============================================================================
+                        DEBUG MODE DOCUMENTATION
+=============================================================================
+
+DEBUG MODE - Testing and Development Cheat System
+
+This debug mode provides quick access to game features for testing without
+playing through many turns. All debug code is isolated in debug.py for easy
+removal before release.
+
+=============================================================================
+ACTIVATION
+=============================================================================
+
+Ctrl+Shift+D ......... Toggle debug mode on/off
+Ctrl+Shift+H ......... Toggle help overlay (when debug mode is active)
+
+When enabled, a semi-transparent help overlay appears in the top-left corner
+showing all available commands.
+
+=============================================================================
+RESOURCE & TECH COMMANDS
+=============================================================================
+
+Ctrl+E ............... Add 1000 energy credits
+Ctrl+T ............... Grant all technologies instantly
+
+=============================================================================
+UNIT COMMANDS (requires unit selection)
+=============================================================================
+
+Ctrl+U ............... Spawn unit at selected location
+                       After pressing, choose type:
+                       1 = Land unit (Scout Patrol)
+                       2 = Colony Pod
+                       3 = Sea unit (Foil)
+                       4 = Air unit (Needlejet)
+                       5 = Artifact
+
+Ctrl+M ............... Upgrade unit morale by one level
+                       (Green -> Disciplined -> Veteran -> Elite, etc.)
+
+Ctrl+H ............... Heal selected unit to full health
+
+Ctrl+K ............... Kill/remove selected unit from game
+
+Ctrl+X ............... Add 5 kills and 100 XP to selected unit
+
+Ctrl+I ............... Toggle unit invincibility
+                       (Sets HP to 1000 vs normal 10)
+
+=============================================================================
+BASE & MAP COMMANDS
+=============================================================================
+
+Ctrl+B ............... Create base at selected location
+                       (Must be on land, no existing base)
+
+Ctrl+N ............... Skip to next turn immediately
+
+=============================================================================
+USAGE EXAMPLES
+=============================================================================
+
+Testing Artillery:
+1. Press Ctrl+T to unlock all technologies (if needed)
+2. Select a unit location
+3. Press Ctrl+U, then 1 to spawn a land unit (has artillery by default in debug)
+4. Select your artillery unit
+5. Press 'F' to enable artillery mode
+6. Right-click on a valid target within 2 squares
+7. Select "Long Range Fire" from the context menu
+8. Artillery fires and damages the target
+
+Testing Monoliths:
+1. Find a monolith on the map (brown tower structures)
+2. Move a unit onto it
+3. Unit receives morale upgrade (once per unit) and healing
+
+Testing Artifacts:
+1. Press Ctrl+U, then 5 to spawn an artifact
+2. Move another unit to collect it
+3. Gain technology or other benefits
+
+Testing Zone of Control:
+1. Spawn enemy units near your units
+2. Try to move between enemy-controlled squares
+3. Movement should be restricted by ZOC rules
+
+Testing Production:
+1. Press Ctrl+B to create a base
+2. Press Ctrl+E to add energy credits
+3. Use hurry production in base view
+
+=============================================================================
+TECHNICAL NOTES
+=============================================================================
+
+- All debug code is in debug.py with clear "DEBUG:" comments
+- Debug manager integrated into game.py and main.py
+- Uses standard pygame event handling
+- Help overlay uses semi-transparent background
+- Unit spawning uses game's existing Unit class
+- Base creation uses game's existing Base class
+
+To remove debug mode before release:
+1. Delete debug.py
+2. Remove debug import and initialization from game.py
+3. Remove debug event handling from main.py
+4. Search for "DEBUG:" comments and remove related code
+
+=============================================================================

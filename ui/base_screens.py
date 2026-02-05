@@ -28,28 +28,48 @@ class BaseScreenManager:
         self.production_selection_open = False
         self.selected_production_item = None
         self.production_item_rects = []  # List of (rect, item_name) tuples
+        self.production_selection_mode = "change"  # "change" or "queue"
+        self.queue_management_open = False
+        self.queue_item_rects = []  # List of (rect, item_index) tuples
 
         # UI elements
         self.base_naming_ok_rect = None
         self.base_naming_cancel_rect = None
         self.base_view_ok_rect = None
+        self.base_view_rename_rect = None
         self.prod_change_rect = None
         self.prod_hurry_rect = None
+        self.prod_queue_rect = None
         self.hurry_ok_rect = None
         self.hurry_cancel_rect = None
         self.hurry_all_rect = None
         self.prod_select_ok_rect = None
         self.prod_select_cancel_rect = None
+        self.queue_add_rect = None
+        self.queue_clear_rect = None
+        self.queue_close_rect = None
 
-    def show_base_naming(self, unit):
+    def show_base_naming(self, unit, game):
         """Show the base naming dialog for a colony pod."""
         self.base_naming_unit = unit
+        # Use faction-specific base name from game
+        self.base_name_input = game.generate_base_name(unit.owner)
+        # Keep old suggestions for backward compatibility (currently unused)
         self.base_name_suggestions = self._generate_base_names()
-        self.base_name_input = random.choice(self.base_name_suggestions)
 
     def show_base_view(self, base):
         """Show the base management screen."""
         self.viewing_base = base
+        # Reset all popups when opening base view
+        self._reset_base_popups()
+
+    def _reset_base_popups(self):
+        """Reset all base view popup states."""
+        self.hurry_production_open = False
+        self.hurry_input = ""
+        self.production_selection_open = False
+        self.selected_production_item = None
+        self.queue_management_open = False
 
     def draw_base_naming(self, screen):
         """Draw the base naming dialog."""
@@ -152,17 +172,30 @@ class BaseScreenManager:
         return None
 
     def handle_base_view_event(self, event, game):
-        """Handle keyboard events for base view (mainly hurry popup input). Returns True if event consumed."""
-        # Only handle keyboard input if hurry popup is open
+        """Handle keyboard events for base view (mainly popup input). Returns True if event consumed."""
+        if event.type == pygame.KEYDOWN:
+            if event.key == pygame.K_ESCAPE:
+                # Close any open popup, return to base view (don't exit base view)
+                if self.hurry_production_open:
+                    self.hurry_production_open = False
+                    self.hurry_input = ""
+                    return True
+                elif self.production_selection_open:
+                    self.production_selection_open = False
+                    self.selected_production_item = None
+                    return True
+                elif self.queue_management_open:
+                    self.queue_management_open = False
+                    return True
+                # If no popups open, let Escape close the base view
+                return False
+
+        # Only handle other keyboard input if hurry popup is open
         if not self.hurry_production_open:
             return False
 
         if event.type == pygame.KEYDOWN:
-            if event.key == pygame.K_ESCAPE:
-                self.hurry_production_open = False
-                self.hurry_input = ""
-                return True
-            elif event.key == pygame.K_RETURN:
+            if event.key == pygame.K_RETURN:
                 # Submit the hurry payment (same as OK button)
                 base = self.viewing_base
                 if base and base.current_production and self.hurry_input:
@@ -289,6 +322,38 @@ class BaseScreenManager:
 
                 pygame.draw.rect(screen, (60, 60, 60), tile_rect, 1)
 
+        # RESOURCE ROWS: Below map inset
+        resource_rows_y = map_view_y + map_view_h + 10
+        resource_rows_w = map_view_w
+        resource_rows_x = map_view_x
+        row_h = 22
+
+        # Nutrients row
+        nut_row_y = resource_rows_y
+        nut_label = self.small_font.render("Nutrients:", True, (150, 220, 150))
+        screen.blit(nut_label, (resource_rows_x, nut_row_y))
+        nut_values = self.small_font.render("5 - 2 = 3", True, (180, 200, 180))
+        screen.blit(nut_values, (resource_rows_x + resource_rows_w - nut_values.get_width(), nut_row_y))
+
+        # Minerals row
+        min_row_y = nut_row_y + row_h
+        min_label = self.small_font.render("Minerals:", True, (200, 180, 140))
+        screen.blit(min_label, (resource_rows_x, min_row_y))
+        min_values = self.small_font.render("4 - 1 = 3", True, (180, 180, 160))
+        screen.blit(min_values, (resource_rows_x + resource_rows_w - min_values.get_width(), min_row_y))
+
+        # Energy row
+        ene_row_y = min_row_y + row_h
+        ene_label = self.small_font.render("Energy:", True, (220, 220, 100))
+        screen.blit(ene_label, (resource_rows_x, ene_row_y))
+        ene_values = self.small_font.render("6 - 3 = 3", True, (200, 200, 120))
+        screen.blit(ene_values, (resource_rows_x + resource_rows_w - ene_values.get_width(), ene_row_y))
+
+        # Explainer row
+        exp_row_y = ene_row_y + row_h + 5
+        exp_text = self.small_font.render("INTAKE - CONSUMPTION = SURPLUS", True, (140, 140, 160))
+        screen.blit(exp_text, (resource_rows_x + resource_rows_w // 2 - exp_text.get_width() // 2, exp_row_y))
+
         # Define content area (full width for layout)
         content_x = 20
         content_w = screen_w - 40
@@ -384,6 +449,49 @@ class BaseScreenManager:
             no_fac = self.small_font.render("No facilities yet", True, (120, 120, 140))
             screen.blit(no_fac, (facilities_x + 15, facilities_y + 40))
 
+        # ENERGY ALLOCATION PANEL: Above civilians
+        energy_alloc_y = screen_h - 380
+        energy_alloc_h = 100
+        energy_alloc_w = min(500, content_w - 40)
+        energy_alloc_x = (screen_w - energy_alloc_w) // 2
+
+        # Draw panel background
+        energy_alloc_rect = pygame.Rect(energy_alloc_x, energy_alloc_y, energy_alloc_w, energy_alloc_h)
+        pygame.draw.rect(screen, (35, 40, 45), energy_alloc_rect, border_radius=8)
+        pygame.draw.rect(screen, (120, 140, 100), energy_alloc_rect, 2, border_radius=8)
+
+        # Title
+        energy_title = self.small_font.render("ENERGY ALLOCATION", True, (200, 220, 180))
+        screen.blit(energy_title, (energy_alloc_x + energy_alloc_w // 2 - energy_title.get_width() // 2, energy_alloc_y + 8))
+
+        # Get energy allocation percentages from social engineering (default: Economy 50%, Labs 50%, Psych 0%)
+        # TODO: Get these from game.social_engineering when implemented
+        economy_pct = 50
+        psych_pct = 0
+        labs_pct = 50
+
+        # Three rows: Economy, Psych, Labs
+        row_y_start = energy_alloc_y + 35
+        row_spacing = 20
+
+        # Economy row
+        econ_label = self.small_font.render(f"Economy: {economy_pct}%", True, (180, 200, 180))
+        screen.blit(econ_label, (energy_alloc_x + 15, row_y_start))
+        econ_calc = self.small_font.render("10 Energy + 5 Bonus = 15", True, (160, 180, 160))
+        screen.blit(econ_calc, (energy_alloc_x + 160, row_y_start))
+
+        # Psych row
+        psych_label = self.small_font.render(f"Psych: {psych_pct}%", True, (200, 180, 200))
+        screen.blit(psych_label, (energy_alloc_x + 15, row_y_start + row_spacing))
+        psych_calc = self.small_font.render("0 Energy + 0 Bonus = 0", True, (180, 160, 180))
+        screen.blit(psych_calc, (energy_alloc_x + 160, row_y_start + row_spacing))
+
+        # Labs row
+        labs_label = self.small_font.render(f"Labs: {labs_pct}%", True, (180, 200, 220))
+        screen.blit(labs_label, (energy_alloc_x + 15, row_y_start + row_spacing * 2))
+        labs_calc = self.small_font.render("10 Energy + 3 Bonus = 13", True, (160, 180, 200))
+        screen.blit(labs_calc, (energy_alloc_x + 160, row_y_start + row_spacing * 2))
+
         # CENTER BOTTOM: Civilian icons in horizontal bar (1 per pop)
         civilian_y = screen_h - 250
         civilian_h = 70
@@ -415,23 +523,23 @@ class BaseScreenManager:
             pygame.draw.circle(screen, COLOR_BLACK, (civ_rect.centerx - 8, eye_y), 3)
             pygame.draw.circle(screen, COLOR_BLACK, (civ_rect.centerx + 8, eye_y), 3)
 
-        # GARRISON BAR: Units in base
-        garrison_y = civilian_y + civilian_h + 10
+        # GARRISON BAR: Units in base (always show bar like citizens panel)
+        garrison_y = civilian_y + civilian_h + 30  # Increased spacing to avoid overlap
         garrison_h = 60
         gar_label = self.small_font.render("GARRISON", True, COLOR_TEXT)
         screen.blit(gar_label, (screen_w // 2 - gar_label.get_width() // 2, garrison_y - 25))
 
-        # Narrower garrison bar to avoid overlap
+        # Garrison bar with same styling as civilians
         garrison_bar_w = min(500, content_w - 200)
         garrison_bar_x = (screen_w - garrison_bar_w) // 2
         garrison_rect = pygame.Rect(garrison_bar_x, garrison_y, garrison_bar_w, garrison_h)
 
-        # Only draw background if there are units garrisoned
-        if base.garrison:
-            pygame.draw.rect(screen, (30, 35, 40), garrison_rect, border_radius=6)
-            pygame.draw.rect(screen, COLOR_UI_BORDER, garrison_rect, 2, border_radius=6)
+        # Always draw bar background and border (like citizens panel)
+        pygame.draw.rect(screen, (40, 45, 50), garrison_rect, border_radius=8)
+        pygame.draw.rect(screen, (100, 110, 120), garrison_rect, 2, border_radius=8)
 
-            # Draw garrison units
+        # Draw garrison units or empty message inside the bar
+        if base.garrison:
             for i, unit in enumerate(base.garrison):
                 unit_x = garrison_rect.x + 10 + i * 50
                 unit_circle = pygame.Rect(unit_x, garrison_rect.y + 10, 40, 40)
@@ -443,9 +551,9 @@ class BaseScreenManager:
 
         # BOTTOM LEFT: Current Production (expanded)
         prod_x = content_x
-        prod_y = screen_h - 160
+        prod_y = screen_h - 310
         prod_w = 500
-        prod_h = 140
+        prod_h = 290
         prod_rect = pygame.Rect(prod_x, prod_y, prod_w, prod_h)
         pygame.draw.rect(screen, (45, 40, 35), prod_rect, border_radius=8)
         pygame.draw.rect(screen, (140, 120, 80), prod_rect, 2, border_radius=8)
@@ -486,17 +594,30 @@ class BaseScreenManager:
         queue_label = self.small_font.render("Queue:", True, (200, 180, 140))
         screen.blit(queue_label, (queue_x, prod_y + 35))
 
-        # Queue items (placeholder - empty for now)
-        queue_text = self.small_font.render("(empty)", True, (120, 120, 120))
-        screen.blit(queue_text, (queue_x, prod_y + 55))
+        # Queue items
+        if base.production_queue:
+            # Show first 10 items in queue
+            y_offset = 55
+            for i, item in enumerate(base.production_queue[:10]):  # Show max 10 items
+                item_text = self.small_font.render(f"{i+1}. {item}", True, (180, 180, 180))
+                screen.blit(item_text, (queue_x, prod_y + y_offset))
+                y_offset += 18
+            if len(base.production_queue) > 10:
+                more_text = self.small_font.render(f"+{len(base.production_queue) - 10} more", True, (120, 120, 120))
+                screen.blit(more_text, (queue_x, prod_y + y_offset))
+        else:
+            queue_text = self.small_font.render("(empty)", True, (120, 120, 120))
+            screen.blit(queue_text, (queue_x, prod_y + 55))
 
-        # Change and Hurry buttons
-        button_y = prod_y + 100
+        # Change, Hurry, and Queue buttons
+        button_y = prod_y + 250
         change_rect = pygame.Rect(prod_x + 10, button_y, 90, 30)
         hurry_rect = pygame.Rect(prod_x + 110, button_y, 90, 30)
+        queue_rect = pygame.Rect(prod_x + 210, button_y, 90, 30)
 
         self.prod_change_rect = change_rect
         self.prod_hurry_rect = hurry_rect
+        self.prod_queue_rect = queue_rect
 
         # Change button
         change_hover = change_rect.collidepoint(pygame.mouse.get_pos())
@@ -511,6 +632,13 @@ class BaseScreenManager:
         pygame.draw.rect(screen, COLOR_BUTTON_BORDER, hurry_rect, 1, border_radius=4)
         hurry_text = self.small_font.render("Hurry", True, COLOR_TEXT)
         screen.blit(hurry_text, (hurry_rect.centerx - hurry_text.get_width() // 2, hurry_rect.centery - 7))
+
+        # Queue button
+        queue_hover = queue_rect.collidepoint(pygame.mouse.get_pos())
+        pygame.draw.rect(screen, COLOR_BUTTON_HOVER if queue_hover else COLOR_BUTTON, queue_rect, border_radius=4)
+        pygame.draw.rect(screen, COLOR_BUTTON_BORDER, queue_rect, 1, border_radius=4)
+        queue_text = self.small_font.render("Queue", True, COLOR_TEXT)
+        screen.blit(queue_text, (queue_rect.centerx - queue_text.get_width() // 2, queue_rect.centery - 7))
 
         # BOTTOM RIGHT: Supported Units
         support_x = content_x + content_w - 250
@@ -535,44 +663,34 @@ class BaseScreenManager:
             support_text = self.small_font.render(f"0 units supported", True, (120, 140, 160))
             screen.blit(support_text, (support_x + 15, support_y + 40))
 
-        # BASE FACILITIES panel (below Unit Support)
-        facilities_x = support_x
-        facilities_y = support_y + support_h + 10
-        facilities_w = support_w
-        facilities_h = 200
-        facilities_rect = pygame.Rect(facilities_x, facilities_y, facilities_w, facilities_h)
-        pygame.draw.rect(screen, (40, 35, 45), facilities_rect, border_radius=8)
-        pygame.draw.rect(screen, (120, 100, 140), facilities_rect, 2, border_radius=8)
-
-        facilities_title = self.small_font.render("BASE FACILITIES", True, (200, 180, 220))
-        screen.blit(facilities_title, (facilities_x + 10, facilities_y + 8))
-
-        # List facilities
-        if base.facilities:
-            y_offset = 35
-            for i, facility_name in enumerate(base.facilities):
-                if y_offset + 20 > facilities_h - 10:  # Stop if we run out of space
-                    remaining = len(base.facilities) - i
-                    more_text = self.small_font.render(f"+{remaining} more...", True, (150, 150, 150))
-                    screen.blit(more_text, (facilities_x + 15, facilities_y + y_offset))
-                    break
-                fac_text = self.small_font.render(f"• {facility_name}", True, (180, 180, 200))
-                screen.blit(fac_text, (facilities_x + 15, facilities_y + y_offset))
-                y_offset += 20
-        else:
-            no_fac_text = self.small_font.render("No facilities", True, (120, 120, 140))
-            screen.blit(no_fac_text, (facilities_x + 15, facilities_y + 35))
-
         # Base name title at top
         base_title = pygame.font.Font(None, 36).render(base.name, True, COLOR_TEXT)
         screen.blit(base_title, (content_x + content_w // 2 - base_title.get_width() // 2, nutrients_y - 50))
 
-        # OK button at bottom center
-        ok_button_w = 150
-        ok_button_h = 50
-        ok_button_x = (screen_w - ok_button_w) // 2
-        ok_button_y = screen_h - ok_button_h - 20
-        self.base_view_ok_rect = pygame.Rect(ok_button_x, ok_button_y, ok_button_w, ok_button_h)
+        # Rename and OK buttons at bottom center
+        button_w = 150
+        button_h = 50
+        button_spacing = 20
+        button_y = screen_h - button_h - 20
+
+        # Calculate center position for both buttons
+        total_button_w = button_w * 2 + button_spacing
+        buttons_start_x = (screen_w - total_button_w) // 2
+
+        # Rename button (disabled for now)
+        rename_button_x = buttons_start_x
+        self.base_view_rename_rect = pygame.Rect(rename_button_x, button_y, button_w, button_h)
+
+        # Draw disabled Rename button (grayed out)
+        pygame.draw.rect(screen, (50, 50, 50), self.base_view_rename_rect, border_radius=6)
+        pygame.draw.rect(screen, (80, 80, 80), self.base_view_rename_rect, 2, border_radius=6)
+
+        rename_text = self.font.render("Rename", True, (100, 100, 100))
+        screen.blit(rename_text, (self.base_view_rename_rect.centerx - rename_text.get_width() // 2, self.base_view_rename_rect.centery - 10))
+
+        # OK button
+        ok_button_x = buttons_start_x + button_w + button_spacing
+        self.base_view_ok_rect = pygame.Rect(ok_button_x, button_y, button_w, button_h)
 
         ok_hover = self.base_view_ok_rect.collidepoint(pygame.mouse.get_pos())
         pygame.draw.rect(screen, COLOR_BUTTON_HOVER if ok_hover else COLOR_BUTTON, self.base_view_ok_rect, border_radius=6)
@@ -588,6 +706,10 @@ class BaseScreenManager:
         # Production selection popup (draw on top if open)
         if self.production_selection_open:
             self._draw_production_selection_popup(screen, base, game)
+
+        # Queue management popup (draw on top if open)
+        if self.queue_management_open:
+            self._draw_queue_management_popup(screen, base, game)
 
     def _draw_hurry_production_popup(self, screen, base, game):
         """Draw the hurry production popup dialog."""
@@ -698,9 +820,19 @@ class BaseScreenManager:
         # Build production items list
         production_items = []
 
-        # Units (filtered by tech)
-        production_items.append({"name": "Scout Patrol", "type": "unit", "description": f"Infantry unit, {get_turns('Scout Patrol')} turns"})
-        production_items.append({"name": "Colony Pod", "type": "unit", "description": f"Found new base, {get_turns('Colony Pod')} turns"})
+        # Units from design workshop
+        if hasattr(game, 'ui_manager') and hasattr(game.ui_manager, 'social_screens'):
+            workshop = game.ui_manager.social_screens.design_workshop_screen
+            for design in workshop.unit_designs:
+                unit_name = design['name']
+                turns = get_turns(unit_name)
+                # Show basic stats in description
+                description = f"{design['chassis']}, {turns} turns"
+                production_items.append({"name": unit_name, "type": "unit", "description": description})
+        else:
+            # Fallback to hardcoded units if workshop not available
+            production_items.append({"name": "Scout Patrol", "type": "unit", "description": f"Infantry unit, {get_turns('Scout Patrol')} turns"})
+            production_items.append({"name": "Colony Pod", "type": "unit", "description": f"Found new base, {get_turns('Colony Pod')} turns"})
 
         # Facilities (filtered by tech and not already built)
         available_facilities = facilities.get_available_facilities(game.tech_tree)
@@ -727,10 +859,10 @@ class BaseScreenManager:
         # Stockpile Energy (always available)
         production_items.append({"name": "Stockpile Energy", "type": "special", "description": f"Earn {1 + base.population} energy per turn"})
 
-        # Calculate grid layout (6 items per row)
-        items_per_row = 6
-        item_size = 100
-        item_spacing = 10
+        # Calculate grid layout (5 items per row with bigger squares to prevent text overflow)
+        items_per_row = 5
+        item_size = 140
+        item_spacing = 15
         rows = (len(production_items) + items_per_row - 1) // items_per_row
 
         # Dialog dimensions
@@ -744,7 +876,8 @@ class BaseScreenManager:
         pygame.draw.rect(screen, COLOR_BUTTON_HIGHLIGHT, dialog_rect, 3, border_radius=12)
 
         # Title
-        title_surf = self.font.render("Select Production", True, COLOR_TEXT)
+        title_text = "Add to Queue" if self.production_selection_mode == "queue" else "Select Production"
+        title_surf = self.font.render(title_text, True, COLOR_TEXT)
         screen.blit(title_surf, (dialog_x + dialog_w // 2 - title_surf.get_width() // 2, dialog_y + 20))
 
         # Draw grid of production items
@@ -789,10 +922,30 @@ class BaseScreenManager:
                 pygame.draw.rect(screen, (220, 200, 80), icon_rect, border_radius=4)
                 pygame.draw.rect(screen, (255, 220, 100), icon_rect, 2, border_radius=4)
 
-            # Draw item name
-            name_surf = self.small_font.render(item["name"], True, COLOR_TEXT)
-            name_rect = name_surf.get_rect(centerx=item_rect.centerx, top=icon_y + 35)
-            screen.blit(name_surf, name_rect)
+            # Draw item name (wrap if too long)
+            name_text = item["name"]
+            name_words = name_text.split()
+            name_lines = []
+            current_line = ""
+            for word in name_words:
+                test_line = current_line + (" " if current_line else "") + word
+                test_surf = self.small_font.render(test_line, True, COLOR_TEXT)
+                if test_surf.get_width() <= item_size - 10:
+                    current_line = test_line
+                else:
+                    if current_line:
+                        name_lines.append(current_line)
+                    current_line = word
+            if current_line:
+                name_lines.append(current_line)
+
+            # Draw name lines (max 2 lines)
+            name_y = icon_y + 35
+            for line in name_lines[:2]:
+                line_surf = self.small_font.render(line, True, COLOR_TEXT)
+                line_rect = line_surf.get_rect(centerx=item_rect.centerx, top=name_y)
+                screen.blit(line_surf, line_rect)
+                name_y += 16
 
             # Draw description (word wrap)
             desc_lines = []
@@ -810,8 +963,8 @@ class BaseScreenManager:
             if current_line:
                 desc_lines.append(current_line)
 
-            # Draw description lines
-            desc_y = name_rect.bottom + 5
+            # Draw description lines (start after name lines)
+            desc_y = name_y + 5
             for line in desc_lines[:2]:  # Max 2 lines
                 line_surf = self.small_font.render(line, True, (160, 170, 180))
                 line_rect = line_surf.get_rect(centerx=item_rect.centerx, top=desc_y)
@@ -843,9 +996,147 @@ class BaseScreenManager:
         cancel_surf = self.font.render("Cancel", True, COLOR_TEXT)
         screen.blit(cancel_surf, (cancel_rect.centerx - cancel_surf.get_width() // 2, cancel_rect.centery - 10))
 
+    def _draw_queue_management_popup(self, screen, base, game):
+        """Draw the production queue management popup dialog."""
+        # Semi-transparent overlay
+        overlay = pygame.Surface((constants.SCREEN_WIDTH, constants.SCREEN_HEIGHT))
+        overlay.set_alpha(150)
+        overlay.fill((0, 0, 0))
+        screen.blit(overlay, (0, 0))
+
+        # Dialog box
+        dialog_w, dialog_h = 500, 450
+        dialog_x = constants.SCREEN_WIDTH // 2 - dialog_w // 2
+        dialog_y = constants.SCREEN_HEIGHT // 2 - dialog_h // 2
+        dialog_rect = pygame.Rect(dialog_x, dialog_y, dialog_w, dialog_h)
+
+        pygame.draw.rect(screen, (30, 40, 50), dialog_rect, border_radius=12)
+        pygame.draw.rect(screen, COLOR_BUTTON_HIGHLIGHT, dialog_rect, 3, border_radius=12)
+
+        # Title
+        title_surf = self.font.render("Production Queue", True, COLOR_TEXT)
+        screen.blit(title_surf, (dialog_x + dialog_w // 2 - title_surf.get_width() // 2, dialog_y + 20))
+
+        # Current production label
+        current_y = dialog_y + 60
+        current_label = self.small_font.render("Current Production:", True, (180, 180, 200))
+        screen.blit(current_label, (dialog_x + 30, current_y))
+        current_prod = self.small_font.render(base.current_production, True, (100, 200, 100))
+        screen.blit(current_prod, (dialog_x + 200, current_y))
+
+        # Queue list
+        queue_y = current_y + 40
+        queue_label = self.small_font.render("Queued Items:", True, (180, 180, 200))
+        screen.blit(queue_label, (dialog_x + 30, queue_y))
+
+        # Draw queue items
+        self.queue_item_rects = []
+        item_y = queue_y + 30
+        max_visible = 8
+
+        if base.production_queue:
+            for i, item in enumerate(base.production_queue[:max_visible]):
+                item_rect = pygame.Rect(dialog_x + 30, item_y, dialog_w - 60, 30)
+                self.queue_item_rects.append((item_rect, i))
+
+                # Highlight on hover
+                is_hovered = item_rect.collidepoint(pygame.mouse.get_pos())
+                if is_hovered:
+                    pygame.draw.rect(screen, (60, 50, 50), item_rect, border_radius=4)
+                    pygame.draw.rect(screen, (200, 100, 100), item_rect, 2, border_radius=4)
+                else:
+                    pygame.draw.rect(screen, (40, 45, 50), item_rect, border_radius=4)
+                    pygame.draw.rect(screen, COLOR_BUTTON_BORDER, item_rect, 1, border_radius=4)
+
+                # Draw item number and name
+                item_text = self.small_font.render(f"{i+1}. {item}", True, COLOR_TEXT)
+                screen.blit(item_text, (item_rect.x + 10, item_rect.y + 7))
+
+                # Draw remove hint
+                if is_hovered:
+                    remove_hint = self.small_font.render("(click to remove)", True, (200, 150, 150))
+                    screen.blit(remove_hint, (item_rect.right - remove_hint.get_width() - 10, item_rect.y + 7))
+
+                item_y += 35
+
+            if len(base.production_queue) > max_visible:
+                more_text = self.small_font.render(f"+{len(base.production_queue) - max_visible} more items...", True, (120, 120, 140))
+                screen.blit(more_text, (dialog_x + 30, item_y))
+        else:
+            empty_text = self.small_font.render("(empty - click Add to queue items)", True, (120, 120, 140))
+            screen.blit(empty_text, (dialog_x + 30, item_y))
+
+        # Buttons at bottom
+        button_y = dialog_y + dialog_h - 60
+        button_w = 110
+        button_spacing = 15
+
+        # Add button
+        add_x = dialog_x + 30
+        add_rect = pygame.Rect(add_x, button_y, button_w, 40)
+        self.queue_add_rect = add_rect
+        add_hover = add_rect.collidepoint(pygame.mouse.get_pos())
+        pygame.draw.rect(screen, COLOR_BUTTON_HOVER if add_hover else COLOR_BUTTON, add_rect, border_radius=6)
+        pygame.draw.rect(screen, COLOR_BUTTON_HIGHLIGHT if add_hover else COLOR_BUTTON_BORDER, add_rect, 2, border_radius=6)
+        add_surf = self.small_font.render("Add Item", True, COLOR_TEXT)
+        screen.blit(add_surf, (add_rect.centerx - add_surf.get_width() // 2, add_rect.centery - 8))
+
+        # Clear button
+        clear_x = add_x + button_w + button_spacing
+        clear_rect = pygame.Rect(clear_x, button_y, button_w, 40)
+        self.queue_clear_rect = clear_rect
+        clear_hover = clear_rect.collidepoint(pygame.mouse.get_pos())
+        pygame.draw.rect(screen, COLOR_BUTTON_HOVER if clear_hover else COLOR_BUTTON, clear_rect, border_radius=6)
+        pygame.draw.rect(screen, COLOR_BUTTON_HIGHLIGHT if clear_hover else COLOR_BUTTON_BORDER, clear_rect, 2, border_radius=6)
+        clear_surf = self.small_font.render("Clear All", True, COLOR_TEXT)
+        screen.blit(clear_surf, (clear_rect.centerx - clear_surf.get_width() // 2, clear_rect.centery - 8))
+
+        # Close button
+        close_x = dialog_x + dialog_w - 30 - button_w
+        close_rect = pygame.Rect(close_x, button_y, button_w, 40)
+        self.queue_close_rect = close_rect
+        close_hover = close_rect.collidepoint(pygame.mouse.get_pos())
+        pygame.draw.rect(screen, COLOR_BUTTON_HOVER if close_hover else COLOR_BUTTON, close_rect, border_radius=6)
+        pygame.draw.rect(screen, COLOR_BUTTON_HIGHLIGHT if close_hover else COLOR_BUTTON_BORDER, close_rect, 2, border_radius=6)
+        close_surf = self.small_font.render("Close", True, COLOR_TEXT)
+        screen.blit(close_surf, (close_rect.centerx - close_surf.get_width() // 2, close_rect.centery - 8))
+
     def handle_base_view_click(self, pos, game):
         """Handle clicks in the base view screen. Returns 'close' if should exit, None otherwise."""
         base = self.viewing_base
+
+        # If queue management popup is open, handle its clicks first
+        if self.queue_management_open:
+            # Check item clicks (remove from queue)
+            for item_rect, item_index in self.queue_item_rects:
+                if item_rect.collidepoint(pos):
+                    removed_item = base.production_queue.pop(item_index)
+                    game.set_status_message(f"Removed {removed_item} from queue")
+                    return None
+
+            # Check Add button
+            if hasattr(self, 'queue_add_rect') and self.queue_add_rect.collidepoint(pos):
+                # Open production selection to add to queue
+                self.production_selection_mode = "queue"
+                self.production_selection_open = True
+                self.selected_production_item = None
+                self.queue_management_open = False  # Close queue popup while selecting
+                return None
+
+            # Check Clear button
+            if hasattr(self, 'queue_clear_rect') and self.queue_clear_rect.collidepoint(pos):
+                if base.production_queue:
+                    base.production_queue.clear()
+                    game.set_status_message("Production queue cleared")
+                return None
+
+            # Check Close button
+            if hasattr(self, 'queue_close_rect') and self.queue_close_rect.collidepoint(pos):
+                self.queue_management_open = False
+                return None
+
+            # Click outside - consume event
+            return None
 
         # If production selection popup is open, handle its clicks first
         if self.production_selection_open:
@@ -858,15 +1149,24 @@ class BaseScreenManager:
             # Check OK button
             if hasattr(self, 'prod_select_ok_rect') and self.prod_select_ok_rect.collidepoint(pos):
                 if self.selected_production_item:
-                    # Change production (reset progress)
-                    base.current_production = self.selected_production_item
-                    base.production_progress = 0
-                    base.production_cost = base._get_production_cost(self.selected_production_item)
-                    base.production_turns_remaining = base._calculate_production_turns()
-                    game.set_status_message(f"Now producing: {self.selected_production_item}")
+                    if self.production_selection_mode == "queue":
+                        # Add to queue
+                        base.production_queue.append(self.selected_production_item)
+                        game.set_status_message(f"Added {self.selected_production_item} to queue")
+                        # Reopen queue management
+                        self.production_selection_open = False
+                        self.selected_production_item = None
+                        self.queue_management_open = True
+                    else:
+                        # Change production (reset progress)
+                        base.current_production = self.selected_production_item
+                        base.production_progress = 0
+                        base.production_cost = base._get_production_cost(self.selected_production_item)
+                        base.production_turns_remaining = base._calculate_production_turns()
+                        game.set_status_message(f"Now producing: {self.selected_production_item}")
 
-                    self.production_selection_open = False
-                    self.selected_production_item = None
+                        self.production_selection_open = False
+                        self.selected_production_item = None
                 return None
 
             # Check Cancel button
@@ -929,11 +1229,13 @@ class BaseScreenManager:
         # Check OK button
         if hasattr(self, 'base_view_ok_rect') and self.base_view_ok_rect.collidepoint(pos):
             self.viewing_base = None
+            self._reset_base_popups()  # Reset all popups when closing
             return 'close'
 
         # Check Change button - open production selection
         if hasattr(self, 'prod_change_rect') and self.prod_change_rect.collidepoint(pos):
             if base:
+                self.production_selection_mode = "change"
                 self.production_selection_open = True
                 self.selected_production_item = base.current_production  # Pre-select current
             return None
@@ -947,6 +1249,12 @@ class BaseScreenManager:
                 else:
                     self.hurry_production_open = True
                     self.hurry_input = ""
+            return None
+
+        # Check Queue button - open queue management
+        if hasattr(self, 'prod_queue_rect') and self.prod_queue_rect.collidepoint(pos):
+            if base:
+                self.queue_management_open = True
             return None
 
         return None

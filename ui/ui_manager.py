@@ -12,6 +12,7 @@ from .council import CouncilManager
 from .social_screens import SocialScreensManager
 from .base_screens import BaseScreenManager
 from .save_load_dialog import SaveLoadDialogManager
+from .context_menu import ContextMenu
 from .data import FACTIONS
 
 
@@ -37,6 +38,7 @@ class UIManager:
         self.social_screens = SocialScreensManager(self.font, self.small_font)
         self.base_screens = BaseScreenManager(self.font, self.small_font)
         self.save_load_dialog = SaveLoadDialogManager(self.font, self.small_font)
+        self.context_menu = ContextMenu(self.font)
 
         # Layout - will be initialized properly after screen size is known
         self.main_menu_button = None
@@ -51,6 +53,27 @@ class UIManager:
         # Game over screen buttons
         self.game_over_new_game_rect = None
         self.game_over_exit_rect = None
+
+        # Upkeep event popup buttons
+        self.upkeep_zoom_rect = None
+        self.upkeep_ignore_rect = None
+
+        # Commlink request popup
+        self.commlink_request_active = False
+        self.commlink_request_faction_id = None
+        self.commlink_request_player_id = None
+        self.commlink_request_answer_rect = None
+        self.commlink_request_ignore_rect = None
+
+        # Faction elimination popup
+        self.elimination_popup_active = False
+        self.elimination_faction_id = None
+        self.elimination_ok_rect = None
+
+        # New designs popup
+        self.new_designs_popup_active = False
+        self.new_designs_view_rect = None
+        self.new_designs_ignore_rect = None
 
         # Unit stack panel
         self.unit_stack_scroll_offset = 0
@@ -89,19 +112,55 @@ class UIManager:
         self.commlink_menu_rect = pygame.Rect(self.commlink_button.rect.x - (menu_w - self.commlink_button.rect.width),
                                               self.commlink_button.rect.top - menu_h - 5, menu_w, menu_h)
 
+        # Faction buttons will be created dynamically based on contacts
         self.faction_buttons = []
-        for i, f in enumerate(FACTIONS[1:]):  # Factions 1-6
-            btn = Button(self.commlink_menu_rect.x + 5, self.commlink_menu_rect.y + 5 + (i * 38),
-                         menu_w - 10, 32, f["full_name"], f["color"], COLOR_BLACK)
-            self.faction_buttons.append(btn)
 
         self.council_btn = Button(self.commlink_menu_rect.x + 5, self.commlink_menu_rect.bottom - 45, menu_w - 10, 38,
                                   "Planetary Council")
+
+    def _update_faction_buttons(self, game):
+        """Update faction buttons based on current contacts (called when drawing commlink)."""
+        # faction_contacts is a list preserving the order in which factions were met
+        # Filter out the player's own faction and eliminated factions
+        contacted_factions = [f for f in game.faction_contacts
+                            if f != game.player_faction_id and f not in game.eliminated_factions]
+
+        # Clear existing buttons
+        self.faction_buttons = []
+
+        # Create button for each contacted faction (in contact order)
+        menu_w = self.commlink_menu_rect.width
+        button_index = 0
+
+        for faction_id in contacted_factions:
+            # Find which player_id has this faction_id (reverse lookup)
+            player_id = None
+            for pid, fid in game.faction_assignments.items():
+                if fid == faction_id:
+                    player_id = pid
+                    break
+
+            if player_id is not None and faction_id < len(FACTIONS):
+                faction = FACTIONS[faction_id]
+                btn = Button(self.commlink_menu_rect.x + 5,
+                           self.commlink_menu_rect.y + 5 + (button_index * 38),
+                           menu_w - 10, 32,
+                           faction["full_name"],
+                           faction["color"],
+                           COLOR_BLACK)
+                btn.player_id = player_id  # Store player_id for click handling
+                btn.faction_id = faction_id  # Also store faction_id
+                self.faction_buttons.append(btn)
+                button_index += 1
 
     def handle_event(self, event, game):
         """Process input events for UI interactions and modal dialogs."""
         # Initialize layout if needed
         self._init_layout()
+
+        # Handle context menu first (highest priority)
+        if self.context_menu.handle_event(event):
+            return True
 
         # 1. Handle Overlays First (Hotkeys)
         if event.type == pygame.KEYDOWN:
@@ -139,6 +198,19 @@ class UIManager:
 
             # Handle text input for base view (hurry production popup)
             if self.active_screen == "BASE_VIEW":
+                # Check for C (Change production) hotkey
+                if event.key == pygame.K_c and not self.base_screens.hurry_production_open and not self.base_screens.queue_management_open:
+                    self.base_screens.production_selection_mode = "change"
+                    self.base_screens.production_selection_open = True
+                    if self.base_screens.viewing_base:
+                        self.base_screens.selected_production_item = self.base_screens.viewing_base.current_production
+                    return True
+                # Check for H (Hurry production) hotkey
+                elif event.key == pygame.K_h and not self.base_screens.production_selection_open and not self.base_screens.queue_management_open:
+                    self.base_screens.hurry_production_open = True
+                    self.base_screens.hurry_input = ""
+                    return True
+
                 if self.base_screens.handle_base_view_event(event, game):
                     return True
 
@@ -147,10 +219,14 @@ class UIManager:
                 if self.active_screen == "SOCIAL_ENGINEERING":
                     self.active_screen = "GAME"
                     self.social_screens.social_engineering_open = False
+                    # Reset selections to revert unsaved changes
+                    self.social_screens.social_engineering_screen.se_selections = None
                     return True
                 elif self.active_screen == "GAME" and not self.commlink_open and not self.main_menu_open:
                     self.active_screen = "SOCIAL_ENGINEERING"
                     self.social_screens.social_engineering_open = True
+                    # Reset selections to load current game state
+                    self.social_screens.social_engineering_screen.se_selections = None
                     return True
 
             if event.key == pygame.K_u:
@@ -162,6 +238,12 @@ class UIManager:
                 elif self.active_screen == "GAME" and not self.commlink_open and not self.main_menu_open:
                     self.active_screen = "DESIGN_WORKSHOP"
                     self.social_screens.design_workshop_open = True
+                    # Reset editing panel state when opening
+                    self.social_screens.design_workshop_screen.dw_editing_panel = None
+                    # Rebuild designs if new tech was discovered (manual call, no specific tech)
+                    if game.designs_need_rebuild:
+                        self.social_screens.design_workshop_screen.rebuild_available_designs(game.tech_tree, None)
+                        game.designs_need_rebuild = False
                     return True
 
             if event.key == pygame.K_F2:
@@ -183,11 +265,21 @@ class UIManager:
                 elif self.active_screen == "SOCIAL_ENGINEERING":
                     self.active_screen = "GAME"
                     self.social_screens.social_engineering_open = False
+                    # Reset selections to revert unsaved changes
+                    self.social_screens.social_engineering_screen.se_selections = None
+                    self.social_screens.social_engineering_screen.se_confirm_dialog_open = False
                     return True
                 elif self.active_screen == "DESIGN_WORKSHOP":
-                    self.active_screen = "GAME"
-                    self.social_screens.design_workshop_open = False
-                    return True
+                    # Check if a component selection panel is open
+                    if self.social_screens.design_workshop_screen.dw_editing_panel is not None:
+                        # Close the component panel, stay in design workshop
+                        self.social_screens.design_workshop_screen.dw_editing_panel = None
+                        return True
+                    else:
+                        # No panel open, exit design workshop
+                        self.active_screen = "GAME"
+                        self.social_screens.design_workshop_open = False
+                        return True
                 elif self.active_screen == "BASE_VIEW":
                     self.active_screen = "GAME"
                     self.base_screens.viewing_base = None
@@ -245,6 +337,90 @@ class UIManager:
 
         # 2. Mouse Logic
         if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+            # Handle upkeep event popup (highest priority)
+            if game.upkeep_phase_active:
+                pos = pygame.mouse.get_pos()
+
+                # Zoom to view button
+                if self.upkeep_zoom_rect and self.upkeep_zoom_rect.collidepoint(pos):
+                    event_data = game.get_current_upkeep_event()
+                    if event_data and 'base' in event_data:
+                        # Center camera on the base
+                        base = event_data['base']
+                        game.center_camera_on_tile = (base.x, base.y)
+                    # Advance to next event
+                    game.advance_upkeep_event()
+                    return True
+
+                # Ignore/Continue button
+                if self.upkeep_ignore_rect and self.upkeep_ignore_rect.collidepoint(pos):
+                    game.advance_upkeep_event()
+                    return True
+
+                # Don't allow clicks through upkeep popup
+                return True
+
+            # Commlink request buttons
+            if self.commlink_request_active:
+                pos = pygame.mouse.get_pos()
+
+                if self.commlink_request_answer_rect and self.commlink_request_answer_rect.collidepoint(pos):
+                    # Answer - open diplomacy with this faction
+                    self.commlink_request_active = False
+                    # Remove from pending requests
+                    if game.pending_commlink_requests:
+                        game.pending_commlink_requests.pop(0)
+                    # Open commlink and diplomacy with faction data
+                    self.commlink_open = True
+                    self.active_screen = "DIPLOMACY"
+                    # Use the faction_id we already have from the commlink request
+                    if self.commlink_request_faction_id is not None and self.commlink_request_faction_id < len(FACTIONS):
+                        self.diplomacy.open_diplomacy(FACTIONS[self.commlink_request_faction_id])
+                    self.diplomacy.diplo_stage = "greeting"
+                    return True
+                elif self.commlink_request_ignore_rect and self.commlink_request_ignore_rect.collidepoint(pos):
+                    # Ignore - just close the popup
+                    self.commlink_request_active = False
+                    # Remove from pending requests
+                    if game.pending_commlink_requests:
+                        game.pending_commlink_requests.pop(0)
+                    return True
+                # Don't allow clicks through commlink request popup
+                return True
+
+            # Faction elimination popup buttons
+            if self.elimination_popup_active:
+                pos = pygame.mouse.get_pos()
+
+                if self.elimination_ok_rect and self.elimination_ok_rect.collidepoint(pos):
+                    # OK - close the popup
+                    self.elimination_popup_active = False
+                    # Remove from pending eliminations
+                    if game.pending_faction_eliminations:
+                        game.pending_faction_eliminations.pop(0)
+                    return True
+                # Don't allow clicks through elimination popup
+                return True
+
+            # New designs popup buttons
+            if self.new_designs_popup_active:
+                pos = pygame.mouse.get_pos()
+
+                if self.new_designs_view_rect and self.new_designs_view_rect.collidepoint(pos):
+                    # View - open design workshop
+                    self.new_designs_popup_active = False
+                    game.new_designs_available = False
+                    self.active_screen = "DESIGN_WORKSHOP"
+                    self.social_screens.design_workshop_screen.dw_editing_panel = None
+                    return True
+                elif self.new_designs_ignore_rect and self.new_designs_ignore_rect.collidepoint(pos):
+                    # Ignore - just close the popup
+                    self.new_designs_popup_active = False
+                    game.new_designs_available = False
+                    return True
+                # Don't allow clicks through new designs popup
+                return True
+
             # Handle save/load dialog clicks if open
             if self.save_load_dialog.mode is not None:
                 result = self.save_load_dialog.handle_event(event, game)
@@ -377,17 +553,26 @@ class UIManager:
             # Handle clicks inside Commlink Menu
             if self.commlink_open:
                 if self.commlink_menu_rect.collidepoint(event.pos):
-                    for i, btn in enumerate(self.faction_buttons):
+                    for btn in self.faction_buttons:
                         if btn.handle_event(event):
-                            self.diplomacy.open_diplomacy(FACTIONS[i + 1])
-                            self.active_screen = "DIPLOMACY"
+                            # Get the faction for this player_id
+                            faction_id = game.faction_assignments.get(btn.player_id)
+                            if faction_id is not None and faction_id < len(FACTIONS):
+                                self.diplomacy.open_diplomacy(FACTIONS[faction_id])
+                                self.active_screen = "DIPLOMACY"
+                                self.commlink_open = False
+                                return True
+                    if self.council_btn.handle_event(event):
+                        # Only allow if all contacts obtained
+                        if game.all_contacts_obtained:
+                            self.council.open_council()
+                            self.active_screen = "COUNCIL_VOTE"
                             self.commlink_open = False
                             return True
-                    if self.council_btn.handle_event(event):
-                        self.council.open_council()
-                        self.active_screen = "COUNCIL_VOTE"
-                        self.commlink_open = False
-                        return True
+                        else:
+                            # Show message that council is locked
+                            game.set_status_message("Contact all factions to unlock Planetary Council")
+                            return True
                     return True
                 else:
                     self.commlink_open = False  # Clicked outside
@@ -538,6 +723,43 @@ class UIManager:
             morale_text = self.small_font.render(f"Morale: {morale_name}", True, (150, 200, 255))
             screen.blit(morale_text, (info_x, info_y + 106))
 
+        # Terrain panel - far right of console
+        if game.selected_unit:
+            terrain_x = 1080
+            terrain_y = constants.UI_PANEL_Y + 20
+            terrain_box_w = 200
+            terrain_box_h = 135
+            terrain_box = pygame.Rect(terrain_x - 10, terrain_y - 5, terrain_box_w, terrain_box_h)
+            pygame.draw.rect(screen, (30, 40, 35), terrain_box)
+            pygame.draw.rect(screen, COLOR_BUTTON_BORDER, terrain_box, 2)
+
+            # Title
+            screen.blit(self.font.render("Terrain", True, COLOR_TEXT), (terrain_x, terrain_y))
+
+            # Get current tile info
+            tile = game.game_map.get_tile(game.selected_unit.x, game.selected_unit.y)
+            if tile:
+                # Terrain type
+                terrain_type = "Land" if tile.is_land() else "Ocean"
+                terrain_text = self.small_font.render(terrain_type, True, (180, 200, 180))
+                screen.blit(terrain_text, (terrain_x, terrain_y + 30))
+
+                # Elevation (hardcoded for now)
+                elev_text = self.small_font.render("Elev: 1000 ft", True, (200, 200, 180))
+                screen.blit(elev_text, (terrain_x, terrain_y + 52))
+
+                # Nutrients (placeholder)
+                nut_text = self.small_font.render("Nutrients: 2", True, (150, 220, 150))
+                screen.blit(nut_text, (terrain_x, terrain_y + 74))
+
+                # Minerals (placeholder)
+                min_text = self.small_font.render("Minerals: 1", True, (200, 180, 140))
+                screen.blit(min_text, (terrain_x, terrain_y + 90))
+
+                # Energy (placeholder)
+                ene_text = self.small_font.render("Energy: 1", True, (220, 220, 100))
+                screen.blit(ene_text, (terrain_x, terrain_y + 106))
+
         # Layer 4a: Main Menu Drop-up
         if self.main_menu_open and self.active_screen == "GAME":
             pygame.draw.rect(screen, (20, 25, 30), self.main_menu_rect)
@@ -547,11 +769,62 @@ class UIManager:
 
         # Layer 4b: Commlink Drop-up
         if self.commlink_open and self.active_screen == "GAME":
+            # Update faction buttons based on current contacts
+            self._update_faction_buttons(game)
+
             pygame.draw.rect(screen, COLOR_BLACK, self.commlink_menu_rect)
             pygame.draw.rect(screen, COLOR_UI_BORDER, self.commlink_menu_rect, 2)
-            for btn in self.faction_buttons:
-                btn.draw(screen, self.small_font)
-            self.council_btn.draw(screen, self.small_font)
+
+            # Draw faction list with proper formatting: "<number>. <faction name> <status>"
+            # Status is right-justified
+            line_height = 32
+            y_offset = 5
+
+            for i, btn in enumerate(self.faction_buttons):
+                faction = FACTIONS[btn.faction_id]
+
+                # Get diplomatic status
+                status_text = ""
+                if hasattr(self, 'diplomacy') and btn.faction_id in self.diplomacy.diplo_relations:
+                    status = self.diplomacy.diplo_relations[btn.faction_id]
+                    # Format status according to SMAC convention
+                    if status == "Vendetta":
+                        status_text = "VENDETTA"
+                    elif status == "Pact":
+                        status_text = "PACT"
+                    elif status == "Treaty":
+                        status_text = "TREATY"
+                    elif status == "Truce" or status == "Formal Truce":
+                        status_text = "TRUCE"
+                    # Informal Truce shows as blank (empty string)
+
+                # Draw background on hover
+                is_hover = btn.rect.collidepoint(pygame.mouse.get_pos())
+                if is_hover:
+                    pygame.draw.rect(screen, (40, 50, 60), btn.rect, border_radius=4)
+
+                # Draw text: "<number>. <faction name>"
+                contact_number = i + 1
+                left_text = f"{contact_number}. {faction['short']}"
+                left_surf = self.small_font.render(left_text, True, faction['color'])
+                screen.blit(left_surf, (btn.rect.x + 5, btn.rect.y + 8))
+
+                # Draw status (right-justified)
+                if status_text:
+                    status_surf = self.small_font.render(status_text, True, faction['color'])
+                    status_x = btn.rect.right - status_surf.get_width() - 5
+                    screen.blit(status_surf, (status_x, btn.rect.y + 8))
+
+            # Draw council button (disabled if not all contacts obtained)
+            if game.all_contacts_obtained:
+                self.council_btn.draw(screen, self.small_font)
+            else:
+                # Draw disabled version
+                pygame.draw.rect(screen, (30, 30, 30), self.council_btn.rect, border_radius=4)
+                pygame.draw.rect(screen, (60, 60, 60), self.council_btn.rect, 2, border_radius=4)
+                text_surf = self.small_font.render("Planetary Council", True, (80, 80, 80))
+                screen.blit(text_surf, (self.council_btn.rect.centerx - text_surf.get_width() // 2,
+                                       self.council_btn.rect.centery - text_surf.get_height() // 2))
 
         # Layer 5: Overlays
         if self.active_screen == "TECH_TREE":
@@ -582,6 +855,41 @@ class UIManager:
         if game.pending_battle:
             self.battle_ui.draw_battle_prediction(screen, game)
 
+        # Upkeep phase popup (high priority)
+        if game.upkeep_phase_active:
+            self._draw_upkeep_event(screen, game)
+
+        # Check for pending commlink requests and show popup
+        if not self.commlink_request_active and game.pending_commlink_requests:
+            # Activate the first pending request
+            request = game.pending_commlink_requests[0]
+            self.commlink_request_active = True
+            self.commlink_request_faction_id = request['faction_id']
+            self.commlink_request_player_id = request['player_id']
+
+        # Commlink request popup
+        if self.commlink_request_active:
+            self._draw_commlink_request(screen, game)
+
+        # Check for pending faction eliminations and show popup
+        if not self.elimination_popup_active and game.pending_faction_eliminations:
+            # Activate the first pending elimination
+            faction_id = game.pending_faction_eliminations[0]
+            self.elimination_popup_active = True
+            self.elimination_faction_id = faction_id
+
+        # Faction elimination popup
+        if self.elimination_popup_active:
+            self._draw_faction_elimination(screen, game)
+
+        # Check for new designs available and show popup
+        if not self.new_designs_popup_active and game.new_designs_available:
+            self.new_designs_popup_active = True
+
+        # New designs popup
+        if self.new_designs_popup_active:
+            self._draw_new_designs_popup(screen, game)
+
         # Game over screen (highest priority)
         if game.game_over:
             self._draw_game_over(screen, game)
@@ -589,6 +897,9 @@ class UIManager:
         # Save/Load dialog (top of everything)
         if self.save_load_dialog.mode is not None:
             self.save_load_dialog.draw(screen)
+
+        # Context menu (absolute top)
+        self.context_menu.draw(screen)
 
     def _draw_minimap(self, screen, game, renderer=None):
         """Draw a miniature version of the map showing terrain and bases."""
@@ -706,6 +1017,288 @@ class UIManager:
                     viewport_surface.fill((255, 255, 255, 50))
                     screen.blit(viewport_surface, (viewport_x, viewport_y))
                     pygame.draw.rect(screen, (255, 255, 255), viewport_rect, 2)
+
+    def _draw_upkeep_event(self, screen, game):
+        """Draw upkeep event popup with message and action buttons."""
+        event = game.get_current_upkeep_event()
+        if not event:
+            return
+
+        # Semi-transparent overlay
+        overlay = pygame.Surface((constants.SCREEN_WIDTH, constants.SCREEN_HEIGHT))
+        overlay.set_alpha(180)
+        overlay.fill((0, 0, 0))
+        screen.blit(overlay, (0, 0))
+
+        # Event popup box
+        box_w, box_h = 600, 300
+        box_x = constants.SCREEN_WIDTH // 2 - box_w // 2
+        box_y = constants.SCREEN_HEIGHT // 2 - box_h // 2
+
+        # Draw box
+        pygame.draw.rect(screen, (40, 45, 50), (box_x, box_y, box_w, box_h), border_radius=10)
+        pygame.draw.rect(screen, (100, 180, 220), (box_x, box_y, box_w, box_h), 4, border_radius=10)
+
+        # Event title based on type
+        title_text = "UPKEEP REPORT"
+        if event['type'] == 'tech_complete':
+            title_text = "TECHNOLOGY BREAKTHROUGH"
+            title_color = (100, 255, 100)
+        elif event['type'] == 'all_contacts':
+            title_text = "DIPLOMATIC MILESTONE"
+            title_color = (100, 200, 255)
+        elif event['type'] == 'drone_riot':
+            title_text = "CIVIL UNREST"
+            title_color = (255, 100, 100)
+        elif event['type'] == 'starvation':
+            title_text = "FOOD SHORTAGE"
+            title_color = (255, 180, 100)
+        elif event['type'] == 'ai_council':
+            title_text = "PLANETARY COUNCIL VOTE"
+            title_color = (180, 200, 255)
+        else:
+            title_color = (200, 220, 240)
+
+        title = self.font.render(title_text, True, title_color)
+        screen.blit(title, (box_x + box_w // 2 - title.get_width() // 2, box_y + 20))
+
+        # Event message
+        message = event.get('message', 'Event occurred.')
+        msg_lines = []
+
+        if event['type'] == 'tech_complete':
+            msg_lines = [
+                f"Your researchers have discovered:",
+                f"",
+                f"{event['tech_name']}",
+                f"",
+                "New units and facilities may be available."
+            ]
+        elif event['type'] == 'all_contacts':
+            msg_lines = [
+                "You have established contact with",
+                "all living factions on Planet!",
+                "",
+                "You may now call the Planetary Council",
+                "to propose global resolutions."
+            ]
+        elif event['type'] == 'drone_riot':
+            msg_lines = [
+                message,
+                "",
+                "Production has halted due to civil unrest.",
+                "Increase psych allocation or build facilities",
+                "to restore order."
+            ]
+        elif event['type'] == 'ai_council':
+            msg_lines = [
+                f"The Planetary Council has voted on:",
+                f"{event['proposal_name']}",
+                "",
+                "Voting Results:"
+            ]
+            # Add vote results
+            for vote_entry in event.get('results', [])[:5]:  # Show first 5
+                msg_lines.append(f"  {vote_entry['name']}: {vote_entry['vote']}")
+        else:
+            msg_lines = [message]
+
+        y_offset = box_y + 80
+        for line in msg_lines:
+            line_surf = self.small_font.render(line, True, COLOR_TEXT)
+            screen.blit(line_surf, (box_x + box_w // 2 - line_surf.get_width() // 2, y_offset))
+            y_offset += 25
+
+        # Buttons
+        btn_y = box_y + box_h - 70
+        btn_w, btn_h = 180, 50
+
+        # Zoom to view button (if event has a location)
+        if 'base' in event:
+            zoom_x = box_x + box_w // 2 - btn_w - 10
+            self.upkeep_zoom_rect = pygame.Rect(zoom_x, btn_y, btn_w, btn_h)
+            is_hover = self.upkeep_zoom_rect.collidepoint(pygame.mouse.get_pos())
+            pygame.draw.rect(screen, (65, 85, 100) if is_hover else (45, 55, 65),
+                           self.upkeep_zoom_rect, border_radius=8)
+            pygame.draw.rect(screen, (100, 140, 160), self.upkeep_zoom_rect, 3, border_radius=8)
+            zoom_text = self.font.render("Zoom to Base", True, COLOR_TEXT)
+            screen.blit(zoom_text, (self.upkeep_zoom_rect.centerx - zoom_text.get_width() // 2,
+                                   self.upkeep_zoom_rect.centery - 10))
+        else:
+            self.upkeep_zoom_rect = None
+
+        # Ignore/Continue button
+        ignore_x = box_x + box_w // 2 + 10 if self.upkeep_zoom_rect else box_x + box_w // 2 - btn_w // 2
+        self.upkeep_ignore_rect = pygame.Rect(ignore_x, btn_y, btn_w, btn_h)
+        is_hover = self.upkeep_ignore_rect.collidepoint(pygame.mouse.get_pos())
+        pygame.draw.rect(screen, (65, 85, 100) if is_hover else (45, 55, 65),
+                       self.upkeep_ignore_rect, border_radius=8)
+        pygame.draw.rect(screen, (100, 140, 160), self.upkeep_ignore_rect, 3, border_radius=8)
+        ignore_text = self.font.render("Continue", True, COLOR_TEXT)
+        screen.blit(ignore_text, (self.upkeep_ignore_rect.centerx - ignore_text.get_width() // 2,
+                                 self.upkeep_ignore_rect.centery - 10))
+
+    def _draw_commlink_request(self, screen, game):
+        """Draw commlink request popup when AI wants to speak."""
+        # Semi-transparent overlay
+        overlay = pygame.Surface((constants.SCREEN_WIDTH, constants.SCREEN_HEIGHT))
+        overlay.set_alpha(180)
+        overlay.fill((0, 0, 0))
+        screen.blit(overlay, (0, 0))
+
+        # Dialog box
+        box_w, box_h = 600, 250
+        box_x = constants.SCREEN_WIDTH // 2 - box_w // 2
+        box_y = constants.SCREEN_HEIGHT // 2 - box_h // 2
+
+        pygame.draw.rect(screen, (30, 40, 50), (box_x, box_y, box_w, box_h), border_radius=12)
+        pygame.draw.rect(screen, (100, 140, 160), (box_x, box_y, box_w, box_h), 3, border_radius=12)
+
+        # Get faction info
+        if self.commlink_request_faction_id < len(FACTIONS):
+            faction = FACTIONS[self.commlink_request_faction_id]
+            faction_name = faction["leader"]
+
+            # Title
+            title_text = f"{faction_name} is requesting to speak with you"
+            title_surf = self.font.render(title_text, True, (180, 220, 240))
+            screen.blit(title_surf, (box_x + box_w // 2 - title_surf.get_width() // 2, box_y + 40))
+
+            # Message
+            msg_text = "A representative wishes to open communications."
+            msg_surf = self.small_font.render(msg_text, True, COLOR_TEXT)
+            screen.blit(msg_surf, (box_x + box_w // 2 - msg_surf.get_width() // 2, box_y + 100))
+
+        # Buttons
+        btn_w, btn_h = 180, 50
+        btn_y = box_y + box_h - 80
+
+        # Answer button
+        answer_x = box_x + box_w // 2 - btn_w - 10
+        self.commlink_request_answer_rect = pygame.Rect(answer_x, btn_y, btn_w, btn_h)
+        is_hover = self.commlink_request_answer_rect.collidepoint(pygame.mouse.get_pos())
+        pygame.draw.rect(screen, (65, 100, 85) if is_hover else (45, 75, 65),
+                       self.commlink_request_answer_rect, border_radius=8)
+        pygame.draw.rect(screen, (100, 180, 140), self.commlink_request_answer_rect, 3, border_radius=8)
+        answer_text = self.font.render("Answer", True, COLOR_TEXT)
+        screen.blit(answer_text, (self.commlink_request_answer_rect.centerx - answer_text.get_width() // 2,
+                                 self.commlink_request_answer_rect.centery - 10))
+
+        # Ignore button
+        ignore_x = box_x + box_w // 2 + 10
+        self.commlink_request_ignore_rect = pygame.Rect(ignore_x, btn_y, btn_w, btn_h)
+        is_hover = self.commlink_request_ignore_rect.collidepoint(pygame.mouse.get_pos())
+        pygame.draw.rect(screen, (100, 65, 65) if is_hover else (75, 45, 45),
+                       self.commlink_request_ignore_rect, border_radius=8)
+        pygame.draw.rect(screen, (180, 100, 100), self.commlink_request_ignore_rect, 3, border_radius=8)
+        ignore_text = self.font.render("Ignore", True, COLOR_TEXT)
+        screen.blit(ignore_text, (self.commlink_request_ignore_rect.centerx - ignore_text.get_width() // 2,
+                                 self.commlink_request_ignore_rect.centery - 10))
+
+    def _draw_faction_elimination(self, screen, game):
+        """Draw faction elimination notification popup."""
+        # Semi-transparent overlay
+        overlay = pygame.Surface((constants.SCREEN_WIDTH, constants.SCREEN_HEIGHT))
+        overlay.set_alpha(180)
+        overlay.fill((0, 0, 0))
+        screen.blit(overlay, (0, 0))
+
+        # Dialog box
+        box_w, box_h = 600, 250
+        box_x = constants.SCREEN_WIDTH // 2 - box_w // 2
+        box_y = constants.SCREEN_HEIGHT // 2 - box_h // 2
+
+        pygame.draw.rect(screen, (40, 30, 30), (box_x, box_y, box_w, box_h), border_radius=12)
+        pygame.draw.rect(screen, (180, 100, 100), (box_x, box_y, box_w, box_h), 3, border_radius=12)
+
+        # Get faction info
+        if self.elimination_faction_id < len(FACTIONS):
+            faction = FACTIONS[self.elimination_faction_id]
+            faction_name = faction["name"]
+            leader_name = faction["leader"]
+
+            # Title
+            title_text = f"{faction_name} ELIMINATED"
+            title_surf = self.font.render(title_text, True, (240, 180, 180))
+            screen.blit(title_surf, (box_x + box_w // 2 - title_surf.get_width() // 2, box_y + 40))
+
+            # Message
+            msg_text = f"{leader_name} has been defeated."
+            msg_surf = self.small_font.render(msg_text, True, COLOR_TEXT)
+            screen.blit(msg_surf, (box_x + box_w // 2 - msg_surf.get_width() // 2, box_y + 100))
+
+            msg_text2 = "All bases have been destroyed."
+            msg_surf2 = self.small_font.render(msg_text2, True, COLOR_TEXT)
+            screen.blit(msg_surf2, (box_x + box_w // 2 - msg_surf2.get_width() // 2, box_y + 130))
+
+        # OK button (centered)
+        btn_w, btn_h = 180, 50
+        btn_y = box_y + box_h - 80
+        ok_x = box_x + box_w // 2 - btn_w // 2
+        self.elimination_ok_rect = pygame.Rect(ok_x, btn_y, btn_w, btn_h)
+        is_hover = self.elimination_ok_rect.collidepoint(pygame.mouse.get_pos())
+        pygame.draw.rect(screen, (65, 85, 100) if is_hover else (45, 55, 65),
+                       self.elimination_ok_rect, border_radius=8)
+        pygame.draw.rect(screen, (100, 140, 160), self.elimination_ok_rect, 3, border_radius=8)
+        ok_text = self.font.render("OK", True, COLOR_TEXT)
+        screen.blit(ok_text, (self.elimination_ok_rect.centerx - ok_text.get_width() // 2,
+                             self.elimination_ok_rect.centery - 10))
+
+    def _draw_new_designs_popup(self, screen, game):
+        """Draw new unit designs available notification popup."""
+        # Semi-transparent overlay
+        overlay = pygame.Surface((constants.SCREEN_WIDTH, constants.SCREEN_HEIGHT))
+        overlay.set_alpha(180)
+        overlay.fill((0, 0, 0))
+        screen.blit(overlay, (0, 0))
+
+        # Dialog box
+        box_w, box_h = 600, 250
+        box_x = constants.SCREEN_WIDTH // 2 - box_w // 2
+        box_y = constants.SCREEN_HEIGHT // 2 - box_h // 2
+
+        pygame.draw.rect(screen, (30, 40, 50), (box_x, box_y, box_w, box_h), border_radius=12)
+        pygame.draw.rect(screen, (100, 180, 140), (box_x, box_y, box_w, box_h), 3, border_radius=12)
+
+        # Title
+        title_text = "NEW UNIT DESIGNS AVAILABLE"
+        title_surf = self.font.render(title_text, True, (180, 240, 180))
+        screen.blit(title_surf, (box_x + box_w // 2 - title_surf.get_width() // 2, box_y + 40))
+
+        # Message
+        msg_text = "New technology has unlocked improved unit designs."
+        msg_surf = self.small_font.render(msg_text, True, COLOR_TEXT)
+        screen.blit(msg_surf, (box_x + box_w // 2 - msg_surf.get_width() // 2, box_y + 100))
+
+        msg_text2 = "Visit the Design Workshop to review them."
+        msg_surf2 = self.small_font.render(msg_text2, True, COLOR_TEXT)
+        screen.blit(msg_surf2, (box_x + box_w // 2 - msg_surf2.get_width() // 2, box_y + 130))
+
+        # Buttons
+        btn_w, btn_h = 180, 50
+        btn_y = box_y + box_h - 80
+
+        # View button
+        view_x = box_x + box_w // 2 - btn_w - 10
+        self.new_designs_view_rect = pygame.Rect(view_x, btn_y, btn_w, btn_h)
+        is_hover = self.new_designs_view_rect.collidepoint(pygame.mouse.get_pos())
+        pygame.draw.rect(screen, (65, 100, 85) if is_hover else (45, 75, 65),
+                       self.new_designs_view_rect, border_radius=8)
+        pygame.draw.rect(screen, (100, 180, 140), self.new_designs_view_rect, 3, border_radius=8)
+        view_text = self.font.render("View Designs", True, COLOR_TEXT)
+        screen.blit(view_text, (self.new_designs_view_rect.centerx - view_text.get_width() // 2,
+                               self.new_designs_view_rect.centery - 10))
+
+        # Ignore button
+        ignore_x = box_x + box_w // 2 + 10
+        self.new_designs_ignore_rect = pygame.Rect(ignore_x, btn_y, btn_w, btn_h)
+        is_hover = self.new_designs_ignore_rect.collidepoint(pygame.mouse.get_pos())
+        pygame.draw.rect(screen, (65, 85, 100) if is_hover else (45, 55, 65),
+                       self.new_designs_ignore_rect, border_radius=8)
+        pygame.draw.rect(screen, (100, 140, 160), self.new_designs_ignore_rect, 3, border_radius=8)
+        ignore_text = self.font.render("Ignore", True, COLOR_TEXT)
+        screen.blit(ignore_text, (self.new_designs_ignore_rect.centerx - ignore_text.get_width() // 2,
+                                 self.new_designs_ignore_rect.centery - 10))
 
     def _draw_game_over(self, screen, game):
         """Draw the game over screen with victory/defeat message and buttons."""
@@ -879,9 +1472,9 @@ class UIManager:
                 count_text = self.small_font.render(f"{total_units} units", True, (180, 180, 180))
                 screen.blit(count_text, (panel_x + panel_w // 2 - count_text.get_width() // 2, panel_y + panel_h - 20))
 
-    def show_base_naming_dialog(self, unit):
+    def show_base_naming_dialog(self, unit, game):
         """Show the base naming dialog for a colony pod."""
-        self.base_screens.show_base_naming(unit)
+        self.base_screens.show_base_naming(unit, game)
         self.active_screen = "BASE_NAMING"
 
     def show_base_view(self, base):
