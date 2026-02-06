@@ -40,3 +40,15 @@ High level flow of dialog triggering:
  - Other diplomacy.py functions? TBD. TODO: Solve this.
  - Trace backwards from below to try to connect the dots.
 8 commlink_dialogs.py functions (set_config, get_dialog)
+ -get_dialog()...gets dialog
+ -set_context()...sets the context (meaning flavor text)
+ - Remember, commlink_dialogs ONLY sets the flavor text (and main text?). (TODO: rename the file). Diplomacy handles the flow.
+ - TODO: We should always segregate data files from functional files. Split up commlink_dialogs.
+ - (Which then raises the question, can the funcs in commlink_dialogs be moved to diplomacy.py?
+ - Tangent: there are several other files that need to be segregated.
+
+
+
+Also, bug currently: line 890, in draw
+    self.commlink_request_other_faction_id = request['faction_id']
+KeyError: 'faction_id'

@@ -1,4 +1,11 @@
-Things I "added" but haven't tested to ensure correctness.
+***************************************************************************
+
+** Beta test **
+
+***************************************************************************
+
+
+The following are things I "added" but haven't tested to ensure correctness.
 
 First, the meta-issue. I created a debug mode to be able to test anything.
 Use it to test the following issues, but also test debug mode along the way.
@@ -89,6 +96,14 @@ Use it to test the following issues, but also test debug mode along the way.
   Feature x: Artillery
   - Right click
   - Some hot key also activates
+
+
+***************************************************************************
+
+** Known Bugs **
+
+***************************************************************************
+
 
 
 Notes:
@@ -184,18 +199,30 @@ or am Governor, or have Infiltrated their Datalinks.
 Scout patrol is hardcoded in too many places - check base.py, among others.
 Council is still not restricted if I am missing commlinks.
 Got a diplomatic milestone popup when missing commlinks.
-I realized after creating my individual flavor files, I already had data.py. Not a complete overlap, but enough that maybe
-I should combine.
+After creating my individual flavor files, I found I already had data.py. Not a complete overlap, but enough that maybe I should combine.
+Production times are off. Merchant Exchange takes 20 turns on Turn 1 for Morgan.
+
+When Claude Code is back online, start by asking it to review the new folder structure. See if it thinks it needs further subdivision.
+Then ask it to update general_index.md, and any other files that are out of date on structure and purpose.
 
 
-Biggest categories we haven't even touched:
+
+
+***************************************************************************
+
+** Biggest categories we haven't even touched: **
+
+***************************************************************************
+
+
+
+Art
+Sounds
 Terraforming
 Resources
 Enemy tech tree/units
 Enemy moods
 Fog of war
 Advanced unit movement (G command, J command, drag path)
-Art
-Sounds
 Automatic end turn vs button
 V to hover
