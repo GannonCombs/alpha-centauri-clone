@@ -239,9 +239,13 @@ def generate_unit_name(weapon_id, chassis_id, armor_id=None, reactor_id='fission
     if weapon_id == 'supply':
         return "Supply Crawler"
 
-    # Standard military units: Hand Weapons Infantry = Scout Patrol
-    if weapon_id == 'hand_weapons' and chassis_id == 'infantry' and (armor_id is None or armor_id == 'no_armor'):
-        return "Scout Patrol"
+    # Standard military units with hand weapons use "Scout" prefix
+    # if weapon_id == 'hand_weapons' and (armor_id is None or armor_id == 'no_armor'):
+    #     if chassis_id == 'infantry':
+    #         return "Scout Patrol"
+    #     elif chassis_id == 'speeder' or chassis_id == 'rover':
+    #         return "Scout Speeder"
+        # For other chassis, fall through to standard naming
 
     # For combat units, use <component> <chassis name> format
     armor = get_armor_by_id(armor_id) if armor_id else ARMOR[0]

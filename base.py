@@ -216,8 +216,8 @@ class Base:
 
         remaining_cost = self.production_cost - self.production_progress
 
-        # Calculate how much production this buys (10 credits = 1 production)
-        production_added = credits_spent // 10
+        # Calculate how much production this buys (2 credits = 1 mineral, SMAC standard)
+        production_added = credits_spent // 2
         production_added = min(production_added, remaining_cost)
 
         # Add to progress

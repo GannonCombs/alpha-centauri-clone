@@ -90,14 +90,20 @@ class DesignWorkshopScreen:
             "chassis": "Infantry",
             "weapon": "Hand Weapons",
             "armor": "No Armor",
-            "reactor": "Fission"
+            "reactor": "Fission",
+            "weapon_power": 1,
+            "armor_defense": 1,
+            "chassis_speed": 1
         }
         self.design_slots[1] = {
             "name": generate_unit_name('colony_pod', 'infantry'),
             "chassis": "Infantry",
             "weapon": "Colony Module",
             "armor": "No Armor",
-            "reactor": "Fission"
+            "reactor": "Fission",
+            "weapon_power": 0,
+            "armor_defense": 1,
+            "chassis_speed": 1
         }
 
     def _find_first_empty_slot(self):
@@ -265,26 +271,32 @@ class DesignWorkshopScreen:
 
                         # Min-armor variant (glass cannon)
                         if armor_to_use != min_armor_obj:  # Only if not air unit
-                            design_name = generate_unit_name(weapon['id'], chassis['id'])
+                            design_name = generate_unit_name(weapon['id'], chassis['id'], min_armor_obj['id'])
                             if design_name not in existing_names:
                                 new_designs.append({
                                     "name": design_name,
                                     "chassis": chassis['name'],
                                     "weapon": weapon['name'],
                                     "armor": min_armor_obj['name'],
-                                    "reactor": best_reactor['name']
+                                    "reactor": best_reactor['name'],
+                                    "weapon_power": weapon['attack'],
+                                    "armor_defense": min_armor_obj['defense'],
+                                    "chassis_speed": chassis['speed']
                                 })
 
                         # Max-armor variant (tank) - only for ground units
                         if chassis['type'] in ['land', 'sea'] and best_armor:
-                            design_name = generate_unit_name(weapon['id'], chassis['id'])
+                            design_name = generate_unit_name(weapon['id'], chassis['id'], best_armor['id'])
                             if design_name not in existing_names:
                                 new_designs.append({
                                     "name": design_name,
                                     "chassis": chassis['name'],
                                     "weapon": weapon['name'],
                                     "armor": best_armor['name'],
-                                    "reactor": best_reactor['name']
+                                    "reactor": best_reactor['name'],
+                                    "weapon_power": weapon['attack'],
+                                    "armor_defense": best_armor['defense'],
+                                    "chassis_speed": chassis['speed']
                                 })
 
             # New armor unlocked: create units with best weapon
@@ -295,14 +307,17 @@ class DesignWorkshopScreen:
                         for chassis in available_chassis:
                             # Only for chassis that use armor
                             if chassis['type'] in ['land', 'sea']:
-                                design_name = generate_unit_name(best_weapon['id'], chassis['id'])
+                                design_name = generate_unit_name(best_weapon['id'], chassis['id'], armor['id'])
                                 if design_name not in existing_names:
                                     new_designs.append({
                                         "name": design_name,
                                         "chassis": chassis['name'],
                                         "weapon": best_weapon['name'],
                                         "armor": armor['name'],
-                                        "reactor": best_reactor['name']
+                                        "reactor": best_reactor['name'],
+                                        "weapon_power": best_weapon['attack'],
+                                        "armor_defense": armor['defense'],
+                                        "chassis_speed": chassis['speed']
                                     })
 
             # New chassis unlocked: create basic version
@@ -310,14 +325,17 @@ class DesignWorkshopScreen:
                 best_weapon = max(combat_weapons, key=lambda w: w['attack']) if combat_weapons else None
                 if best_weapon:
                     armor_to_use = self._get_armor_for_chassis(chassis, best_armor, min_armor_obj)
-                    design_name = generate_unit_name(best_weapon['id'], chassis['id'])
+                    design_name = generate_unit_name(best_weapon['id'], chassis['id'], armor_to_use['id'])
                     if design_name not in existing_names:
                         new_designs.append({
                             "name": design_name,
                             "chassis": chassis['name'],
                             "weapon": best_weapon['name'],
                             "armor": armor_to_use['name'],
-                            "reactor": best_reactor['name']
+                            "reactor": best_reactor['name'],
+                            "weapon_power": best_weapon['attack'],
+                            "armor_defense": armor_to_use['defense'],
+                            "chassis_speed": chassis['speed']
                         })
 
                 # Also create colony pod version if available
@@ -552,9 +570,18 @@ class DesignWorkshopScreen:
 
                     # Design name (wrapped)
                     name_lines = self._wrap_text(design["name"], design_size - 10, self.small_font)
-                    for j, line in enumerate(name_lines[:3]):  # Max 3 lines
+                    for j, line in enumerate(name_lines[:2]):  # Max 2 lines (leave room for stats)
                         line_surf = self.small_font.render(line, True, COLOR_TEXT)
                         screen.blit(line_surf, (design_rect.x + 5, design_rect.y + 10 + j * 18))
+
+                    # Unit stats (weapon-armor-speed) below name
+                    weapon_power = design.get('weapon_power', 0)
+                    armor_defense = design.get('armor_defense', 0)
+                    chassis_speed = design.get('chassis_speed', 1)
+                    stats_text = f"{weapon_power}-{armor_defense}-{chassis_speed}"
+                    stats_surf = self.small_font.render(stats_text, True, (200, 220, 100))
+                    screen.blit(stats_surf, (design_rect.centerx - stats_surf.get_width() // 2,
+                                           design_rect.bottom - 20))
 
         # Right arrow (always enabled - loops around)
         right_arrow_rect = pygame.Rect(designs_x + self.designs_per_page * (design_size + design_spacing),
@@ -1054,30 +1081,30 @@ class DesignWorkshopScreen:
         if hasattr(self, 'dw_apply_rect') and self.dw_apply_rect.collidepoint(pos):
             from unit_components import CHASSIS, WEAPONS, ARMOR, REACTORS, generate_unit_name
 
-            # Find the display names for selected components
-            chassis_name = None
-            weapon_name = None
-            armor_name = None
-            reactor_name = None
+            # Find the components for selected IDs
+            chassis_obj = None
+            weapon_obj = None
+            armor_obj = None
+            reactor_obj = None
 
             for c in CHASSIS:
                 if c['id'] == self.dw_selected_chassis:
-                    chassis_name = c['name']
+                    chassis_obj = c
                     break
 
             for w in WEAPONS:
                 if w['id'] == self.dw_selected_weapon:
-                    weapon_name = w['name']
+                    weapon_obj = w
                     break
 
             for a in ARMOR:
                 if a['id'] == self.dw_selected_armor:
-                    armor_name = a['name']
+                    armor_obj = a
                     break
 
             for r in REACTORS:
                 if r['id'] == self.dw_selected_reactor:
-                    reactor_name = r['name']
+                    reactor_obj = r
                     break
 
             # Generate name for this design - pass armor and reactor for correct SMAC naming
@@ -1091,12 +1118,15 @@ class DesignWorkshopScreen:
             # Create the design dict
             new_design = {
                 "name": design_name,
-                "chassis": chassis_name,
-                "weapon": weapon_name,
-                "armor": armor_name,
-                "reactor": reactor_name,
+                "chassis": chassis_obj['name'] if chassis_obj else "Infantry",
+                "weapon": weapon_obj['name'] if weapon_obj else "Hand Weapons",
+                "armor": armor_obj['name'] if armor_obj else "No Armor",
+                "reactor": reactor_obj['name'] if reactor_obj else "Fission",
                 "ability1_id": self.dw_selected_ability1,
-                "ability2_id": self.dw_selected_ability2
+                "ability2_id": self.dw_selected_ability2,
+                "weapon_power": weapon_obj['attack'] if weapon_obj else 1,
+                "armor_defense": armor_obj['defense'] if armor_obj else 1,
+                "chassis_speed": chassis_obj['speed'] if chassis_obj else 1
             }
 
             # Save to the currently selected slot

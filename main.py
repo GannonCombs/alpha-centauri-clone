@@ -72,11 +72,11 @@ def main():
     ui_panel = None
 
     # AI turn processing
-    ai_turn_delay = 500  # milliseconds between AI unit moves
+    ai_turn_delay = 375  # milliseconds between AI unit moves
     last_ai_action = 0
 
     # Map scrolling
-    scroll_delay = 750  # milliseconds between scroll ticks (0.75 seconds)
+    scroll_delay = 550  # milliseconds between scroll ticks
     last_scroll_time = 0
 
     running = True
@@ -176,6 +176,10 @@ def main():
                             # Let the ui_panel handler close the component panel
                             ui_panel.handle_event(event, game)
                             continue
+
+                    # Diplomacy screen: Esc does NOT exit (must use dialog options)
+                    if ui_panel.active_screen == "DIPLOMACY":
+                        continue  # Ignore Esc during diplomacy
 
                     # Check if any overlay is active and close it instead of exiting
                     if ui_panel.active_screen != "GAME":

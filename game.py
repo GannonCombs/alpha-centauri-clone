@@ -136,6 +136,7 @@ class Game:
         # Flag to rebuild unit designs when tech is completed
         self.designs_need_rebuild = False
         self.new_designs_available = False  # Flag for popup to view new units
+        self.pending_new_designs_flag = False  # Delayed flag (shows after upkeep)
 
         # Commlink tracking (contacts with other factions)
         self.faction_contacts = []  # List of faction IDs we've contacted (preserves order)
@@ -383,7 +384,28 @@ class Game:
         return start_has_enemy_zoc and target_has_enemy_zoc
 
     def try_move_unit(self, unit, target_x, target_y):
-        """Attempt to move a unit to target coordinates."""
+        """Attempt to move a unit to target coordinates.
+
+        Handles adjacency checks, terrain compatibility, zone of control,
+        combat initiation, and garrison management. If moving into an enemy
+        unit, initiates combat (with prediction screen for player, immediate
+        for AI).
+
+        Args:
+            unit (Unit): Unit to move
+            target_x (int): Target X coordinate (will be wrapped)
+            target_y (int): Target Y coordinate (must be valid, no wrapping)
+
+        Returns:
+            bool: True if move succeeded or combat initiated, False if invalid move
+
+        Side Effects:
+            - May set self.pending_battle for player combat
+            - May call resolve_combat() for AI combat
+            - Updates unit position and map state
+            - Manages garrison entry/exit
+            - Sets relationship to Vendetta on combat
+        """
         # Wrap X coordinate horizontally
         target_x = target_x % self.game_map.width
 
@@ -866,20 +888,51 @@ class Game:
     def resolve_combat(self, attacker, defender, target_x, target_y):
         """Resolve combat between two units.
 
-        This method initiates the battle animation sequence. The actual
-        combat is handled frame-by-frame in the update loop.
+        Sets up active_battle dict with pre-simulated combat rounds for
+        frame-by-frame animation. Combat uses weapon vs armor with modifiers,
+        damage is 1-3 HP per round. Units can disengage at 50% health loss.
+
+        Also updates diplomatic relations to Vendetta when combat occurs.
 
         Args:
             attacker (Unit): The attacking unit
             defender (Unit): The defending unit
-            target_x (int): Target tile X coordinate
+            target_x (int): Target tile X coordinate (where defender is)
             target_y (int): Target tile Y coordinate
+
+        Side Effects:
+            - Sets self.active_battle with pre-simulated combat rounds
+            - Updates diplomacy relations to Vendetta
+            - Does NOT modify unit HP yet (happens during animation)
+            - Does NOT move attacker yet (happens after combat resolves)
+
+        Note:
+            Actual HP changes and unit removal happen in the update loop
+            when active_battle animation completes.
         """
         import random
 
         # Save original health values
         original_attacker_hp = attacker.current_health
         original_defender_hp = defender.current_health
+
+        # Set relationship to Vendetta when combat occurs
+        if hasattr(self, 'ui_manager') and hasattr(self.ui_manager, 'diplo_manager'):
+            # Get faction IDs from player IDs
+            if hasattr(self, 'faction_assignments'):
+                attacker_faction_id = self.faction_assignments.get(attacker.owner)
+                defender_faction_id = self.faction_assignments.get(defender.owner)
+
+                # Update diplomacy relations to Vendetta
+                diplo = self.ui_manager.diplo_manager
+                if attacker_faction_id is not None and defender_faction_id is not None:
+                    # Both factions now have Vendetta
+                    if defender.owner == self.player_id:
+                        # AI attacked player - set AI faction to Vendetta from player's perspective
+                        diplo.diplo_relations[attacker_faction_id] = 'Vendetta'
+                    elif attacker.owner == self.player_id:
+                        # Player attacked AI - set AI faction to Vendetta
+                        diplo.diplo_relations[defender_faction_id] = 'Vendetta'
 
         # Set up active battle for animation
         self.active_battle = {
@@ -1479,17 +1532,17 @@ class Game:
                     # Establish commlink between the two factions
                     # If player is involved, add to faction_contacts
                     if unit.owner == self.player_id:
-                        # Player met an AI faction
-                        faction_id = self.faction_assignments.get(other_unit.owner)
-                        if faction_id is not None and faction_id not in self.faction_contacts:
-                            self.faction_contacts.append(faction_id)  # Append to preserve contact order
-                            print(f"Player established contact with faction {faction_id} (player {other_unit.owner})")
+                        # Player met the AI faction
+                        other_faction_id = self.faction_assignments.get(other_unit.owner)
+                        if other_faction_id is not None and other_faction_id not in self.faction_contacts:
+                            self.faction_contacts.append(other_faction_id)  # Append to preserve contact order
+                            print(f"Player established contact with faction {other_faction_id} (player {other_unit.owner})")
 
                             # Show commlink request popup (player initiated contact)
                             if not hasattr(self, 'pending_commlink_requests'):
                                 self.pending_commlink_requests = []
                             self.pending_commlink_requests.append({
-                                'faction_id': faction_id,
+                                'other_faction_id': other_faction_id,
                                 'player_id': other_unit.owner
                             })
 
@@ -1506,16 +1559,16 @@ class Game:
 
                     elif other_unit.owner == self.player_id:
                         # AI met the player
-                        faction_id = self.faction_assignments.get(unit.owner)
-                        if faction_id is not None and faction_id not in self.faction_contacts:
-                            self.faction_contacts.append(faction_id)  # Append to preserve contact order (changed from .add to .append)
-                            print(f"Player established contact with faction {faction_id} (player {unit.owner})")
+                        other_faction_id = self.faction_assignments.get(unit.owner)
+                        if other_faction_id is not None and other_faction_id not in self.faction_contacts:
+                            self.faction_contacts.append(other_faction_id)  # Append to preserve contact order (changed from .add to .append)
+                            print(f"Player established contact with faction {other_faction_id} (player {unit.owner})")
 
                             # Show commlink request popup (AI initiated contact)
                             if not hasattr(self, 'pending_commlink_requests'):
                                 self.pending_commlink_requests = []
                             self.pending_commlink_requests.append({
-                                'faction_id': faction_id,
+                                'other_faction_id': other_faction_id,
                                 'player_id': unit.owner
                             })
 
@@ -1725,9 +1778,21 @@ class Game:
     def _spawn_production(self, base, item_name):
         """Spawn a completed production item at a base.
 
+        Handles three types of production:
+        1. Stockpile Energy - adds energy to reserves
+        2. Facilities/Projects - already added to base in process_turn()
+        3. Units - creates new Unit and adds to map
+
+        For units, extracts chassis speed from name (temporary until full
+        design data lookup implemented). Sets home_base for support tracking.
+
         Args:
             base (Base): The base that completed production
             item_name (str): Name of the unit or facility to create
+
+        Note:
+            Called from _start_new_turn() after upkeep phase completes.
+            Facilities are already in base.facilities by this point.
         """
         # Handle Stockpile Energy
         if item_name == "Stockpile Energy":
@@ -1764,8 +1829,23 @@ class Game:
 
         unit_type = unit_type_map.get(item_name, UNIT_LAND)
 
+        # Determine chassis speed based on unit name (temporary until full design lookup)
+        chassis_speed = None
+        if "Speeder" in item_name or "Rover" in item_name:
+            chassis_speed = 2
+        elif "Hovertank" in item_name or "Tank" in item_name:
+            chassis_speed = 3
+        elif "Foil" in item_name:
+            chassis_speed = 4
+        elif "Cruiser" in item_name or "Destroyer" in item_name:
+            chassis_speed = 6
+        elif "Needlejet" in item_name or "Copter" in item_name or "Chopper" in item_name:
+            chassis_speed = 8
+        elif "Gravship" in item_name:
+            chassis_speed = 8
+
         # Spawn at the base location (stacking is now allowed)
-        unit = Unit(base.x, base.y, unit_type, base.owner, item_name)
+        unit = Unit(base.x, base.y, unit_type, base.owner, item_name, chassis_speed=chassis_speed)
 
         # Assign home base for unit support
         unit.home_base = base
@@ -1829,7 +1909,30 @@ class Game:
             self.center_camera_on_selected = True
 
     def end_turn(self):
-        """End current turn and start next."""
+        """End player turn and begin AI/upkeep sequence.
+
+        Processing order:
+        1. Reset all player units (restore moves, remove fortify)
+        2. Process air unit fuel (refuel at bases, crash if no fuel)
+        3. Process all player bases:
+           - Production progress
+           - Population growth
+           - Energy allocation (economy/labs/psych)
+           - Collect completed items → pending_production
+        4. Add economy output to energy_credits
+        5. Process tech research:
+           - Add labs output to research_accumulated
+           - Check for tech completion
+           - If tech complete → add to upkeep_events
+           - If tech complete → auto-generate unit designs (sets pending flag)
+        6. Increment mission_year
+        7. Start AI processing (sets processing_ai = True)
+
+        Note:
+            - Upkeep phase starts when player clicks through AI turns
+            - New turn doesn't start until upkeep_events are dismissed
+            - Production spawning happens at start of new turn (after upkeep)
+        """
         # Reset player units
         for unit in self.units:
             if unit.owner == self.player_id:
@@ -1881,7 +1984,27 @@ class Game:
         self.current_ai_index = 0
 
     def process_ai_turns(self):
-        """Process AI turns sequentially, one unit at a time."""
+        """Process AI turns sequentially, one unit at a time.
+
+        Called repeatedly from main loop with delay between units. For each
+        AI player, resets their units then processes them one by one. After
+        all AI players finish, collects upkeep events and starts upkeep phase.
+
+        Returns:
+            bool: True if still processing AI, False if all AI turns complete
+
+        Flow:
+        1. Setup AI player (reset units, build queue)
+        2. Process one unit per call (move, attack, found bases)
+        3. When player's queue empty, move to next AI player
+        4. When all AIs done → collect upkeep events
+        5. If upkeep events exist → start upkeep phase
+        6. If no upkeep events → start new turn immediately
+
+        Note:
+            Centers camera on active AI unit for visibility.
+            Checks victory conditions after all AI turns complete.
+        """
         if not self.processing_ai:
             return False
 
@@ -2129,7 +2252,23 @@ class Game:
             self.all_contacts_obtained = True
 
     def _start_new_turn(self):
-        """Start a new turn after upkeep phase completes."""
+        """Start a new turn after upkeep phase completes.
+
+        Called from advance_upkeep_event() when all upkeep events dismissed.
+        This is when production actually spawns (units/facilities completed
+        during previous turn).
+
+        Actions:
+        1. Increment turn counter
+        2. Spawn all pending_production items (units, facilities)
+        3. Clear pending_production list
+        4. Select first friendly unit if none selected
+
+        Note:
+            This is the actual "new turn starts" moment. end_turn() begins
+            the sequence, but new turn doesn't start until after AI turns
+            and upkeep phase complete.
+        """
         self.turn += 1
         print(f"Turn {self.turn} started!")
 
@@ -2145,7 +2284,20 @@ class Game:
                 self.selected_unit = friendly_units[0]
 
     def advance_upkeep_event(self):
-        """Move to next upkeep event or exit upkeep phase."""
+        """Move to next upkeep event or exit upkeep phase.
+
+        Called when player clicks through an upkeep event popup (tech discovery,
+        base completion, diplomatic milestone, etc.).
+
+        If all events shown:
+        1. Exit upkeep phase (upkeep_phase_active = False)
+        2. Convert pending_new_designs_flag → new_designs_available
+        3. Call _start_new_turn() to spawn production and begin new turn
+
+        Note:
+            New designs popup shows AFTER upkeep, not during, to avoid
+            showing units for tech the player hasn't seen announced yet.
+        """
         if not self.upkeep_phase_active:
             return
 
@@ -2156,6 +2308,12 @@ class Game:
             self.upkeep_phase_active = False
             self.upkeep_events = []
             self.current_upkeep_event_index = 0
+
+            # Show new designs popup AFTER upkeep events are complete
+            if hasattr(self, 'pending_new_designs_flag') and self.pending_new_designs_flag:
+                self.new_designs_available = True
+                self.pending_new_designs_flag = False
+
             self._start_new_turn()
 
     def get_current_upkeep_event(self):
@@ -2175,8 +2333,24 @@ class Game:
     def _auto_generate_unit_designs(self, completed_tech_id):
         """Check if tech unlocks components and generate smart unit designs.
 
+        Called during end_turn() when a tech is completed. Checks if the new
+        tech unlocks any weapons/armor/chassis, then generates tactical unit
+        variants (offensive/defensive) using the new components.
+
+        Sets pending_new_designs_flag (not new_designs_available directly) so
+        popup shows AFTER upkeep events, not during tech announcement.
+
         Args:
-            completed_tech_id: The tech ID that was just completed
+            completed_tech_id (str): The tech ID that was just completed (e.g., 'Physic')
+
+        Side Effects:
+            - Calls workshop.rebuild_available_designs() to add new designs
+            - Sets self.pending_new_designs_flag if designs added
+            - Flag converts to new_designs_available when upkeep ends
+
+        Note:
+            Does nothing if ui_manager not initialized. Falls back to
+            designs_need_rebuild flag for later processing.
         """
         # Check if this tech unlocks anything first
         if hasattr(self, 'ui_manager') and self.ui_manager is not None:
@@ -2195,9 +2369,9 @@ class Game:
                 workshop.rebuild_available_designs(self.tech_tree, completed_tech_id)
                 new_count = len(workshop.unit_designs)
 
-                # Show popup if new designs were added
+                # Show popup if new designs were added (after upkeep events)
                 if new_count > old_count:
-                    self.new_designs_available = True
+                    self.pending_new_designs_flag = True  # Will show after upkeep
                     print(f"New designs available! ({old_count} -> {new_count})")
             else:
                 print(f"Tech '{completed_tech_id}' doesn't unlock any new components")

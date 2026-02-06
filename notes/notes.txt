@@ -105,3 +105,97 @@ We should NOT be starting with the 7 starting techs. Each 1 is the starting tech
 For example, in the latest playthrough, I discovered Industrial Base, giving Synthmetal Armor. The game should know to make a new
 1-2-1 unit.
 7 Hold unit isn't working. Still in W cycle, and End Turn still doesn't activate correctly after.
+
+More notes:
+I built a hand speeder. It was given 1 movement per turn. Should be 2. Make sure all chassis specs are applied.
+Also, the keyword "hand" for a 1-1-x should be "Scout" instead.
+Also, I just met Zakharov, and his first text was "I trust we can continue our productive dialogue." Not only was this a first meeting,
+but this text is NOT from script.txt. Do NOT deviate from the text in Script.txt! Go back and delete anything you've invented.
+My dialogue text to exit is "Deirdre out." I am the Spartans! The dialog must be dynamic!
+I have dialog texts at the same time to sign a treaty AND a pact. You can only offer a pact after you're already in a treaty.
+When I offer a treaty to Zakharov, his response is to pitch a treaty to me. That makes no sense. Look at the script notes for
+#MAKETREATY and #REJTREATY. Those should be the responses.
+When I rejected the treaty, Zakharov said something about opportunities not presenting themselves twice. Again, you are NOT
+allowed to invent your own dialog under any circumstances!
+When I asked for a loan, I was offered one, but my choices were to reject it, or Agreed. But if you rob me you shall feel my wrath."
+That doesn't make sense. I'm receiving the loan. Find the correct dialog here.
+When I said "Deirdre out" Zakharov ended with "My apologies, $TITLE0, but I simply haven't all day to talk. $NAME2 out."
+This is not correct either. This is a dialog to interrupt you when you are taking too long in the dialog view in the harder
+game modes. There should be no response when we exit.
+
+
+Issues: Hurry is still showing a different number of turns remaining compared to the production panel. Make sure these are pulling
+from the same data.
+I met Morgan, and it started us off with a treaty, without asking for one. This is wrong. The default status is Truce.
+Esc exited in the middle of a dialog. This is one view where Esc should NOT work.
+Even with a faction having a treaty with me, I can attack them with impunity. Killing their unit did not switch to Vendetta.
+If I suggest an attack on an entreatied faction's unit, a popup should show. Check #BREAKINGTREATY and #BREAKINGTRUCE for info.
+When entering a faction name, I'm still not seeing the placeholder text being entirely selected. It should be, so that backspace
+gets rid of all of it with one press.
+You just broke Hurry with the last code change. Hitting OK doesn't work anymore.
+I asked you to implement everything under #DATALINKS2 for each faction. One for Zakharov is a free Network Node at every base.
+I do not see this listed under base facilities at his bases.
+
+Please focus, as you are not fixing many of these issues. Hurry is still broken, I promise you. Clicking OK does nothing now.
+You can only exit the screen with Cancel.
+Also, Zakharov still shows no Network Node in the base facilities panel on the right of the base view. Ditto Yang and Perimeter
+Defenses.
+
+There is new odd behavior in the Hurry screen. On the first turn, I tried to hurry a scout patrol. It says "Remaining: 3 turns (6 credits)
+Your credits: 500" (I got a supply pod.) I click Pay All, and it fills with 30. It can't be 6 AND 30. My guess is, you've started
+to get off the hardcoded costs we set a while back. That would be fine. But consistency is most important now. But at least OK works.
+The speeder creation is still not fixed. I created another speeder and it can only move 1 a turn. Also, make sure the unit stats
+show at the bottom of its square in the Select Production view. Ditto in the Saved Design squares. This will help debug where the issue is.
+I am still not getting new units suggested. I just discovered Applied Physics. Textbook case where I should be offered, at the very least,
+a 2-1-1 design (and since I'm Santiago at the moment, a 2-1-2). I got nothing.
+Can we also speed up enemy movements ~25%? Ditto map scrolling.
+Also, right now, under the base icon is the base name. It looks great. Under that, can you put (<current research>), or if governor is on,
+(Gov:<research>)? It's helpful to know what it's working on without clicking on the base.
+
+Even more notes:
+There is STILL fabricated dialog text. The "Let us dispense with pleasantries" dialog is NOT in Script.txt and should NOT be in the game!!
+Remove all text you made up.
+You also have not fixed the dialog where we propose the treaty. They should respond with one of the #MAKETREATY or #REJTREATY scripts.
+They should not prompt US to sign a treaty. If they accept, the treaty is done; no decision is needed on our end if we proposed it.
+Also, when I ask a faction for a loan, they respond by asking ME for a loan. You have your prompts all messed up.
+Really try to reason through prompts that I should initiate versus NPC-initiated. Focus on implementing player-initiated for now.
+Also, the exit dialog is STILL hardcoded to "Deirdre out." When I am NOT Deirdre!!! Edit: Also got "Greetings, Deirdre."
+I also just finished a conversation with a player without signing a treaty. This should put us in FORMAL truce and show "TRUCE"
+in the commlinks. Instead, it shows nothing (informal truce). Zakharov then attacked me, and yet the commlink didn't convert to
+VENDETTA. Fix.
+
+Latest notes:
+A 1-1-2 is STILL called Hand Speeder. It should be called Scout Speeder, for the last time.
+You've also recently introduced a large bug in hurry. I think it was when you tried to match credits to pay all. But hitting Pay All
+does not, in fact, Pay All. It seems to be paying one turn. I can then click hurry again, which is a bug. You can only hurry once per turn.
+Ensure that the amount offered with Pay All is truly the ENTIRE remaining cost. Then make sure the other displayed cost matches.
+The new design finally worked. The only issue was, the new design pop up should happen AFTER the new tech discovered popup.
+Otherwise, it seems strange that we can build these new units that we don't have the tech for.
+
+When I asked for a treaty, the faction responded with 2 messages instead of 1. Neither was in the messages I told you.
+They MUST respond with something in #MAKETREATYx or #REJTREATYy. For example: "With respect, $TITLE1, it appears there is little future in
+'permanent' agreements with the $FACTION2."
+They are STILL calling me Deirdre no matter who I am. This is SO SIMPLE!!!!!!! Why has it taken you five attempts?
+Character I have treaties with are still attacking me. Note: it is possible to betray someone (though this is rare behavior).
+But having TREATY status afterward is a bug. It should say VENDETTA.
+Right now, enemy bases say what they're working on. This should only be the case if I have a Pact with them, or Empath Guild,
+or am Governor, or have Infiltrated their Datalinks.
+
+Scout patrol is hardcoded in too many places - check base.py, among others.
+Council is still not restricted if I am missing commlinks.
+Got a diplomatic milestone popup when missing commlinks.
+I realized after creating my individual flavor files, I already had data.py. Not a complete overlap, but enough that maybe
+I should combine.
+
+
+Biggest categories we haven't even touched:
+Terraforming
+Resources
+Enemy tech tree/units
+Enemy moods
+Fog of war
+Advanced unit movement (G command, J command, drag path)
+Art
+Sounds
+Automatic end turn vs button
+V to hover

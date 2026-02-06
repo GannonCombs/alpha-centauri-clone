@@ -388,6 +388,26 @@ class Renderer:
         pygame.draw.rect(self.screen, COLOR_BLACK, bg_rect)
         self.screen.blit(name_surf, name_rect)
 
+        # Draw current production below name
+        if hasattr(base, 'current_production') and base.current_production:
+            prod_text = base.current_production
+            # Check if governor is enabled
+            if hasattr(base, 'governor_enabled') and base.governor_enabled:
+                prod_display = f"(Gov:{prod_text})"
+            else:
+                prod_display = f"({prod_text})"
+
+            small_font = pygame.font.Font(None, 16)
+            prod_surf = small_font.render(prod_display, True, (180, 190, 200))
+            prod_rect = prod_surf.get_rect()
+            prod_rect.centerx = screen_x + TILE_SIZE // 2
+            prod_rect.top = name_rect.bottom + 2
+
+            # Draw background for production text
+            prod_bg_rect = prod_rect.inflate(4, 2)
+            pygame.draw.rect(self.screen, COLOR_BLACK, prod_bg_rect)
+            self.screen.blit(prod_surf, prod_rect)
+
         # Draw population in top-left corner
         pop_size = 20
         pop_rect = pygame.Rect(screen_x + 2, screen_y + 2, pop_size, pop_size)

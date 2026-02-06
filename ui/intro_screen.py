@@ -23,6 +23,7 @@ class IntroScreenManager:
         self.mode = 'intro'  # 'intro', 'map_select', 'map_size', 'land_composition', 'erosive_forces', 'alien_life', 'skill_level', 'faction_select', 'name_input', None (game started)
         self.selected_faction_id = None
         self.player_name_input = ""
+        self.name_input_selected = False  # Track if name input text is selected for replacement
         self.cursor_visible = True
         self.cursor_timer = 0
         self.show_exit_confirm = False  # Exit confirmation dialog
@@ -571,10 +572,20 @@ class IntroScreenManager:
         pygame.draw.rect(screen, (120, 180, 200), self.name_input_rect, 2, border_radius=8)
 
         # Text content
-        text_surf = self.font.render(self.player_name_input, True, (220, 230, 240))
         text_x = self.name_input_rect.x + 15
-        text_y = self.name_input_rect.centery - text_surf.get_height() // 2
-        screen.blit(text_surf, (text_x, text_y))
+        text_y = self.name_input_rect.centery - self.font.get_height() // 2
+
+        # If text is selected, draw selection highlight
+        if self.name_input_selected and self.player_name_input:
+            text_surf = self.font.render(self.player_name_input, True, (255, 255, 255))
+            # Draw selection background
+            selection_rect = pygame.Rect(text_x - 2, text_y - 2,
+                                        text_surf.get_width() + 4, text_surf.get_height() + 4)
+            pygame.draw.rect(screen, (80, 120, 200), selection_rect)  # Blue highlight
+            screen.blit(text_surf, (text_x, text_y))
+        else:
+            text_surf = self.font.render(self.player_name_input, True, (220, 230, 240))
+            screen.blit(text_surf, (text_x, text_y))
 
         # Blinking cursor
         if self.cursor_visible:
@@ -832,8 +843,9 @@ class IntroScreenManager:
                 if self.selected_faction_id is not None:
                     # Move to name input
                     self.mode = 'name_input'
-                    # Auto-suggest the faction leader's name
+                    # Auto-suggest the faction leader's name (selected for easy replacement)
                     self.player_name_input = FACTIONS[self.selected_faction_id]['leader']
+                    self.name_input_selected = True  # Text is selected, will be replaced on first keypress
                     return None
 
         return None
@@ -841,6 +853,16 @@ class IntroScreenManager:
     def _handle_name_input_event(self, event):
         """Handle name input events."""
         if event.type == pygame.KEYDOWN:
+            # Arrow keys or Home/End deselect without clearing
+            if event.key in (pygame.K_LEFT, pygame.K_RIGHT, pygame.K_HOME, pygame.K_END):
+                self.name_input_selected = False
+                return None
+
+            # If text is selected, clear it on first keypress (except Return)
+            if self.name_input_selected and event.key != pygame.K_RETURN:
+                self.player_name_input = ""
+                self.name_input_selected = False
+
             if event.key == pygame.K_BACKSPACE:
                 self.player_name_input = self.player_name_input[:-1]
             elif event.key == pygame.K_RETURN:
@@ -854,7 +876,11 @@ class IntroScreenManager:
                     self.player_name_input += char
 
         elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
-            if self.ok_button_rect and self.ok_button_rect.collidepoint(event.pos):
+            # Clicking in the input box deselects text without clearing
+            if hasattr(self, 'name_input_rect') and self.name_input_rect and self.name_input_rect.collidepoint(event.pos):
+                self.name_input_selected = False
+                return None
+            elif self.ok_button_rect and self.ok_button_rect.collidepoint(event.pos):
                 # Start game
                 if self.player_name_input.strip():
                     return ('start_game', self.selected_faction_id, self.player_name_input.strip(), self.selected_ocean_percentage)

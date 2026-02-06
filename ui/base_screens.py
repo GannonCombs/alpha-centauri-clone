@@ -313,7 +313,13 @@ class BaseScreenManager:
 
                     # Center tile is the base
                     if dx == 1 and dy == 1:
-                        pygame.draw.rect(screen, COLOR_BASE_FRIENDLY, tile_rect, border_radius=4)
+                        # Use faction color for base square
+                        from ui.data import FACTIONS
+                        base_color = COLOR_BASE_FRIENDLY  # Default
+                        if hasattr(game, 'faction_assignments') and base.owner in game.faction_assignments:
+                            faction_index = game.faction_assignments[base.owner]
+                            base_color = FACTIONS[faction_index]['color']
+                        pygame.draw.rect(screen, base_color, tile_rect, border_radius=4)
                     else:
                         pygame.draw.rect(screen, terrain_color, tile_rect)
                 else:
@@ -440,10 +446,26 @@ class BaseScreenManager:
         fac_title = self.small_font.render("BASE FACILITIES", True, (200, 180, 220))
         screen.blit(fac_title, (facilities_x + 10, facilities_y + 8))
 
-        # List facilities (placeholders for now)
-        if base.facilities:
-            for i, facility in enumerate(base.facilities):
-                fac_text = self.small_font.render(f"- {facility}", True, COLOR_TEXT)
+        # Get free facility from faction bonuses
+        from ui.data import FACTIONS
+        # Use faction_assignments to map player_id to faction_index
+        if hasattr(game, 'faction_assignments') and base.owner in game.faction_assignments:
+            faction_index = game.faction_assignments[base.owner]
+            faction = FACTIONS[faction_index]
+        else:
+            faction = None
+        free_facility = faction.get('bonuses', {}).get('free_facility') if faction else None
+
+        # Combine regular facilities with free facility
+        all_facilities = []
+        if free_facility:
+            all_facilities.append(f"* {free_facility}")  # Asterisk for free
+        all_facilities.extend(base.facilities)
+
+        # List facilities
+        if all_facilities:
+            for i, facility in enumerate(all_facilities):
+                fac_text = self.small_font.render(facility, True, COLOR_TEXT)
                 screen.blit(fac_text, (facilities_x + 15, facilities_y + 35 + i * 22))
         else:
             no_fac = self.small_font.render("No facilities yet", True, (120, 120, 140))
@@ -737,9 +759,11 @@ class BaseScreenManager:
         prod_text = self.small_font.render(f"Current: {base.current_production}", True, COLOR_TEXT)
         screen.blit(prod_text, (dialog_x + 30, info_y))
 
-        remaining_cost = base.production_cost - base.production_progress
-        credit_cost = remaining_cost * 10
-        cost_text = self.small_font.render(f"Remaining: {remaining_cost} turns ({credit_cost} credits)", True, (200, 220, 100))
+        # Use the same turns calculation as production panel
+        remaining_minerals = base.production_cost - base.production_progress
+        credit_cost = remaining_minerals * 2  # 2 credits per mineral in SMAC
+        turns_remaining = getattr(base, 'production_turns_remaining', 0) or 0
+        cost_text = self.small_font.render(f"Remaining: {turns_remaining} turns ({credit_cost} credits)", True, (200, 220, 100))
         screen.blit(cost_text, (dialog_x + 30, info_y + 25))
 
         credits_text = self.small_font.render(f"Your credits: {game.energy_credits}", True, (200, 220, 100))
@@ -828,7 +852,12 @@ class BaseScreenManager:
                 turns = get_turns(unit_name)
                 # Show basic stats in description
                 description = f"{design['chassis']}, {turns} turns"
-                production_items.append({"name": unit_name, "type": "unit", "description": description})
+                production_items.append({
+                    "name": unit_name,
+                    "type": "unit",
+                    "description": description,
+                    "design": design  # Store design data for stats display
+                })
         else:
             # Fallback to hardcoded units if workshop not available
             production_items.append({"name": "Scout Patrol", "type": "unit", "description": f"Infantry unit, {get_turns('Scout Patrol')} turns"})
@@ -836,12 +865,24 @@ class BaseScreenManager:
 
         # Facilities (filtered by tech and not already built)
         available_facilities = facilities.get_available_facilities(game.tech_tree)
+
+        # Get free facility for this base's faction
+        from ui.data import FACTIONS
+        free_facility_name = None
+        if hasattr(game, 'faction_assignments') and base.owner in game.faction_assignments:
+            faction_index = game.faction_assignments[base.owner]
+            faction = FACTIONS[faction_index]
+            free_facility_name = faction.get('bonuses', {}).get('free_facility')
+
         for facility in available_facilities:
             # Skip Headquarters (auto-granted to first base)
             if facility['name'] == 'Headquarters':
                 continue
             # Skip if already built in this base
             if facility['name'] in base.facilities:
+                continue
+            # Skip if this is the faction's free facility (automatically provided)
+            if free_facility_name and facility['name'] == free_facility_name:
                 continue
             turns = get_turns(facility['name'])
             description = f"{facility['effect']}, {turns} turns, {facility['maint']} energy/turn"
@@ -970,6 +1011,17 @@ class BaseScreenManager:
                 line_rect = line_surf.get_rect(centerx=item_rect.centerx, top=desc_y)
                 screen.blit(line_surf, line_rect)
                 desc_y += 16
+
+            # Draw unit stats (weapon-armor-speed) for units
+            if item["type"] == "unit" and "design" in item:
+                design = item["design"]
+                weapon_power = design.get('weapon_power', 0)
+                armor_defense = design.get('armor_defense', 0)
+                chassis_speed = design.get('chassis_speed', 1)
+                stats_text = f"{weapon_power}-{armor_defense}-{chassis_speed}"
+                stats_surf = self.small_font.render(stats_text, True, (200, 220, 100))
+                stats_rect = stats_surf.get_rect(centerx=item_rect.centerx, bottom=item_rect.bottom - 5)
+                screen.blit(stats_surf, stats_rect)
 
         # Buttons at bottom
         button_y = dialog_y + dialog_h - 60
@@ -1189,8 +1241,8 @@ class BaseScreenManager:
             # Check Pay All button
             if hasattr(self, 'hurry_all_rect') and self.hurry_all_rect.collidepoint(pos):
                 if base and base.current_production:
-                    remaining_cost = base.production_cost - base.production_progress
-                    credit_cost = remaining_cost * 10
+                    remaining_minerals = base.production_cost - base.production_progress
+                    credit_cost = remaining_minerals * 2  # 2 credits per mineral (SMAC standard)
                     self.hurry_input = str(credit_cost)
                 return None
 

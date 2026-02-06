@@ -5,7 +5,7 @@ import random
 import constants
 from constants import (COLOR_TEXT, COLOR_COUNCIL_BG, COLOR_COUNCIL_ACCENT,
                        COLOR_COUNCIL_BORDER, COLOR_COUNCIL_BOX)
-from .data import FACTIONS, PROPOSALS, FACTION_COUNCIL_PREFERENCES
+from .data import FACTIONS, PROPOSALS
 
 
 class CouncilManager:
@@ -237,20 +237,6 @@ class CouncilManager:
         """Get top two faction candidates for leader elections."""
         sorted_f = sorted(FACTIONS, key=lambda x: x['votes'], reverse=True)
         return [sorted_f[0]['short'], sorted_f[1]['short']]
-
-    def _get_faction_preference(self, faction_name, proposal_id):
-        """Get a faction's preference value for a proposal.
-
-        Args:
-            faction_name (str): Name of the faction
-            proposal_id (str): ID of the proposal
-
-        Returns:
-            int: Preference value (-2 to 2, 0 = neutral)
-        """
-        if faction_name in FACTION_COUNCIL_PREFERENCES:
-            return FACTION_COUNCIL_PREFERENCES[faction_name].get(proposal_id, 0)
-        return 0
 
     def check_ai_council_call(self, ai_player_id, game):
         """Check if an AI player wants to call a council this turn.

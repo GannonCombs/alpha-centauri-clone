@@ -24,7 +24,7 @@ class Unit:
         has_moved (bool): Whether unit has moved this turn
     """
 
-    def __init__(self, x, y, unit_type, owner, name="Unit"):
+    def __init__(self, x, y, unit_type, owner, name="Unit", chassis_speed=None, weapon=None, armor=None, reactor_level=None):
         """Initialize a new unit.
 
         Args:
@@ -33,66 +33,72 @@ class Unit:
             unit_type (str): Unit type constant
             owner (int): Player ID (0 = human, 1+ = AI)
             name (str, optional): Display name. Defaults to "Unit".
+            chassis_speed (int, optional): Movement points from chassis. If None, uses default.
+            weapon (int, optional): Weapon strength. If None, uses default.
+            armor (int, optional): Armor strength. If None, uses default.
+            reactor_level (int, optional): Reactor level. If None, uses default.
         """
         self.x = x
         self.y = y
         self.unit_type = unit_type  # UNIT_LAND, UNIT_SEA, or UNIT_AIR
         self.owner = owner  # Player ID (0 = human, 1+ = AI)
         self.name = name
-        self.moves_remaining = self.max_moves()
+        self.chassis_speed = chassis_speed  # Store chassis speed separately
         self.has_moved = False
         self.held = False  # If True, unit won't be auto-cycled for actions
 
         # Set unit stats based on type (weapon-armor-moves*reactor_level)
         if unit_type == UNIT_COLONY_POD_LAND:
-            self.weapon = 0
-            self.armor = 1
-            self.reactor_level = 1  # Reactor value (d in a-b-c*d format)
+            self.weapon = weapon if weapon is not None else 0
+            self.armor = armor if armor is not None else 1
+            self.reactor_level = reactor_level if reactor_level is not None else 1
             self.weapon_mode = 'noncombat'
             self.armor_mode = 'projectile'
         elif unit_type == UNIT_COLONY_POD_SEA:
-            self.weapon = 0
-            self.armor = 1
-            self.reactor_level = 1
+            self.weapon = weapon if weapon is not None else 0
+            self.armor = armor if armor is not None else 1
+            self.reactor_level = reactor_level if reactor_level is not None else 1
             self.weapon_mode = 'noncombat'
             self.armor_mode = 'projectile'
         elif unit_type == UNIT_LAND:
-            self.weapon = 1
-            self.armor = 1
-            self.reactor_level = 1
+            self.weapon = weapon if weapon is not None else 1
+            self.armor = armor if armor is not None else 1
+            self.reactor_level = reactor_level if reactor_level is not None else 1
             self.weapon_mode = 'projectile'  # Hand weapons (projectile)
             self.armor_mode = 'projectile'   # No armor (projectile)
         elif unit_type == UNIT_SEA:
-            self.weapon = 1
-            self.armor = 1
-            self.reactor_level = 1
+            self.weapon = weapon if weapon is not None else 1
+            self.armor = armor if armor is not None else 1
+            self.reactor_level = reactor_level if reactor_level is not None else 1
             self.weapon_mode = 'projectile'
             self.armor_mode = 'projectile'
         elif unit_type == UNIT_AIR:
-            self.weapon = 1
-            self.armor = 1
-            self.reactor_level = 1
+            self.weapon = weapon if weapon is not None else 1
+            self.armor = armor if armor is not None else 1
+            self.reactor_level = reactor_level if reactor_level is not None else 1
             self.weapon_mode = 'missile'     # Air units default to missile
             self.armor_mode = 'projectile'
         elif unit_type == UNIT_ARTIFACT:
-            self.weapon = 0
-            self.armor = 1
-            self.reactor_level = 1
+            self.weapon = weapon if weapon is not None else 0
+            self.armor = armor if armor is not None else 1
+            self.reactor_level = reactor_level if reactor_level is not None else 1
             self.weapon_mode = 'noncombat'
             self.armor_mode = 'projectile'
         elif unit_type == UNIT_PROBE_TEAM:
-            self.weapon = 0
-            self.armor = 1
-            self.reactor_level = 1
+            self.weapon = weapon if weapon is not None else 0
+            self.armor = armor if armor is not None else 1
+            self.reactor_level = reactor_level if reactor_level is not None else 1
             self.weapon_mode = 'noncombat'
             self.armor_mode = 'projectile'
         else:
             # Default for unknown types
-            self.weapon = 1
-            self.armor = 1
-            self.reactor_level = 1
+            self.weapon = weapon if weapon is not None else 1
+            self.armor = armor if armor is not None else 1
+            self.reactor_level = reactor_level if reactor_level is not None else 1
             self.weapon_mode = 'projectile'
             self.armor_mode = 'projectile'
+
+        self.moves_remaining = self.max_moves()
 
         # Health system: max HP = 10 * reactor_level
         self.max_health = 10 * self.reactor_level
@@ -155,12 +161,16 @@ class Unit:
         Returns:
             int: Movement points available each turn
         """
-        # Air units have 10 moves, sea units have 4, land units have 1
-        base_moves = 1
-        if self.unit_type == UNIT_AIR:
-            base_moves = 10
-        elif self.unit_type in [UNIT_SEA, UNIT_COLONY_POD_SEA]:
-            base_moves = 4
+        # Use chassis_speed if set, otherwise use default based on unit_type
+        if hasattr(self, 'chassis_speed') and self.chassis_speed is not None:
+            base_moves = self.chassis_speed
+        else:
+            # Fallback for units created without chassis_speed
+            base_moves = 1
+            if self.unit_type == UNIT_AIR:
+                base_moves = 10
+            elif self.unit_type in [UNIT_SEA, UNIT_COLONY_POD_SEA]:
+                base_moves = 4
 
         # Elite units get +1 move (backward compatibility check)
         if hasattr(self, 'morale_level') and self.morale_level >= 7:  # Elite
@@ -592,6 +602,7 @@ class Unit:
             'owner': self.owner,
             'name': self.name,
             'moves_remaining': self.moves_remaining,
+            'chassis_speed': getattr(self, 'chassis_speed', None),
             'weapon': self.weapon,
             'armor': self.armor,
             'reactor_level': self.reactor_level,
@@ -645,6 +656,7 @@ class Unit:
         unit.owner = data['owner']
         unit.name = data['name']
         unit.moves_remaining = data['moves_remaining']
+        unit.chassis_speed = data.get('chassis_speed', None)
         unit.weapon = data['weapon']
         unit.armor = data['armor']
         unit.reactor_level = data['reactor_level']

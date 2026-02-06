@@ -60,7 +60,7 @@ class UIManager:
 
         # Commlink request popup
         self.commlink_request_active = False
-        self.commlink_request_faction_id = None
+        self.commlink_request_other_faction_id = None
         self.commlink_request_player_id = None
         self.commlink_request_answer_rect = None
         self.commlink_request_ignore_rect = None
@@ -367,15 +367,16 @@ class UIManager:
                 if self.commlink_request_answer_rect and self.commlink_request_answer_rect.collidepoint(pos):
                     # Answer - open diplomacy with this faction
                     self.commlink_request_active = False
-                    # Remove from pending requests
+                    # Remove the first request from pending requests
+                    # Note: pending_commlink_requests is an array because a unit could meet multiple new factions in the same one move.
+                    # While unlikely, it has happened to me.
                     if game.pending_commlink_requests:
                         game.pending_commlink_requests.pop(0)
-                    # Open commlink and diplomacy with faction data
-                    self.commlink_open = True
                     self.active_screen = "DIPLOMACY"
-                    # Use the faction_id we already have from the commlink request
-                    if self.commlink_request_faction_id is not None and self.commlink_request_faction_id < len(FACTIONS):
-                        self.diplomacy.open_diplomacy(FACTIONS[self.commlink_request_faction_id])
+                    # Use the other_faction_id we already have from the commlink request
+                    if self.commlink_request_other_faction_id is not None and self.commlink_request_other_faction_id < len(FACTIONS):
+                        # Player is always index 0
+                        self.diplomacy.open_diplomacy(FACTIONS[self.commlink_request_other_faction_id], player_faction_index=0)
                     self.diplomacy.diplo_stage = "greeting"
                     return True
                 elif self.commlink_request_ignore_rect and self.commlink_request_ignore_rect.collidepoint(pos):
@@ -558,7 +559,8 @@ class UIManager:
                             # Get the faction for this player_id
                             faction_id = game.faction_assignments.get(btn.player_id)
                             if faction_id is not None and faction_id < len(FACTIONS):
-                                self.diplomacy.open_diplomacy(FACTIONS[faction_id])
+                                # Player is always index 0
+                                self.diplomacy.open_diplomacy(FACTIONS[faction_id], player_faction_index=0)
                                 self.active_screen = "DIPLOMACY"
                                 self.commlink_open = False
                                 return True
@@ -630,7 +632,28 @@ class UIManager:
         return False
 
     def draw(self, screen, game, renderer=None):
-        """Render the UI panel with game info, buttons, and active modals."""
+        """Render the UI panel with game info, buttons, and active modals.
+
+        Rendering layers (bottom to top):
+        1. Background panel
+        2. Minimap with viewport indicator
+        3. Mission year, energy credits, turn counter
+        4. Fixed buttons (Main Menu, End Turn, Commlink)
+        5. Unit info panel (if unit selected)
+        6. Active screen (BASE_VIEW, DIPLOMACY, etc.)
+        7. Popups (highest priority first):
+           - Battle prediction
+           - Upkeep events (tech, milestones)
+           - Commlink requests
+           - New designs available
+           - Faction elimination
+        8. Context menus (highest priority)
+
+        Args:
+            screen: Pygame surface to draw on
+            game: Game instance for state access
+            renderer: Optional renderer for minimap drawing
+        """
         self._init_layout()
 
         # Layer 1: Background
@@ -864,7 +887,7 @@ class UIManager:
             # Activate the first pending request
             request = game.pending_commlink_requests[0]
             self.commlink_request_active = True
-            self.commlink_request_faction_id = request['faction_id']
+            self.commlink_request_other_faction_id = request['faction_id']
             self.commlink_request_player_id = request['player_id']
 
         # Commlink request popup
@@ -1155,8 +1178,8 @@ class UIManager:
         pygame.draw.rect(screen, (100, 140, 160), (box_x, box_y, box_w, box_h), 3, border_radius=12)
 
         # Get faction info
-        if self.commlink_request_faction_id < len(FACTIONS):
-            faction = FACTIONS[self.commlink_request_faction_id]
+        if self.commlink_request_other_faction_id < len(FACTIONS):
+            faction = FACTIONS[self.commlink_request_other_faction_id]
             faction_name = faction["leader"]
 
             # Title

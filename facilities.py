@@ -8,6 +8,7 @@ costs, maintenance, and effects.
 
 # Regular base facilities
 # Format: {id, name, cost, maint, prereq, effect}
+# TODO: Double check that all facilities are in this list
 FACILITIES = [
     {
         'id': 'headquarters',
@@ -210,6 +211,7 @@ FACILITIES = [
 ]
 
 # Secret Projects (unique wonders, one per game)
+# TODO: there are many secret projects missing from this list
 SECRET_PROJECTS = [
     {
         'id': 'human_genome',
