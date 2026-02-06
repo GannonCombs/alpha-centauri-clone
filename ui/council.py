@@ -165,7 +165,7 @@ class CouncilManager:
             rect = pygame.Rect(x, y, box_w, box_h)
             pygame.draw.rect(screen, COLOR_COUNCIL_BOX, rect, border_radius=6)
             pygame.draw.rect(screen, f['color'], rect, 3, border_radius=6)
-            screen.blit(self.small_font.render(f['short'], True, f['color']), (x + 68, y + 12))
+            screen.blit(self.small_font.render(f['leader'], True, f['color']), (x + 68, y + 12))
 
         vote_y = 400
         if not self.player_vote:
@@ -236,7 +236,7 @@ class CouncilManager:
     def _get_top_candidates(self):
         """Get top two faction candidates for leader elections."""
         sorted_f = sorted(FACTIONS, key=lambda x: x['votes'], reverse=True)
-        return [sorted_f[0]['short'], sorted_f[1]['short']]
+        return [sorted_f[0]['leader'], sorted_f[1]['leader']]
 
     def check_ai_council_call(self, ai_player_id, game):
         """Check if an AI player wants to call a council this turn.

@@ -9,7 +9,7 @@ Entry point and main game loop. Initializes Pygame with dynamic screen sizing, m
 Core game state manager. Handles unit spawning and movement, base founding with adjacency validation, turn management (player → AI → new turn), garrison mechanics, status messages, click handling for units and bases, and AI turn sequencing with base growth processing.
 
 **constants.py**
-Centralized configuration defining all game-wide constants: map dimensions, tile size, colors for units/bases/UI, unit type constants (land, sea, colony pods), and game parameters like land probability and FPS.
+Centralized configuration defining all game-wide constants: tile size, colors for units/bases/UI, unit type constants (land, sea, air), and game parameters like FPS.
 
 **map.py**
 Map generation and tile management. Tile class stores terrain type, resources, improvements, units, and bases. GameMap class generates procedural land/ocean distribution and provides safe coordinate access with bounds checking.
@@ -32,7 +32,7 @@ Territory control system calculating ownership based on proximity to bases. Exte
 **renderer.py**
 Rendering system with horizontal centering for the map display. Draws tiles with terrain colors, bases with population indicators in top-left corner, units with type letters (L/S/C), status messages at bottom of map, and provides screen-to-tile coordinate conversion plus population square click detection.
 
-**ui.py**
+**ui_manager.py**
 Comprehensive UI system with multiple screens: main game panel (turn counter, unit info, End Turn button), base management view (population growth, garrison display, production, facilities, unit support), Social Engineering screen (Politics/Economics/Values/Future Society choices), diplomacy interface with SMAC factions, and Planetary Council voting system.
 
 ## Documentation

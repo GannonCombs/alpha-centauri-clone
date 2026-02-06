@@ -3,7 +3,7 @@
 import pygame
 import constants
 from constants import (COLOR_TEXT, COLOR_BUTTON, COLOR_BUTTON_HOVER,
-                       COLOR_BUTTON_BORDER, COLOR_UNIT_FRIENDLY, COLOR_UNIT_ENEMY)
+                       COLOR_BUTTON_BORDER)
 
 
 class BattleUIManager:
@@ -47,7 +47,7 @@ class BattleUIManager:
         # Attacker info (left side)
         att_x = box_x + 40
         att_y = box_y + 80
-        att_name = self.font.render(f"{attacker.name}", True, COLOR_UNIT_FRIENDLY)
+        att_name = self.font.render(f"{attacker.name}", True, (255, 255, 255) ) #TODO: Fix color to be faction color
         screen.blit(att_name, (att_x, att_y))
 
         att_stats = self.small_font.render(f"{attacker.get_stats_string()}", True, COLOR_TEXT)
@@ -72,7 +72,7 @@ class BattleUIManager:
         # Defender info (right side)
         def_x = box_x + box_w - 200
         def_y = box_y + 80
-        def_name = self.font.render(f"{defender.name}", True, COLOR_UNIT_ENEMY)
+        def_name = self.font.render(f"{defender.name}", True, (255, 255, 255)) #TODO: Fix to be faction color
         screen.blit(def_name, (def_x, def_y))
 
         def_stats = self.small_font.render(f"{defender.get_stats_string()}", True, COLOR_TEXT)
@@ -173,13 +173,13 @@ class BattleUIManager:
 
             # Attacker HP (left)
             att_y = panel_y + 50
-            att_text = self.small_font.render(f"{attacker.name}", True, COLOR_UNIT_FRIENDLY)
+            att_text = self.small_font.render(f"{attacker.name}", True, (255, 255, 255) ) #TODO: Fix to be faction color
             screen.blit(att_text, (panel_x + 10, att_y))
             att_hp_text = self.small_font.render(f"HP: {att_hp}/{attacker.max_health}", True, COLOR_TEXT)
             screen.blit(att_hp_text, (panel_x + 10, att_y + 20))
 
             # Defender HP (right)
-            def_text = self.small_font.render(f"{defender.name}", True, COLOR_UNIT_ENEMY)
+            def_text = self.small_font.render(f"{defender.name}", True, (255, 255, 255) ) #TODO: Fix to be faction color
             def_text_rect = def_text.get_rect(right=panel_x + panel_w - 10, top=att_y)
             screen.blit(def_text, def_text_rect)
             def_hp_text = self.small_font.render(f"HP: {def_hp}/{defender.max_health}", True, COLOR_TEXT)

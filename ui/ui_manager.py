@@ -3,7 +3,7 @@
 import pygame
 import constants
 from constants import (COLOR_UI_BACKGROUND, COLOR_UI_BORDER, COLOR_TEXT,
-                       COLOR_BLACK, COLOR_BUTTON_BORDER, UNIT_SEA, UNIT_AIR, COLOR_UNIT_FRIENDLY, COLOR_UNIT_ENEMY)
+                       COLOR_BLACK, COLOR_BUTTON_BORDER, UNIT_SEA, UNIT_AIR)
 from .components import Button
 from .dialogs import DialogManager
 from .battle_ui import BattleUIManager
@@ -376,7 +376,7 @@ class UIManager:
                     # Use the other_faction_id we already have from the commlink request
                     if self.commlink_request_other_faction_id is not None and self.commlink_request_other_faction_id < len(FACTIONS):
                         # Player is always index 0
-                        self.diplomacy.open_diplomacy(FACTIONS[self.commlink_request_other_faction_id], player_faction_index=0)
+                        self.diplomacy.open_diplomacy(FACTIONS[self.commlink_request_other_faction_id], self.commlink_request_player_id)
                     self.diplomacy.diplo_stage = "greeting"
                     return True
                 elif self.commlink_request_ignore_rect and self.commlink_request_ignore_rect.collidepoint(pos):
@@ -817,7 +817,7 @@ class UIManager:
                         status_text = "PACT"
                     elif status == "Treaty":
                         status_text = "TREATY"
-                    elif status == "Truce" or status == "Formal Truce":
+                    elif status == "Truce" or status == "Formal Truce": #TODO: error?
                         status_text = "TRUCE"
                     # Informal Truce shows as blank (empty string)
 
@@ -828,7 +828,7 @@ class UIManager:
 
                 # Draw text: "<number>. <faction name>"
                 contact_number = i + 1
-                left_text = f"{contact_number}. {faction['short']}"
+                left_text = f"{contact_number}. {faction['leader']}"
                 left_surf = self.small_font.render(left_text, True, faction['color'])
                 screen.blit(left_surf, (btn.rect.x + 5, btn.rect.y + 8))
 
@@ -887,7 +887,7 @@ class UIManager:
             # Activate the first pending request
             request = game.pending_commlink_requests[0]
             self.commlink_request_active = True
-            self.commlink_request_other_faction_id = request['faction_id']
+            self.commlink_request_other_faction_id = request['other_faction_id']
             self.commlink_request_player_id = request['player_id']
 
         # Commlink request popup
@@ -1440,11 +1440,14 @@ class UIManager:
             icon_x = start_x + col * icon_spacing
             icon_y = start_y + row * row_spacing
 
+            #TODO: Examine this entire function. Code smell.
             # Determine unit color
-            if unit.owner == game.player_id:
-                unit_color = COLOR_UNIT_FRIENDLY
-            else:
-                unit_color = COLOR_UNIT_ENEMY
+            # if unit.owner == game.player_id:
+            #     unit_color = COLOR_UNIT_FRIENDLY
+            # else:
+            #     unit_color = COLOR_UNIT_ENEMY
+
+            unit_color = (255, 255, 255) #temp code
 
             # Highlight selected unit
             if unit == game.selected_unit:

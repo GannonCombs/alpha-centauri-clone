@@ -6,8 +6,7 @@ import constants
 import facilities
 from constants import (COLOR_TEXT, COLOR_BUTTON, COLOR_BUTTON_HOVER,
                        COLOR_BUTTON_BORDER, COLOR_BUTTON_HIGHLIGHT,
-                       COLOR_UI_BORDER, COLOR_BLACK, COLOR_BASE_FRIENDLY,
-                       COLOR_UNIT_FRIENDLY)
+                       COLOR_UI_BORDER, COLOR_BLACK)
 
 
 class BaseScreenManager:
@@ -54,8 +53,6 @@ class BaseScreenManager:
         self.base_naming_unit = unit
         # Use faction-specific base name from game
         self.base_name_input = game.generate_base_name(unit.owner)
-        # Keep old suggestions for backward compatibility (currently unused)
-        self.base_name_suggestions = self._generate_base_names()
 
     def show_base_view(self, base):
         """Show the base management screen."""
@@ -315,7 +312,7 @@ class BaseScreenManager:
                     if dx == 1 and dy == 1:
                         # Use faction color for base square
                         from ui.data import FACTIONS
-                        base_color = COLOR_BASE_FRIENDLY  # Default
+                        base_color = (255, 255, 255)  # Default to white
                         if hasattr(game, 'faction_assignments') and base.owner in game.faction_assignments:
                             faction_index = game.faction_assignments[base.owner]
                             base_color = FACTIONS[faction_index]['color']
@@ -565,7 +562,7 @@ class BaseScreenManager:
             for i, unit in enumerate(base.garrison):
                 unit_x = garrison_rect.x + 10 + i * 50
                 unit_circle = pygame.Rect(unit_x, garrison_rect.y + 10, 40, 40)
-                pygame.draw.circle(screen, COLOR_UNIT_FRIENDLY, unit_circle.center, 20)
+                pygame.draw.circle(screen, (255, 255, 255), unit_circle.center, 20)
                 pygame.draw.circle(screen, COLOR_BLACK, unit_circle.center, 20, 2)
         else:
             empty_text = self.small_font.render("No units garrisoned", True, (120, 130, 140))
@@ -679,7 +676,7 @@ class BaseScreenManager:
             for i, unit in enumerate(base.supported_units):
                 u_x = support_x + 15 + (i % 6) * 35
                 u_y = support_y + 35 + (i // 6) * 35
-                pygame.draw.circle(screen, COLOR_UNIT_FRIENDLY, (u_x + 12, u_y + 12), 12)
+                pygame.draw.circle(screen, (255, 255, 255), (u_x + 12, u_y + 12), 12)
                 pygame.draw.circle(screen, COLOR_BLACK, (u_x + 12, u_y + 12), 12, 1)
         else:
             support_text = self.small_font.render(f"0 units supported", True, (120, 140, 160))
@@ -955,7 +952,7 @@ class BaseScreenManager:
             icon_y = item_y + 15
             if item["type"] == "unit":
                 # Draw simple unit icon (circle)
-                pygame.draw.circle(screen, COLOR_UNIT_FRIENDLY, (item_rect.centerx, icon_y + 15), 15)
+                pygame.draw.circle(screen, (255, 255, 255), (item_rect.centerx, icon_y + 15), 15)
                 pygame.draw.circle(screen, COLOR_BLACK, (item_rect.centerx, icon_y + 15), 15, 2)
             else:  # facility
                 # Draw facility icon (for Stockpile Energy: yellow square/diamond)
@@ -1310,25 +1307,3 @@ class BaseScreenManager:
             return None
 
         return None
-
-    def _generate_base_names(self):
-        """Generate random base name suggestions."""
-        prefixes = ["New", "Fort", "Port", "Station", "Base", "Colony", "Outpost", "Settlement"]
-        suffixes = ["Alpha", "Beta", "Gamma", "Delta", "Prime", "Omega", "Nexus", "Haven",
-                    "Hope", "Unity", "Prosperity", "Liberty", "Freedom", "Victory", "Vanguard"]
-
-        # SMAC-style names
-        smac_names = ["Morgan Industries", "Gaia's Landing", "UN Headquarters", "Hive Territory",
-                      "University Base", "Sparta Command", "Believer's Hope", "Data Haven",
-                      "Solar Collective", "Merchant Exchange", "Research Station", "Psi Gate",
-                      "Manifold Nexus", "Planetary Transit", "Ascent to Transcendence"]
-
-        suggestions = []
-        # Generate compound names
-        for _ in range(3):
-            suggestions.append(f"{random.choice(prefixes)} {random.choice(suffixes)}")
-
-        # Add SMAC-style names
-        suggestions.extend(random.sample(smac_names, min(2, len(smac_names))))
-
-        return suggestions

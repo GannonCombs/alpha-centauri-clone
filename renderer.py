@@ -14,8 +14,8 @@ and draws all game entities to the screen.
 import pygame
 import constants
 from constants import (TILE_SIZE, COLOR_OCEAN, COLOR_LAND, COLOR_GRID, COLOR_BLACK,
-                       COLOR_UNIT_SELECTED, COLOR_UNIT_FRIENDLY, COLOR_UNIT_ENEMY,
-                       COLOR_BASE_FRIENDLY, COLOR_BASE_ENEMY, COLOR_BASE_BORDER,
+                       COLOR_UNIT_SELECTED,
+                        COLOR_BASE_BORDER,
                        UNIT_COLONY_POD_LAND, UNIT_COLONY_POD_SEA, UNIT_ARTIFACT)
 from ui.data import FACTIONS
 
@@ -27,10 +27,6 @@ class Camera:
         """Initialize camera at origin."""
         self.x = 0
         self.y = 0
-
-    def move(self, dx, dy):
-        """Move camera by offset (currently unused)."""
-        pass
 
     def apply(self, x, y):
         """Apply camera transform to coordinates (currently identity)."""
@@ -203,13 +199,8 @@ class Renderer:
             return
 
         # Determine unit color based on faction
-        if faction_assignments and unit.owner in faction_assignments:
-            faction_id = faction_assignments[unit.owner]
-            color = FACTIONS[faction_id]['color']
-        elif unit.is_friendly(player_id):
-            color = COLOR_UNIT_FRIENDLY
-        else:
-            color = COLOR_UNIT_ENEMY
+        faction_id = faction_assignments[unit.owner]
+        color = FACTIONS[faction_id]['color']
 
         center_x = screen_x + TILE_SIZE // 2
         center_y = screen_y + TILE_SIZE // 2
@@ -360,13 +351,8 @@ class Renderer:
             return
 
         # Determine color based on faction
-        if faction_assignments and base.owner in faction_assignments:
-            faction_id = faction_assignments[base.owner]
-            color = FACTIONS[faction_id]['color']
-        elif base.is_friendly(player_id):
-            color = COLOR_BASE_FRIENDLY
-        else:
-            color = COLOR_BASE_ENEMY
+        faction_id = faction_assignments[base.owner]
+        color = FACTIONS[faction_id]['color']
 
         # Draw base as a square with rounded corners
         base_size = int(TILE_SIZE * 0.7)
@@ -415,11 +401,8 @@ class Renderer:
         # Only draw background fill if there are garrisoned units
         if len(base.garrison) > 0:
             # Use faction color for garrison indicator
-            if faction_assignments and base.owner in faction_assignments:
-                faction_id = faction_assignments[base.owner]
-                pop_color = FACTIONS[faction_id]['color']
-            else:
-                pop_color = COLOR_BASE_FRIENDLY if base.is_friendly(player_id) else COLOR_BASE_ENEMY
+            faction_id = faction_assignments[base.owner]
+            pop_color = FACTIONS[faction_id]['color']
             pygame.draw.rect(self.screen, pop_color, pop_rect)
 
         # Always draw black outline (thicker for visibility)

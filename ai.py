@@ -349,26 +349,6 @@ class AIPlayer:
         dy = abs(y2 - y1)
         return dx + dy
 
-    def _generate_base_name(self, game):
-        """Generate a base name for the AI."""
-        ai_base_names = [
-            "Hive Alpha", "Hive Beta", "Hive Gamma", "Hive Delta",
-            "Collective Node", "Unity Station", "Spartan Outpost",
-            "Data Nexus", "Research Complex", "Industrial Hub",
-            "Fortress Prime", "Defense Grid", "Expansion Site",
-            "Colony Seven", "Sector Control", "Territory Mark"
-        ]
-
-        # Filter out already used names
-        used_names = {b.name for b in game.bases if b.owner == self.player_id}
-        available = [n for n in ai_base_names if n not in used_names]
-
-        if available:
-            return random.choice(available)
-        else:
-            # Fallback: numbered bases
-            return f"AI Base {len(used_names) + 1}"
-
     def _calculate_attack_odds(self, attacker, defender):
         """Calculate probability of attacker winning combat.
 

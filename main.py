@@ -72,11 +72,11 @@ def main():
     ui_panel = None
 
     # AI turn processing
-    ai_turn_delay = 375  # milliseconds between AI unit moves
+    ai_turn_delay = 350  # milliseconds between AI unit moves
     last_ai_action = 0
 
     # Map scrolling
-    scroll_delay = 550  # milliseconds between scroll ticks
+    scroll_delay = 350  # milliseconds between scroll ticks
     last_scroll_time = 0
 
     running = True

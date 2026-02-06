@@ -11,7 +11,6 @@ The Map class creates and manages the 2D grid of Tile objects that
 represent the game world.
 """
 import random
-from constants import LAND_PROBABILITY
 
 
 class Tile:
@@ -53,8 +52,9 @@ class GameMap:
         self.width = width
         self.height = height
         self.tiles = []
-        # Default to 70% ocean (equivalent to old default of 30% land)
-        self.ocean_percentage = ocean_percentage if ocean_percentage is not None else int((1.0 - LAND_PROBABILITY) * 100)
+        # Default to 60% ocean (equivalent to old default of 40% land)
+        # TODO: This should not be here. Erase.
+        self.ocean_percentage = ocean_percentage if ocean_percentage is not None else int(60)
         self.generate_random_map()
 
     def generate_random_map(self):

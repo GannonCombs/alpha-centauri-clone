@@ -4,7 +4,7 @@ import pygame
 import constants
 from constants import COLOR_TEXT, COLOR_BUTTON_BORDER
 from .data import FACTIONS
-from flavorText.commlink_dialogs import DialogSubstitution, select_greeting_dialog
+from flavorText.commlink_text import DialogSubstitution, select_greeting_dialog
 
 
 class DiplomacyManager:
