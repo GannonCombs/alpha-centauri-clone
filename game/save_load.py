@@ -72,7 +72,7 @@ def load_game(filepath: str):
             raise ValueError(f"Incompatible save version: {save_data['version']}")
 
         # Import here to avoid circular dependency
-        from game import Game
+        from game.game import Game
 
         # Reconstruct game state
         game = Game.from_dict(save_data)
@@ -85,7 +85,7 @@ def load_game(filepath: str):
         raise ValueError(f"Failed to load game: {str(e)}")
 
 
-def list_save_files(saves_dir: str = "saves") -> list[dict]:
+def list_save_files(saves_dir: str = "game/saves") -> list[dict]:
     """List all save files in the saves directory.
 
     Args:

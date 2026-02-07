@@ -365,7 +365,7 @@ class SaveLoadDialogManager:
         if not filename.endswith('.sav'):
             filename += '.sav'
 
-        filepath = os.path.join('saves', filename)
+        filepath = os.path.join('game/saves', filename)
 
         success, message = save_load.save_game(game, filepath)
 

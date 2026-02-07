@@ -2612,4 +2612,17 @@ class Game:
         }
         game.ui_manager = None  # Will be set by main.py after loading
 
+        # Initialize combat system
+        game.combat = Combat(game)
+
+        # Initialize auto-cycle delay
+        game.auto_cycle_delay = 500  # Wait 500ms before auto-cycling
+
+        # Initialize victory tracking
+        game.victory_type = None
+        game.supreme_leader_complete = False
+        game.economic_victory_complete = False
+        game.transcendence_complete = False
+        game.pending_new_designs_flag = False
+
         return game
