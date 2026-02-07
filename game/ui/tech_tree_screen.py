@@ -280,9 +280,7 @@ class TechTreeScreen:
         screen.blit(category_text, (category_badge_rect.x + 5, category_badge_rect.y + 2))
 
         # PREREQUISITES (arrows from left)
-        prereq1 = focused_data.get('prereq1')
-        prereq2 = focused_data.get('prereq2')
-        prereqs = [p for p in [prereq1, prereq2] if p is not None]
+        prereqs = focused_data.get('prereqs', [])
 
         arrow_spacing = 100
         prereq_x = center_x - tech_box_w // 2 - 200
@@ -339,7 +337,7 @@ class TechTreeScreen:
         # UNLOCKS (arrows to right - techs that require this one)
         unlocks = []
         for tech_id, tech_data in game.tech_tree.technologies.items():
-            if tech_data.get('prereq1') == focused_id or tech_data.get('prereq2') == focused_id:
+            if focused_id in tech_data.get('prereqs', []):
                 unlocks.append((tech_id, tech_data))
 
         unlock_x = center_x + tech_box_w // 2 + 200
