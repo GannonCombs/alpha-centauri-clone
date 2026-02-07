@@ -44,6 +44,11 @@ def main():
     available_height = screen_height - constants.UI_PANEL_HEIGHT
     num_complete_tiles = available_height // constants.TILE_SIZE
     constants.MAP_AREA_HEIGHT = num_complete_tiles * constants.TILE_SIZE
+    constants.UI_PANEL_Y = constants.MAP_AREA_HEIGHT  # Panel starts right after last complete tile
+
+    # Calculate map size to be double screen size (both width and height)
+    constants.MAP_HEIGHT = (constants.MAP_AREA_HEIGHT // constants.TILE_SIZE) * 2
+
     # Width double of screen
     constants.MAP_WIDTH = (screen_width // constants.TILE_SIZE) * 2
 

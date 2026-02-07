@@ -1,13 +1,7 @@
 I have a lot of static data spread out. A lot of it isn't segregated from code, and some is in poor locations.
 
-Files:
+Remaining files to clean up:
 
-constants.py (DONE)
 commlink_text.py
 /ui/data.py
-facilities.py
 /flavorText/factionText
-unitComponents.py (DONE)
-tech.py (DONE)
-social_engineering.py
-main.py (DONE)

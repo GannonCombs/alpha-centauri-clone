@@ -90,11 +90,11 @@ class GameMap:
                 row.append(tile)
             self.tiles.append(row)
 
-        # # Place supply pods on 3% of tiles
-        # self._place_supply_pods()
-        #
-        # # Place monoliths on 1% of land tiles
-        # self._place_monoliths()
+        # Place supply pods on 3% of tiles
+        self._place_supply_pods()
+
+        # Place monoliths on 1% of land tiles
+        self._place_monoliths()
 
     def _place_supply_pods(self):
         """Place supply pods randomly on 3% of tiles (excluding edge rows)."""
