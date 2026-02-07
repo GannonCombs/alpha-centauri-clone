@@ -310,7 +310,7 @@ class BaseScreenManager:
                     # Center tile is the base
                     if dx == 1 and dy == 1:
                         # Use faction color for base square
-                        from ui.data import FACTIONS
+                        from data.data import FACTIONS
                         base_color = (255, 255, 255)  # Default to white
                         if hasattr(game, 'faction_assignments') and base.owner in game.faction_assignments:
                             faction_index = game.faction_assignments[base.owner]
@@ -443,7 +443,7 @@ class BaseScreenManager:
         screen.blit(fac_title, (facilities_x + 10, facilities_y + 8))
 
         # Get free facility from faction bonuses
-        from ui.data import FACTIONS
+        from data.data import FACTIONS
         # Use faction_assignments to map player_id to faction_index
         if hasattr(game, 'faction_assignments') and base.owner in game.faction_assignments:
             faction_index = game.faction_assignments[base.owner]
@@ -863,7 +863,7 @@ class BaseScreenManager:
         available_facilities = facilities.get_available_facilities(game.tech_tree)
 
         # Get free facility for this base's faction
-        from ui.data import FACTIONS
+        from data.data import FACTIONS
         free_facility_name = None
         if hasattr(game, 'faction_assignments') and base.owner in game.faction_assignments:
             faction_index = game.faction_assignments[base.owner]

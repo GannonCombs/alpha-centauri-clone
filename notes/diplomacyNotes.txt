@@ -12,13 +12,17 @@ High level flow of dialog triggering:
 1 Try to move a unit: game.try_move_unit(self, unit, target_x, target_y).
  - Poorly named. It DOES move a unit if it can.
 2 After it moves, but still within try_move_unit, we call game._check_first_contact.
+ - Problem: We check unit.owner against self.player_id to see if it's our unit. But both ids are 0 when neither player was Gaia.
+ - So the ids are bad.
+ - FISHY SMELL: we have a player_id and a faction_id...and then a player_faction_id, hardcoded to 0 and then assigned to itself?
+ - No way this id is correct, and yet it's used 21 times.
 3 Within, we set game.pending_commlink_requests. Each entry in this list contains player_id and other_faction_id.
  - Study if the gathering of ids makes sense.
  - Fishy smell: self.faction_contacts.append(other_faction_id)
  - other_faction_id is pulled from faction_assignments. We look up the id from the faction name, which we had from other_unit.owner. Fishy name.
  - Note: what SHOULD be the main index be for looking up opponents?
  - faction_assignments is set in _assign_factions.
- - #TODO: _assign_factions looks horrible, and is the source of my problems. There needs to be a basic 0-6 id for characters, then player_id stored separately.
+ - #TODO: _assign_factions looks horrible, and may be a source of my problems. There needs to be a basic 0-6 id for characters, then player_id stored separately.
  - #TODO: this function may be necessary to set correct enemy factions, though.
  - Fishy smell: # Check if we have all living factions now
  - This looks, at the very least, duplicated unnecessarily. But it might be in the wrong function.
@@ -44,27 +48,26 @@ High level flow of dialog triggering:
   - This seems to only set variables.
  - Other diplomacy.py functions? TBD. TODO: Solve this.
  - Trace backwards from below to try to connect the dots.
-8 commlink_dialogs.py functions
+8 commlink_text.py functions
  - class DialogSubstitution (imported in diplomacy.py) contains the following functions:
  -get_dialog()...gets dialog. It calls set_context().
  -set_context()...sets the context (meaning flavor text)
- - Remember, commlink_dialogs ONLY sets the flavor text (and main text?). (TODO: rename the file). Diplomacy handles the flow.
- - TODO: We should always segregate data files from functional files. Split up commlink_dialogs.
- - (Which then raises the question, can the funcs in commlink_dialogs be moved to diplomacy.py?
- - Tangent: there are several other files that need to be segregated.
+ - Remember, commlink_dialogs ONLY sets the text.
 
 
 
  So. I think I've solved everything.
 
 Steps:
-I  Consolidate data files.
-II Give an id to each faction, in data.
-III Set player id elsewhere, in game.py.
-IV Modify _assign_factions.
-V Assign player_id and other_faction_id differently, when players bump. unit.owner should have (or BE) this data.
-VI (optional) See if we can avoid the weird popping and storing of ids in ui_manager.
+I  Use FACTIONS for flavor in commlink_text.
+II Set player id elsewhere, in game.py.
+III Modify _assign_factions.
+IV Assign player_id and other_faction_id differently, when players bump. unit.owner should have (or BE) this data.
+V (optional) See if we can avoid the weird popping and storing of ids in ui_manager.
 
 
 
-I: FACTIONS data is clean now.
+Maybe I was wrong about the id types.
+Maybe player_faction_id IS supposed to be the one I selected.
+And player_id is just the current faction selected?
+Very confused still.

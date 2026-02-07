@@ -4,7 +4,7 @@ import pygame
 from data import constants
 from data.constants import (COLOR_TEXT, COLOR_BUTTON, COLOR_BUTTON_HOVER,
                             COLOR_BUTTON_BORDER, COLOR_BUTTON_HIGHLIGHT)
-from ui.data import FACTIONS
+from data.data import FACTIONS
 
 
 class TechTreeScreen:

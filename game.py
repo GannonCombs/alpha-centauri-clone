@@ -34,19 +34,18 @@ class Game:
         Args:
             player_faction_id (int): Faction ID for the player (0-6)
             player_name (str): Player's custom name (optional)
-            ocean_percentage (int): Percentage of ocean tiles (30-90), None for default (70%)
+            ocean_percentage (int): Percentage of ocean tiles (30-90)
         """
         self.game_map = GameMap(constants.MAP_WIDTH, constants.MAP_HEIGHT, ocean_percentage)
         self.turn = 1
         self.running = True
-        self.player_id = 0  # Human player (always ID 0)
+        self.player_id = 0
         self.player_faction_id = player_faction_id  # Which faction the player chose
         self.player_name = player_name  # Player's custom name
         self.mission_year = 2100  # Starting year
         self.energy_credits = 0  # Starting credits
 
         # Global energy allocation (applies to all bases)
-        #TODO: This should NOT be hardcoded. It is set in social engineering.
         self.global_energy_allocation = {
             'economy': 50,  # % to energy credits
             'labs': 50,     # % to research
@@ -117,7 +116,7 @@ class Game:
         self.enemy_ever_had_base = False  # Track if enemy has founded at least one base
 
         # Victory condition tracking
-        self.supreme_leader_since = None  # Turn when player became supreme leader (None if not leader)
+        self.supreme_leader_complete = False  # Turn when player became supreme leader (None if not leader)
         self.economic_victory_complete = False  # Has Economic Victory project been completed?
         self.transcendence_complete = False  # Has Ascent to Transcendence been completed?
 
@@ -158,7 +157,7 @@ class Game:
 
     def _grant_starting_tech(self):
         """Grant the player's faction starting technology (without prerequisites)."""
-        from ui.data import FACTIONS
+        from data.data import FACTIONS
 
         faction_id = self.faction_assignments.get(self.player_id, 0)
         if faction_id < len(FACTIONS):
@@ -174,7 +173,7 @@ class Game:
         Args:
             ai_player_id (int): The AI player ID (1-6)
         """
-        from ui.data import FACTIONS
+        from data.data import FACTIONS
 
         faction_id = self.faction_assignments.get(ai_player_id, 0)
         if faction_id < len(FACTIONS):
@@ -1531,6 +1530,9 @@ class Game:
 
                     # Establish commlink between the two factions
                     # If player is involved, add to faction_contacts
+                    print(f" Unit.owner: {unit.owner}")
+                    print(f" player_id: {self.player_id}")
+                    #TODO: both just printed 0 when neither was Deirdre. We are using bad ID values.
                     if unit.owner == self.player_id:
                         # Player met the AI faction
                         other_faction_id = self.faction_assignments.get(other_unit.owner)
@@ -1633,7 +1635,7 @@ class Game:
         Returns:
             str: The generated base name
         """
-        from ui.data import FACTIONS
+        from data.data import FACTIONS
         import random
 
         # Get faction ID for this player
@@ -2181,13 +2183,7 @@ class Game:
         elif proposal_id == "GOVERNOR":
             # Elect planetary governor (diplomatic victory condition)
             if winner:
-                # Check if player won
-                if winner == "You" or winner == "Gaians":  # Assuming player is Gaians
-                    self.supreme_leader_since = self.turn
-                    self.set_status_message(f"You have been elected Supreme Leader!")
-                else:
-                    self.supreme_leader_since = None
-                    self.set_status_message(f"{winner} elected Planetary Governor!")
+                self.set_status_message(f"{winner} elected Planetary Governor!")
 
     def _collect_upkeep_events(self):
         """Collect all upkeep events to display before new turn starts."""
@@ -2417,17 +2413,6 @@ class Game:
             self.set_status_message("CONQUEST VICTORY: All enemy factions eliminated!")
             return
 
-        # Check DIPLOMATIC VICTORY: Supreme Leader for 20 turns
-        if hasattr(self, 'supreme_leader_since') and self.supreme_leader_since is not None:
-            turns_as_leader = self.turn - self.supreme_leader_since
-            if turns_as_leader >= 20:
-                self.game_over = True
-                self.winner = self.player_id
-                self.victory_type = "diplomatic"
-                print("VICTORY: Diplomatic victory achieved!")
-                self.set_status_message("DIPLOMATIC VICTORY: 20 years as Supreme Leader!")
-                return
-
         # Check ECONOMIC VICTORY: 50000 credits + Economic Victory project
         if self.energy_credits >= 50000:
             if hasattr(self, 'economic_victory_complete') and self.economic_victory_complete:
@@ -2445,6 +2430,15 @@ class Game:
             self.victory_type = "transcendence"
             print("VICTORY: Transcendence achieved!")
             self.set_status_message("TRANSCENDENCE VICTORY: Ascended to a higher plane!")
+            return
+
+        #  Check DIPLOMATIC VICTORY
+        if self.supreme_leader_complete:
+            self.game_over = True
+            self.winner = self.player_id
+            self.victory_type = "diplomatic"
+            print("VICTORY: Diplomatic achieved!")
+            self.set_status_message("DIPLOMATIC VICTORY: You are supreme leader!")
             return
 
     def new_game(self, player_faction_id=None, player_name=None):
@@ -2481,7 +2475,7 @@ class Game:
         self.victory_type = None
         self.player_ever_had_base = False
         self.enemy_ever_had_base = False
-        self.supreme_leader_since = None
+        self.supreme_leader_complete = False
         self.economic_victory_complete = False
         self.transcendence_complete = False
         self.upkeep_phase_active = False

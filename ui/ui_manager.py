@@ -13,7 +13,7 @@ from .social_screens import SocialScreensManager
 from .base_screens import BaseScreenManager
 from .save_load_dialog import SaveLoadDialogManager
 from .context_menu import ContextMenu
-from .data import FACTIONS
+from data.data import FACTIONS
 
 
 class UIManager:

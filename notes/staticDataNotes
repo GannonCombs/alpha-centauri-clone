@@ -1,7 +1,0 @@
-I have a lot of static data spread out. A lot of it isn't segregated from code, and some is in poor locations.
-
-Remaining files to clean up:
-
-commlink_text.py
-/ui/data.py
-/flavorText/factionText

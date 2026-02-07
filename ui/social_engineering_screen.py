@@ -5,7 +5,7 @@ from data import constants
 from data.constants import (COLOR_TEXT, COLOR_BUTTON, COLOR_BUTTON_HOVER,
                             COLOR_BUTTON_BORDER, COLOR_BUTTON_HIGHLIGHT)
 import social_engineering
-from ui.data import SE_EFFECTS
+from data.data import SE_EFFECTS
 
 
 class SocialEngineeringScreen:
@@ -103,7 +103,7 @@ class SocialEngineeringScreen:
         screen.blit(effects_title, (effects_x + effects_w // 2 - effects_title.get_width() // 2, effects_y + 10))
 
         # Calculate cumulative effects from current selections + faction bonuses
-        from ui.data import FACTIONS
+        from data.data import FACTIONS
         cumulative_effects = {}
         faction_bonuses = {}
 

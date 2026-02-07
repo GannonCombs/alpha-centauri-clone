@@ -17,7 +17,7 @@ from data.constants import (TILE_SIZE, COLOR_OCEAN, COLOR_LAND, COLOR_GRID, COLO
                             COLOR_UNIT_SELECTED,
                             COLOR_BASE_BORDER,
                             UNIT_COLONY_POD_LAND, UNIT_COLONY_POD_SEA, UNIT_ARTIFACT)
-from ui.data import FACTIONS
+from data.data import FACTIONS
 
 
 class Camera:
@@ -440,7 +440,7 @@ class Renderer:
             game_map: The game map for wrapping calculations
             faction_assignments: Dict mapping player_id to faction_id (optional)
         """
-        from ui.data import FACTIONS
+        from data.data import FACTIONS
 
         # Get faction colors for each player
         def get_player_color(player_id):

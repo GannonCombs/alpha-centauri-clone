@@ -5,7 +5,7 @@ import random
 from data import constants
 from data.constants import (COLOR_TEXT, COLOR_COUNCIL_BG, COLOR_COUNCIL_ACCENT,
                             COLOR_COUNCIL_BORDER, COLOR_COUNCIL_BOX)
-from .data import FACTIONS, PROPOSALS
+from data.data import FACTIONS, PROPOSALS
 
 
 class CouncilManager:

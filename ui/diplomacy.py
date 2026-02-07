@@ -3,8 +3,8 @@
 import pygame
 from data import constants
 from data.constants import COLOR_TEXT, COLOR_BUTTON_BORDER
-from .data import FACTIONS
-from flavorText.commlink_text import DialogSubstitution, select_greeting_dialog
+from data.data import FACTIONS
+from commlink_text import DialogSubstitution, select_greeting_dialog
 
 
 class DiplomacyManager:

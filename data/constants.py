@@ -54,6 +54,6 @@ UNIT_COLONY_POD_SEA = "colony_pod_sea"
 UNIT_ARTIFACT = "artifact"
 UNIT_PROBE_TEAM = "probe_team"
 
-ai_turn_delay = 350  # milliseconds between AI unit moves
-scroll_delay = 350  # milliseconds between scroll ticks
+ai_turn_delay = 300  # milliseconds between AI unit moves
+scroll_delay = 300  # milliseconds between scroll ticks
 

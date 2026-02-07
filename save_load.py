@@ -6,8 +6,6 @@ to/from JSON files with .sav extension.
 
 import json
 import os
-from datetime import datetime
-from typing import Optional
 
 
 def save_game(game, filepath: str) -> tuple[bool, str]:
@@ -140,7 +138,7 @@ def generate_save_filename(game) -> str:
     Returns:
         str: Suggested filename (sanitized for filesystem)
     """
-    from ui.data import FACTIONS
+    from data.data import FACTIONS
 
     # Get player's chosen faction
     player_faction_id = getattr(game, 'player_faction_id', 0)

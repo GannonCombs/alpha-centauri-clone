@@ -193,6 +193,9 @@ In one battle, the enemy unit got a 25% sensor bonus. There is no terraforming y
 I think ai_turn_delay and scroll_delay should maybe move to constants.py.
 I've removed votes from data.FACTIONS. This will cause an error once I vote.
 Santiago needs to start with a rover. (Does Morgan start with a Synthmetal Garrison, too?)
+Made a treaty with someone. It still showed truce in commlinks.
+Check save overwrites. If the exact same name exists, popup that says Are You Sure you want to overwrite?
+I broke load game.
 
 When Claude Code is back online, start by asking it to review the new folder structure. See if it thinks it needs further subdivision.
 Then ask it to update general_index.md, and any other files that are out of date on structure and purpose.
