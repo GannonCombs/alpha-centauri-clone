@@ -14,32 +14,28 @@ class DialogSubstitution:
         self.current_ai_flavor = {}
 
     def set_context(self, player_faction, ai_faction):
+        """Set up substitution context for dialog with a specific faction.
 
-        # print(f"player faction: {player_faction}")
-        print(f"pf name: {player_faction['name']}")
+        Args:
+            player_faction: The player's faction dict from FACTIONS
+            ai_faction: The AI faction dict from FACTIONS (contains all flavor text)
+        """
+        print(f"Setting dialog context - Player: {player_faction['name']}, AI: {ai_faction['name']}")
 
-        #print(f"enemy faction: {ai_faction}")
-        print(f"enemy faction name: {ai_faction['name']}")
+        # ai_faction IS the flavor source - it contains all the $-prefixed keys
+        flavor = ai_faction
 
+        # Store faction-specific dialog overrides (keys starting with #)
+        self.current_ai_flavor = {k: v for k, v in flavor.items() if k.startswith('#')}
 
-        # 1. Get the ID
-        faction_id = ai_faction.get('id', player_faction['name'])
-        #faction_id = {}
-
-        #TODO: temp code to compile. Delete flavor and all fallbacks. Pull flavor from faction id.
-        #flavor = FACTIONS.get(faction_id, {})
-        flavor = {}
-
-        # 3. Build the variable map with fallbacks
-        # We use flavor.get() only if flavor is a dict
+        # Build the variable map using faction flavor text
         def get_f(key, default):
-            if isinstance(flavor, dict):
-                return flavor.get(key, default)
-            return default
+            """Get a flavor key from the faction data with fallback."""
+            return flavor.get(key, default)
 
         self.variables = {
-            'NAME1': player_faction.get('leader_name', 'Commander'),
-            'TITLE0': player_faction.get('title', 'Leader'),
+            'NAME1': player_faction.get('leader', 'Commander'),
+            'TITLE0': player_faction.get('$TITLE', 'Leader'),
             'NAME3': get_f('$NAME', 'The Leader'),
             'TITLE2': get_f('$TITLE', 'Leader'),
             'FACTION4': get_f('$FACTION', 'The Faction'),

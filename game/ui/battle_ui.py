@@ -18,11 +18,11 @@ class BattleUIManager:
 
     def draw_battle_prediction(self, screen, game):
         """Draw battle prediction dialog before combat."""
-        if not game.pending_battle:
+        if not game.combat.pending_battle:
             return
 
-        attacker = game.pending_battle['attacker']
-        defender = game.pending_battle['defender']
+        attacker = game.combat.pending_battle['attacker']
+        defender = game.combat.pending_battle['defender']
 
         # Semi-transparent overlay
         overlay = pygame.Surface((constants.SCREEN_WIDTH, constants.SCREEN_HEIGHT))
@@ -57,7 +57,7 @@ class BattleUIManager:
         screen.blit(att_hp, (att_x, att_y + 55))
 
         # Attacker modifiers
-        att_modifiers = game.get_combat_modifiers(attacker, is_defender=False, vs_unit=defender)
+        att_modifiers = game.combat.get_combat_modifiers(attacker, is_defender=False, vs_unit=defender)
         mod_y = att_y + 75
         for mod in att_modifiers:
             mod_text = self.small_font.render(f"{mod['name']}: {mod['display']}", True, (150, 255, 150))
@@ -82,7 +82,7 @@ class BattleUIManager:
         screen.blit(def_hp, (def_x, def_y + 55))
 
         # Defender modifiers
-        def_modifiers = game.get_combat_modifiers(defender, is_defender=True, vs_unit=attacker)
+        def_modifiers = game.combat.get_combat_modifiers(defender, is_defender=True, vs_unit=attacker)
         mod_y = def_y + 75
         for mod in def_modifiers:
             mod_text = self.small_font.render(f"{mod['name']}: {mod['display']}", True, (150, 255, 150))
@@ -90,7 +90,7 @@ class BattleUIManager:
             mod_y += 18
 
         # Combat odds
-        odds = game.calculate_combat_odds(attacker, defender)
+        odds = game.combat.calculate_combat_odds(attacker, defender)
         odds_text = self.font.render(f"Win Chance: {int(odds * 100)}%", True, (255, 255, 100))
         odds_rect = odds_text.get_rect(centerx=box_x + box_w // 2, top=box_y + 240)
         screen.blit(odds_text, odds_rect)
@@ -147,12 +147,12 @@ class BattleUIManager:
         panel_rect = pygame.Rect(panel_x, panel_y, panel_w, panel_h)
 
         # Always draw constant border
-        if game.active_battle:
+        if game.combat.active_battle:
             # Battle in progress - red theme
             pygame.draw.rect(screen, (30, 20, 20), panel_rect, border_radius=8)
             pygame.draw.rect(screen, (150, 50, 50), panel_rect, 3, border_radius=8)
 
-            battle = game.active_battle
+            battle = game.combat.active_battle
             attacker = battle['attacker']
             defender = battle['defender']
 
@@ -190,7 +190,7 @@ class BattleUIManager:
             mod_y = panel_y + 90
 
             # Attacker modifiers (left side)
-            att_modifiers = game.get_combat_modifiers(attacker, is_defender=False, vs_unit=defender)
+            att_modifiers = game.combat.get_combat_modifiers(attacker, is_defender=False, vs_unit=defender)
             for mod in att_modifiers:
                 mod_text = self.small_font.render(mod['display'], True, (150, 255, 150))
                 screen.blit(mod_text, (panel_x + 10, mod_y))
@@ -198,7 +198,7 @@ class BattleUIManager:
 
             # Defender modifiers (right side)
             mod_y = panel_y + 90
-            def_modifiers = game.get_combat_modifiers(defender, is_defender=True, vs_unit=attacker)
+            def_modifiers = game.combat.get_combat_modifiers(defender, is_defender=True, vs_unit=attacker)
             for mod in def_modifiers:
                 mod_text = self.small_font.render(mod['display'], True, (150, 255, 150))
                 mod_text_rect = mod_text.get_rect(right=panel_x + panel_w - 10, top=mod_y)

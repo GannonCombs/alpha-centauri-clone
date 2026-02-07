@@ -19,7 +19,7 @@ def save_game(game, filepath: str) -> tuple[bool, str]:
         tuple: (success: bool, message: str)
     """
     # Validation checks
-    if game.active_battle:
+    if game.combat.active_battle:
         return False, "Cannot save during combat"
 
     if game.processing_ai:

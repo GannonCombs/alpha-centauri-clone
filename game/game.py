@@ -21,6 +21,7 @@ from game.base import Base
 from game.ai import AIPlayer
 from game.tech import TechTree
 from game.territory import TerritoryManager
+from game.combat import Combat
 from game.data.constants import UNIT_LAND, UNIT_SEA, UNIT_AIR, UNIT_COLONY_POD_LAND, UNIT_COLONY_POD_SEA
 from game.debug import DebugManager  # DEBUG: Remove for release
 
@@ -39,7 +40,6 @@ class Game:
         self.game_map = GameMap(constants.MAP_WIDTH, constants.MAP_HEIGHT, ocean_percentage)
         self.turn = 1
         self.running = True
-        self.player_id = 0
         self.player_faction_id = player_faction_id  # Which faction the player chose
         self.player_name = player_name  # Player's custom name
         self.mission_year = 2100  # Starting year
@@ -67,23 +67,22 @@ class Game:
         self.supply_pod_message = None
 
         # Battle system
+        self.combat = Combat(self)
         self.pending_battle = None  # Dict with attacker, defender, target_x, target_y
         self.active_battle = None  # Dict tracking ongoing battle animation
 
-        # Faction assignments: Map player IDs to faction IDs
-        # Player 0 gets the selected faction, AI players 1-6 get the remaining factions
-        # IMPORTANT: This must be set BEFORE granting starting techs
-        self.faction_assignments = self._assign_factions(player_faction_id)
+        # Get list of AI faction IDs (all factions except player's)
+        self.ai_faction_ids = [fid for fid in range(7) if fid != player_faction_id]
 
         # Technology
         self.tech_tree = TechTree()  # Player's tech tree
         self._grant_starting_tech()  # Grant faction's starting technology
         self.tech_tree.auto_select_research()  # Start with an active research
-        self.ai_tech_trees = {}  # AI tech trees by player_id
-        for ai_id in range(1, 7):  # AI players 1-6
-            self.ai_tech_trees[ai_id] = TechTree()
-            self._grant_starting_tech_for_ai(ai_id)
-            self.ai_tech_trees[ai_id].auto_select_research()
+        self.ai_tech_trees = {}  # AI tech trees by faction_id
+        for ai_faction_id in self.ai_faction_ids:
+            self.ai_tech_trees[ai_faction_id] = TechTree()
+            self._grant_starting_tech_for_ai(ai_faction_id)
+            self.ai_tech_trees[ai_faction_id].auto_select_research()
 
         # Facilities and Projects
         self.built_projects = set()  # Global set of secret projects built (one per game)
@@ -99,8 +98,8 @@ class Game:
         # Territory
         self.territory = TerritoryManager(self.game_map)
 
-        # AI players (6 AI opponents with player_ids 1-6)
-        self.ai_players = [AIPlayer(i) for i in range(1, 7)]
+        # AI players (one for each AI faction)
+        self.ai_players = [AIPlayer(fid) for fid in self.ai_faction_ids]
 
         # Turn state
         self.processing_ai = False
@@ -159,50 +158,27 @@ class Game:
         """Grant the player's faction starting technology (without prerequisites)."""
         from game.data.data import FACTIONS
 
-        faction_id = self.faction_assignments.get(self.player_id, 0)
-        if faction_id < len(FACTIONS):
-            starting_tech = FACTIONS[faction_id].get('starting_tech')
+        if self.player_faction_id < len(FACTIONS):
+            starting_tech = FACTIONS[self.player_faction_id].get('starting_tech')
             if starting_tech and starting_tech in self.tech_tree.technologies:
                 self.tech_tree.discovered_techs.add(starting_tech)
                 tech_name = self.tech_tree.technologies[starting_tech]['name']
                 print(f"Player starts with {tech_name}")
 
-    def _grant_starting_tech_for_ai(self, ai_player_id):
-        """Grant an AI player's faction starting technology (without prerequisites).
+    def _grant_starting_tech_for_ai(self, ai_faction_id):
+        """Grant an AI faction's starting technology (without prerequisites).
 
         Args:
-            ai_player_id (int): The AI player ID (1-6)
+            ai_faction_id (int): The AI faction ID (0-6, excluding player's faction)
         """
         from game.data.data import FACTIONS
 
-        faction_id = self.faction_assignments.get(ai_player_id, 0)
-        if faction_id < len(FACTIONS):
-            starting_tech = FACTIONS[faction_id].get('starting_tech')
-            if starting_tech and starting_tech in self.ai_tech_trees[ai_player_id].technologies:
-                self.ai_tech_trees[ai_player_id].discovered_techs.add(starting_tech)
-                tech_name = self.ai_tech_trees[ai_player_id].technologies[starting_tech]['name']
-                print(f"AI Player {ai_player_id} starts with {tech_name}")
-
-    def _assign_factions(self, player_faction_id):
-        """Assign factions to all players (player and 6 AI).
-
-        Args:
-            player_faction_id: The faction ID selected by the player (0-6)
-
-        Returns:
-            dict: Mapping of player_id to faction_id
-        """
-        # Player 0 gets the selected faction
-        faction_assignments = {0: player_faction_id}
-
-        # Remaining 6 factions go to AI players 1-6
-        all_factions = list(range(7))  # All 7 faction IDs
-        all_factions.remove(player_faction_id)  # Remove player's faction
-
-        for ai_idx, ai_player_id in enumerate(range(1, 7)):
-            faction_assignments[ai_player_id] = all_factions[ai_idx]
-
-        return faction_assignments
+        if ai_faction_id < len(FACTIONS):
+            starting_tech = FACTIONS[ai_faction_id].get('starting_tech')
+            if starting_tech and starting_tech in self.ai_tech_trees[ai_faction_id].technologies:
+                self.ai_tech_trees[ai_faction_id].discovered_techs.add(starting_tech)
+                tech_name = self.ai_tech_trees[ai_faction_id].technologies[starting_tech]['name']
+                print(f"AI Faction {ai_faction_id} starts with {tech_name}")
 
     def _spawn_test_units(self):
         """Create starting units for all 7 factions."""
@@ -233,24 +209,28 @@ class Game:
         random.shuffle(land_tiles)  # Randomize spawn positions
 
         tile_idx = 0
-        for player_id in range(7):  # All 7 players (0 = human, 1-6 = AI)
-            # Get faction name for unit naming
-            faction_id = self.faction_assignments[player_id]
-            faction_prefix = "Player" if player_id == 0 else f"AI{player_id}"
+        # Spawn player faction first, then AI factions
+        all_faction_ids = [self.player_faction_id] + self.ai_faction_ids
+
+        for faction_id in all_faction_ids:
+            # Get faction data for naming
+            from game.data.data import FACTIONS
+            faction_name = FACTIONS[faction_id]['name'] if faction_id < len(FACTIONS) else f"Faction{faction_id}"
+            faction_prefix = "Player" if faction_id == self.player_faction_id else faction_name
 
             # Both units spawn on the same tile
             if tile_idx < len(land_tiles):
                 x, y = land_tiles[tile_idx]
                 tile_idx += 1  # Move to next tile for next faction
 
-                # Scout Patrol
-                unit = Unit(x, y, UNIT_LAND, player_id, f"{faction_prefix} Scout Patrol")
+                # Scout Patrol (owner = faction_id)
+                unit = Unit(x, y, UNIT_LAND, faction_id, f"{faction_prefix} Scout Patrol")
                 self.units.append(unit)
                 self.game_map.set_unit_at(x, y, unit)
                 print(f"Spawned {faction_prefix} Scout Patrol at ({x}, {y})")
 
-                # Colony Pod (same tile)
-                unit = Unit(x, y, UNIT_COLONY_POD_LAND, player_id, f"{faction_prefix} Colony Pod")
+                # Colony Pod (same tile, owner = faction_id)
+                unit = Unit(x, y, UNIT_COLONY_POD_LAND, faction_id, f"{faction_prefix} Colony Pod")
                 self.units.append(unit)
                 self.game_map.set_unit_at(x, y, unit)
                 print(f"Spawned {faction_prefix} Colony Pod at ({x}, {y})")
@@ -258,7 +238,7 @@ class Game:
         print(f"Total units spawned: {len(self.units)}")
 
         # Auto-select first friendly unit
-        friendly_units = [u for u in self.units if u.is_friendly(self.player_id)]
+        friendly_units = [u for u in self.units if u.owner == self.player_faction_id]
         if friendly_units:
             self.selected_unit = friendly_units[0]
             self.center_camera_on_selected = True  # Flag to center camera on game start
@@ -284,7 +264,7 @@ class Game:
 
         # If there's a base with garrisoned units, clicking elsewhere cycles through units
         if tile.base and tile.base.garrison:
-            friendly_garrison = [u for u in tile.base.garrison if u.is_friendly(self.player_id)]
+            friendly_garrison = [u for u in tile.base.garrison if u.is_friendly(self.player_faction_id)]
             if friendly_garrison:
                 # If currently selected unit is in this garrison, select next one
                 if self.selected_unit in friendly_garrison:
@@ -303,7 +283,7 @@ class Game:
 
         # Check if clicked on a unit on the tile
         clicked_unit = self.game_map.get_unit_at(tile_x, tile_y)
-        if clicked_unit and clicked_unit.is_friendly(self.player_id):
+        if clicked_unit and clicked_unit.is_friendly(self.player_faction_id):
             # Select friendly unit
             self.selected_unit = clicked_unit
 
@@ -434,7 +414,7 @@ class Game:
 
         # Check zone of control
         if self._violates_zone_of_control(unit, unit.x, unit.y, target_x, target_y):
-            if unit.owner == self.player_id:
+            if unit.owner == self.player_faction_id:
                 self.set_status_message("Cannot move: Zone of Control violation!")
             return False
 
@@ -446,7 +426,7 @@ class Game:
             # Check if it's an enemy unit
             if first_unit.owner != unit.owner:
                 # Enemy stack - initiate combat with first unit
-                if unit.owner == self.player_id:
+                if unit.owner == self.player_faction_id:
                     # Set up pending battle - UI will show prediction screen
                     self.pending_battle = {
                         'attacker': unit,
@@ -477,11 +457,11 @@ class Game:
         # If unit was held, unheld it when manually moved
         if hasattr(unit, 'held') and unit.held:
             unit.held = False
-            if unit.owner == self.player_id:
+            if unit.owner == self.player_faction_id:
                 self.set_status_message(f"{unit.name} unheld")
 
         # Reset auto-cycle timer when unit moves
-        if unit.owner == self.player_id:
+        if unit.owner == self.player_faction_id:
             self.auto_cycle_timer = pygame.time.get_ticks()
 
         # Check for first contact with adjacent enemy units
@@ -512,7 +492,7 @@ class Game:
                 # Check if base is destroyed
                 if base.population <= 0:
                     # Base is destroyed
-                    if unit.owner == self.player_id:
+                    if unit.owner == self.player_faction_id:
                         self.set_status_message(f"Destroyed {base.name}!")
                         print(f"Player destroyed {base.name}!")
                     else:
@@ -539,7 +519,7 @@ class Game:
                     # Heal unit to full health when capturing base
                     if unit.current_health < unit.max_health:
                         unit.current_health = unit.max_health
-                        if unit.owner == self.player_id:
+                        if unit.owner == self.player_faction_id:
                             self.set_status_message(f"{unit.name} healed to full health!")
 
                     # Recalculate production and growth based on new population
@@ -551,7 +531,7 @@ class Game:
                     self.territory.update_territory(self.bases)
 
                     # Show message
-                    if unit.owner == self.player_id:
+                    if unit.owner == self.player_faction_id:
                         self.set_status_message(f"Captured {base.name}! (Pop {base.population})")
                         print(f"Player captured {base.name}! New population: {base.population}")
                     else:
@@ -592,14 +572,14 @@ class Game:
             self.units.append(artifact)
             self.game_map.add_unit_at(tile.x, tile.y, artifact)
 
-            if unit.owner == self.player_id:
+            if unit.owner == self.player_faction_id:
                 self.supply_pod_message = "Supply Pod discovered! You found an Alien Artifact!"
                 print(f"Artifact found at ({tile.x}, {tile.y})")
             else:
                 print(f"AI found artifact at ({tile.x}, {tile.y})")
         else:
             # Grant 500 energy credits
-            if unit.owner == self.player_id:
+            if unit.owner == self.player_faction_id:
                 self.energy_credits += 500
                 self.supply_pod_message = "Supply Pod discovered! You gain 500 energy credits."
                 print(f"Supply pod collected at ({tile.x}, {tile.y}): +500 credits")
@@ -618,7 +598,7 @@ class Game:
         # Always repair the unit
         if unit.current_health < unit.max_health:
             unit.current_health = unit.max_health
-            if unit.owner == self.player_id:
+            if unit.owner == self.player_faction_id:
                 self.set_status_message(f"{unit.name} repaired at Monolith!")
                 print(f"Unit repaired at monolith: ({unit.x}, {unit.y})")
 
@@ -631,13 +611,13 @@ class Game:
                           "Hardened", "Veteran", "Commando", "Elite"]
             morale_name = morale_names[unit.morale_level] if unit.morale_level < len(morale_names) else "Elite"
 
-            if unit.owner == self.player_id:
+            if unit.owner == self.player_faction_id:
                 self.set_status_message(f"{unit.name} upgraded to {morale_name} at Monolith!")
                 print(f"Unit upgraded at monolith: ({unit.x}, {unit.y}) -> {morale_name}")
         elif not unit.monolith_upgrade:
             # Already at max morale, mark as upgraded so they don't try again
             unit.monolith_upgrade = True
-            if unit.owner == self.player_id:
+            if unit.owner == self.player_faction_id:
                 self.set_status_message(f"{unit.name} visited Monolith (already Elite)")
 
     def get_combat_modifiers(self, unit, is_defender=False, vs_unit=None):
@@ -907,21 +887,19 @@ class Game:
 
         # Set relationship to Vendetta when combat occurs
         if hasattr(self, 'ui_manager') and hasattr(self.ui_manager, 'diplo_manager'):
-            # Get faction IDs from player IDs
-            if hasattr(self, 'faction_assignments'):
-                attacker_faction_id = self.faction_assignments.get(attacker.owner)
-                defender_faction_id = self.faction_assignments.get(defender.owner)
+            # unit.owner IS faction_id
+            attacker_faction_id = attacker.owner
+            defender_faction_id = defender.owner
 
-                # Update diplomacy relations to Vendetta
-                diplo = self.ui_manager.diplo_manager
-                if attacker_faction_id is not None and defender_faction_id is not None:
-                    # Both factions now have Vendetta
-                    if defender.owner == self.player_id:
-                        # AI attacked player - set AI faction to Vendetta from player's perspective
-                        diplo.diplo_relations[attacker_faction_id] = 'Vendetta'
-                    elif attacker.owner == self.player_id:
-                        # Player attacked AI - set AI faction to Vendetta
-                        diplo.diplo_relations[defender_faction_id] = 'Vendetta'
+            # Update diplomacy relations to Vendetta
+            diplo = self.ui_manager.diplo_manager
+            # Both factions now have Vendetta
+            if defender.owner == self.player_faction_id:
+                # AI attacked player - set AI faction to Vendetta from player's perspective
+                diplo.diplo_relations[attacker_faction_id] = 'Vendetta'
+            elif attacker.owner == self.player_faction_id:
+                # Player attacked AI - set AI faction to Vendetta
+                diplo.diplo_relations[defender_faction_id] = 'Vendetta'
 
         # Set up active battle for animation
         self.active_battle = {
@@ -1047,7 +1025,7 @@ class Game:
                 disengaged_unit.moves_remaining = 0
 
             # Show disengage message
-            if disengaged_unit.owner == self.player_id:
+            if disengaged_unit.owner == self.player_faction_id:
                 self.set_status_message(f"{disengaged_unit.name} disengaged from combat!")
 
             # Clear battle state
@@ -1163,7 +1141,7 @@ class Game:
         # Deselect if this was the selected unit
         if self.selected_unit == unit:
             # Try to select next friendly unit
-            friendly_units = [u for u in self.units if u.is_friendly(self.player_id)]
+            friendly_units = [u for u in self.units if u.is_friendly(self.player_faction_id)]
             self.selected_unit = friendly_units[0] if friendly_units else None
 
     def load_unit_onto_transport(self, unit, transport):
@@ -1301,7 +1279,7 @@ class Game:
 
         can_fire, error = self.can_artillery_fire_at(unit, target_x, target_y)
         if not can_fire:
-            if unit.owner == self.player_id:
+            if unit.owner == self.player_faction_id:
                 self.set_status_message(f"Cannot fire: {error}")
             return False
 
@@ -1316,7 +1294,7 @@ class Game:
         target_unit.take_damage(artillery_damage)
 
         # Status message
-        if unit.owner == self.player_id or target_unit.owner == self.player_id:
+        if unit.owner == self.player_faction_id or target_unit.owner == self.player_faction_id:
             self.set_status_message(
                 f"{unit.name} fires artillery at {target_unit.name} for {artillery_damage} damage!"
             )
@@ -1521,56 +1499,52 @@ class Game:
                     # Establish commlink between the two factions
                     # If player is involved, add to faction_contacts
                     print(f" Unit.owner: {unit.owner}")
-                    print(f" player_id: {self.player_id}")
+                    print(f" player_id: {self.player_faction_id}")
                     #TODO: both just printed 0 when neither was Deirdre. We are using bad ID values.
-                    if unit.owner == self.player_id:
-                        # Player met the AI faction
-                        other_faction_id = self.faction_assignments.get(other_unit.owner)
-                        if other_faction_id is not None and other_faction_id not in self.faction_contacts:
+                    if unit.owner == self.player_faction_id:
+                        # Player met the AI faction (owner IS faction_id)
+                        other_faction_id = other_unit.owner
+                        if other_faction_id not in self.faction_contacts:
                             self.faction_contacts.append(other_faction_id)  # Append to preserve contact order
-                            print(f"Player established contact with faction {other_faction_id} (player {other_unit.owner})")
+                            print(f"Player established contact with faction {other_faction_id}")
 
                             # Show commlink request popup (player initiated contact)
                             if not hasattr(self, 'pending_commlink_requests'):
                                 self.pending_commlink_requests = []
                             self.pending_commlink_requests.append({
                                 'other_faction_id': other_faction_id,
-                                'player_id': other_unit.owner
+                                'player_faction_id': self.player_faction_id
                             })
 
                             # Check if we have all living factions now
                             living_factions = set()
                             for base in self.bases:
-                                if base.owner != self.player_id:
-                                    base_faction_id = self.faction_assignments.get(base.owner)
-                                    if base_faction_id is not None:
-                                        living_factions.add(base_faction_id)
+                                if base.owner != self.player_faction_id:
+                                    living_factions.add(base.owner)  # owner IS faction_id
 
                             if living_factions.issubset(set(self.faction_contacts)):
                                 self.all_contacts_obtained = True
 
-                    elif other_unit.owner == self.player_id:
-                        # AI met the player
-                        other_faction_id = self.faction_assignments.get(unit.owner)
-                        if other_faction_id is not None and other_faction_id not in self.faction_contacts:
-                            self.faction_contacts.append(other_faction_id)  # Append to preserve contact order (changed from .add to .append)
-                            print(f"Player established contact with faction {other_faction_id} (player {unit.owner})")
+                    elif other_unit.owner == self.player_faction_id:
+                        # AI met the player (owner IS faction_id)
+                        other_faction_id = unit.owner
+                        if other_faction_id not in self.faction_contacts:
+                            self.faction_contacts.append(other_faction_id)  # Append to preserve contact order
+                            print(f"Player established contact with faction {other_faction_id}")
 
                             # Show commlink request popup (AI initiated contact)
                             if not hasattr(self, 'pending_commlink_requests'):
                                 self.pending_commlink_requests = []
                             self.pending_commlink_requests.append({
                                 'other_faction_id': other_faction_id,
-                                'player_id': unit.owner
+                                'player_faction_id': self.player_faction_id
                             })
 
                             # Check if we have all living factions now
                             living_factions = set()
                             for base in self.bases:
-                                if base.owner != self.player_id:
-                                    base_faction_id = self.faction_assignments.get(base.owner)
-                                    if base_faction_id is not None:
-                                        living_factions.add(base_faction_id)
+                                if base.owner != self.player_faction_id:
+                                    living_factions.add(base.owner)  # owner IS faction_id
 
                             if living_factions.issubset(self.faction_contacts):
                                 self.all_contacts_obtained = True
@@ -1629,8 +1603,9 @@ class Game:
         import random
 
         # Get faction ID for this player
-        faction_id = self.faction_assignments.get(player_id)
-        if faction_id is None or faction_id >= len(FACTIONS):
+        # player_id IS faction_id
+        faction_id = player_id
+        if faction_id >= len(FACTIONS):
             # Fallback if faction not found
             player_bases = [b for b in self.bases if b.owner == player_id]
             return f"Base {len(player_bases) + 1}"
@@ -1707,14 +1682,14 @@ class Game:
         if self.selected_unit == unit:
             self.selected_unit = None
             # Trigger auto-cycle after delay if player unit
-            if unit.owner == self.player_id:
+            if unit.owner == self.player_faction_id:
                 self.auto_cycle_timer = pygame.time.get_ticks()
 
         # Update territory
         self.territory.update_territory(self.bases)
 
         # Center camera on newly founded base
-        if unit.owner != self.player_id:
+        if unit.owner != self.player_faction_id:
             # AI founded a base - center on it
             self.center_camera_on_tile = (base.x, base.y)
 
@@ -1745,18 +1720,14 @@ class Game:
         for base in self.bases:
             bases_per_player[base.owner] = bases_per_player.get(base.owner, 0) + 1
 
-        # Check each AI player for elimination
-        for player_id in range(1, 7):
-            faction_id = self.faction_assignments.get(player_id)
-            if faction_id is None:
-                continue
-
+        # Check each AI faction for elimination
+        for faction_id in self.ai_faction_ids:
             # Skip if already marked as eliminated
             if faction_id in self.eliminated_factions:
                 continue
 
-            # Check if this player has no bases
-            if bases_per_player.get(player_id, 0) == 0:
+            # Check if this faction has no bases
+            if bases_per_player.get(faction_id, 0) == 0:
                 # Faction has been eliminated!
                 self.eliminated_factions.add(faction_id)
                 self.pending_faction_eliminations.append(faction_id)
@@ -1765,7 +1736,7 @@ class Game:
                 if faction_id in self.faction_contacts:
                     self.faction_contacts.remove(faction_id)
 
-                print(f"Faction {faction_id} (player {player_id}) has been eliminated!")
+                print(f"Faction {faction_id} has been eliminated!")
 
     def _spawn_production(self, base, item_name):
         """Spawn a completed production item at a base.
@@ -1872,7 +1843,7 @@ class Game:
 
     def cycle_units(self):
         """Select next friendly unit (W key). Cycles only through units that still have moves."""
-        friendly_units = [u for u in self.units if u.is_friendly(self.player_id)]
+        friendly_units = [u for u in self.units if u.is_friendly(self.player_faction_id)]
 
         if not friendly_units:
             return
@@ -1927,17 +1898,17 @@ class Game:
         """
         # Reset player units
         for unit in self.units:
-            if unit.owner == self.player_id:
+            if unit.owner == self.player_faction_id:
                 unit.end_turn()
 
         # Refuel air units at bases and check for crashes
-        self._process_air_unit_fuel(self.player_id)
+        self._process_air_unit_fuel(self.player_faction_id)
 
         # Process player bases at end of player turn
         total_economy = 0
         total_labs = 0
         for base in self.bases:
-            if base.owner == self.player_id:
+            if base.owner == self.player_faction_id:
                 completed_item = base.process_turn(self.global_energy_allocation)
                 if completed_item:
                     # Store for spawning at start of next turn (after upkeep)
@@ -2128,7 +2099,7 @@ class Game:
         Returns:
             bool: True if all friendly units have moves_remaining <= 0
         """
-        friendly_units = [u for u in self.units if u.is_friendly(self.player_id)]
+        friendly_units = [u for u in self.units if u.is_friendly(self.player_faction_id)]
         if not friendly_units:
             return False
         return all(u.moves_remaining <= 0 for u in friendly_units)
@@ -2190,7 +2161,7 @@ class Game:
 
         # Check player bases for riots and starvation
         for base in self.bases:
-            if base.owner != self.player_id:
+            if base.owner != self.player_faction_id:
                 continue
 
             # Check for drone riots
@@ -2228,10 +2199,8 @@ class Game:
         # Count living factions (those with at least one base)
         living_factions = set()
         for base in self.bases:
-            if base.owner != self.player_id:
-                base_faction_id = self.faction_assignments.get(base.owner)
-                if base_faction_id is not None:
-                    living_factions.add(base_faction_id)
+            if base.owner != self.player_faction_id:
+                living_factions.add(base.owner)  # owner IS faction_id
 
         # If we've contacted all living factions, set flag
         if living_factions.issubset(self.faction_contacts):
@@ -2265,7 +2234,7 @@ class Game:
 
         # Select a friendly unit if none selected
         if not self.selected_unit:
-            friendly_units = [u for u in self.units if u.is_friendly(self.player_id)]
+            friendly_units = [u for u in self.units if u.is_friendly(self.player_faction_id)]
             if friendly_units:
                 self.selected_unit = friendly_units[0]
 
@@ -2376,8 +2345,8 @@ class Game:
         5. Scenario: Custom objectives (if enabled)
         """
         # Count bases by owner
-        player_bases = [b for b in self.bases if b.owner == self.player_id]
-        enemy_bases = [b for b in self.bases if b.owner != self.player_id]
+        player_bases = [b for b in self.bases if b.owner == self.player_faction_id]
+        enemy_bases = [b for b in self.bases if b.owner != self.player_faction_id]
 
         # Track if players have ever had bases
         if len(player_bases) > 0:
@@ -2397,7 +2366,7 @@ class Game:
         # Check CONQUEST VICTORY: All enemy bases destroyed
         if self.enemy_ever_had_base and len(enemy_bases) == 0:
             self.game_over = True
-            self.winner = self.player_id
+            self.winner = self.player_faction_id
             self.victory_type = "conquest"
             print("VICTORY: All enemy bases destroyed!")
             self.set_status_message("CONQUEST VICTORY: All enemy factions eliminated!")
@@ -2407,7 +2376,7 @@ class Game:
         if self.energy_credits >= 50000:
             if hasattr(self, 'economic_victory_complete') and self.economic_victory_complete:
                 self.game_over = True
-                self.winner = self.player_id
+                self.winner = self.player_faction_id
                 self.victory_type = "economic"
                 print("VICTORY: Economic victory achieved!")
                 self.set_status_message("ECONOMIC VICTORY: Economic dominance achieved!")
@@ -2416,7 +2385,7 @@ class Game:
         # Check TRANSCENDENCE VICTORY: Ascent to Transcendence complete
         if hasattr(self, 'transcendence_complete') and self.transcendence_complete:
             self.game_over = True
-            self.winner = self.player_id
+            self.winner = self.player_faction_id
             self.victory_type = "transcendence"
             print("VICTORY: Transcendence achieved!")
             self.set_status_message("TRANSCENDENCE VICTORY: Ascended to a higher plane!")
@@ -2425,7 +2394,7 @@ class Game:
         #  Check DIPLOMATIC VICTORY
         if self.supreme_leader_complete:
             self.game_over = True
-            self.winner = self.player_id
+            self.winner = self.player_faction_id
             self.victory_type = "diplomatic"
             print("VICTORY: Diplomatic achieved!")
             self.set_status_message("DIPLOMATIC VICTORY: You are supreme leader!")
@@ -2493,8 +2462,8 @@ class Game:
             'Values': 0,
             'Future Society': 0
         }
-        self.faction_assignments = self._assign_factions(self.player_faction_id)
-        self.ai_players = [AIPlayer(i) for i in range(1, 7)]
+        self.ai_faction_ids = [fid for fid in range(7) if fid != self.player_faction_id]
+        self.ai_players = [AIPlayer(fid) for fid in self.ai_faction_ids]
         self.center_camera_on_selected = False
         self.center_camera_on_tile = None
         self._spawn_test_units()
@@ -2519,7 +2488,7 @@ class Game:
                 'turn': self.turn,
                 'mission_year': self.mission_year,
                 'energy_credits': self.energy_credits,
-                'player_id': self.player_id,
+                'player_id': self.player_faction_id,
                 'player_faction_id': self.player_faction_id,
                 'player_name': self.player_name,
                 'built_projects': list(self.built_projects),
@@ -2528,7 +2497,7 @@ class Game:
                 'winner': self.winner,
                 'player_ever_had_base': self.player_ever_had_base,
                 'enemy_ever_had_base': self.enemy_ever_had_base,
-                'faction_assignments': self.faction_assignments,
+                'ai_faction_ids': self.ai_faction_ids,
                 'faction_contacts': list(self.faction_contacts),
                 'eliminated_factions': list(self.eliminated_factions)
             },
@@ -2573,7 +2542,7 @@ class Game:
         game.winner = gs['winner']
         game.player_ever_had_base = gs['player_ever_had_base']
         game.enemy_ever_had_base = gs['enemy_ever_had_base']
-        game.faction_assignments = gs.get('faction_assignments', {0: game.player_faction_id})
+        game.ai_faction_ids = gs.get('ai_faction_ids', [fid for fid in range(7) if fid != game.player_faction_id])
         game.faction_contacts = set(gs.get('faction_contacts', []))
         game.eliminated_factions = set(gs.get('eliminated_factions', []))
 

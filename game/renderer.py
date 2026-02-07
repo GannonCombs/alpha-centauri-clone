@@ -88,13 +88,12 @@ class Renderer:
         max_y_offset = max(0, game_map.height - visible_tiles_y)
         self.camera_offset_y = max(0, min(target_y, max_y_offset))
 
-    def draw_map(self, game_map, territory=None, faction_assignments=None):
+    def draw_map(self, game_map, territory=None):
         """Draw all map tiles with horizontal wrapping and territory borders.
 
         Args:
             game_map: The game map
             territory: TerritoryManager instance (optional)
-            faction_assignments: Dict mapping player_id to faction_id (optional)
         """
         self._update_offsets(game_map)
 
@@ -119,7 +118,7 @@ class Renderer:
 
         # Draw territory borders after tiles
         if territory:
-            self.draw_territory_borders(territory, game_map, faction_assignments)
+            self.draw_territory_borders(territory, game_map)
 
         # Draw supply pods
         self.draw_supply_pods(game_map)
@@ -152,12 +151,12 @@ class Renderer:
         pygame.draw.rect(self.screen, color, rect)
         pygame.draw.rect(self.screen, COLOR_GRID, rect, 1)
 
-    def draw_units(self, units, selected_unit, player_id, game_map, faction_assignments=None):
+    def draw_units(self, units, selected_unit, player_faction_id, game_map):
         """Draw all units on the map."""
         for unit in units:
-            self.draw_unit(unit, selected_unit, player_id, game_map, faction_assignments)
+            self.draw_unit(unit, selected_unit, player_faction_id, game_map)
 
-    def draw_unit(self, unit, selected_unit, player_id, game_map, faction_assignments=None):
+    def draw_unit(self, unit, selected_unit, player_faction_id, game_map):
         """Draw a single unit with health bar if selected."""
         # Only draw if this is the displayed unit for its tile
         tile = game_map.get_tile(unit.x, unit.y)
@@ -198,9 +197,8 @@ class Renderer:
         if screen_y < 0 or screen_y >= constants.MAP_AREA_HEIGHT:
             return
 
-        # Determine unit color based on faction
-        faction_id = faction_assignments[unit.owner]
-        color = FACTIONS[faction_id]['color']
+        # Determine unit color based on faction (unit.owner IS faction_id)
+        color = FACTIONS[unit.owner]['color']
 
         center_x = screen_x + TILE_SIZE // 2
         center_y = screen_y + TILE_SIZE // 2
@@ -317,12 +315,12 @@ class Renderer:
 
                 pygame.draw.rect(self.screen, seg_color, seg_rect)
 
-    def draw_bases(self, bases, player_id, game_map, faction_assignments=None):
+    def draw_bases(self, bases, player_faction_id, game_map):
         """Draw all bases on the map."""
         for base in bases:
-            self.draw_base(base, player_id, game_map, faction_assignments)
+            self.draw_base(base, player_faction_id, game_map)
 
-    def draw_base(self, base, player_id, game_map, faction_assignments=None):
+    def draw_base(self, base, player_faction_id, game_map):
         """Draw a single base."""
         wrapped_x = (base.x - self.camera_offset_x) % game_map.width
         screen_x = (wrapped_x * TILE_SIZE) + self.base_offset_x
@@ -350,9 +348,8 @@ class Renderer:
         if screen_y < 0 or screen_y >= constants.MAP_AREA_HEIGHT:
             return
 
-        # Determine color based on faction
-        faction_id = faction_assignments[base.owner]
-        color = FACTIONS[faction_id]['color']
+        # Determine color based on faction (base.owner IS faction_id)
+        color = FACTIONS[base.owner]['color']
 
         # Draw base as a square with rounded corners
         base_size = int(TILE_SIZE * 0.7)
@@ -400,9 +397,8 @@ class Renderer:
 
         # Only draw background fill if there are garrisoned units
         if len(base.garrison) > 0:
-            # Use faction color for garrison indicator
-            faction_id = faction_assignments[base.owner]
-            pop_color = FACTIONS[faction_id]['color']
+            # Use faction color for garrison indicator (base.owner IS faction_id)
+            pop_color = FACTIONS[base.owner]['color']
             pygame.draw.rect(self.screen, pop_color, pop_rect)
 
         # Always draw black outline (thicker for visibility)
@@ -430,7 +426,7 @@ class Renderer:
 
             self.screen.blit(text_surf, text_rect)
 
-    def draw_territory_borders(self, territory, game_map, faction_assignments=None):
+    def draw_territory_borders(self, territory, game_map):
         """Draw dotted territory borders for all players using faction colors.
 
         When territories abut, draws both faction colors side-by-side on the border.
@@ -438,22 +434,15 @@ class Renderer:
         Args:
             territory (TerritoryManager): Territory management system
             game_map: The game map for wrapping calculations
-            faction_assignments: Dict mapping player_id to faction_id (optional)
         """
         from game.data.data import FACTIONS
 
-        # Get faction colors for each player
-        def get_player_color(player_id):
-            if faction_assignments and player_id in faction_assignments:
-                faction_id = faction_assignments[player_id]
-                if 0 <= faction_id < len(FACTIONS):
-                    return FACTIONS[faction_id]['color']
-            # Fallback colors if no faction assignment
-            fallback = {
-                0: (50, 205, 50), 1: (100, 100, 255), 2: (255, 255, 255),
-                3: (255, 215, 0), 4: (139, 69, 19), 5: (255, 165, 0), 6: (180, 140, 230)
-            }
-            return fallback.get(player_id, (150, 150, 150))
+        # Get faction colors (faction_id passed in directly)
+        def get_player_color(faction_id):
+            if 0 <= faction_id < len(FACTIONS):
+                return FACTIONS[faction_id]['color']
+            # Fallback color if out of range
+            return (150, 150, 150)
 
         # Calculate visible range with wrapping
         visible_tiles_x = (constants.SCREEN_WIDTH // TILE_SIZE) + 2

@@ -224,11 +224,11 @@ def main():
                                 game.set_status_message(f"Cannot found base: {error_msg}")
                     elif event.key == pygame.K_f:
                         # Toggle artillery mode for selected unit
-                        if game.selected_unit and game.selected_unit.owner == game.player_id:
+                        if game.selected_unit and game.selected_unit.owner == game.player_faction_id:
                             game.toggle_artillery_mode(game.selected_unit)
                     elif event.key == pygame.K_h:
                         # Toggle hold status for selected unit
-                        if game.selected_unit and game.selected_unit.owner == game.player_id:
+                        if game.selected_unit and game.selected_unit.owner == game.player_faction_id:
                             held_unit = game.selected_unit
                             held_unit.held = not held_unit.held
 
@@ -248,7 +248,7 @@ def main():
                     elif event.key == pygame.K_SPACE:
                         # Try to heal unit, or end movement if it can't heal
                         #TODO: healing should only activate next turn. This would incorrectly affect enemy-initiated battles.
-                        if game.selected_unit and game.selected_unit.owner == game.player_id:
+                        if game.selected_unit and game.selected_unit.owner == game.player_faction_id:
                             # Check if unit is in a friendly base
                             in_base = game.is_unit_in_friendly_base(game.selected_unit)
 
@@ -344,7 +344,7 @@ def main():
 
                             # Check if we have artillery unit selected
                             if (game.selected_unit and
-                                game.selected_unit.owner == game.player_id and
+                                game.selected_unit.owner == game.player_faction_id and
                                 hasattr(game.selected_unit, 'has_artillery') and
                                 game.selected_unit.has_artillery):
 
@@ -363,7 +363,7 @@ def main():
                             result = game.handle_click(mouse_x, mouse_y, renderer)
                             if result and result[0] == 'base_click':
                                 clicked_base = result[1]
-                                if clicked_base.is_friendly(game.player_id):
+                                if clicked_base.is_friendly(game.player_faction_id):
                                     ui_panel.show_base_view(clicked_base)
 
             # Let UI handle hover events (MOUSEMOTION), but NOT clicks again
@@ -405,8 +405,8 @@ def main():
                              ui_panel.elimination_popup_active or
                              ui_panel.new_designs_popup_active or
                              game.upkeep_phase_active or
-                             game.pending_battle is not None or
-                             game.active_battle is not None)
+                             game.combat.pending_battle is not None or
+                             game.combat.active_battle is not None)
 
             if not popups_blocking:
                 current_time = pygame.time.get_ticks()
@@ -457,9 +457,9 @@ def main():
 
         # Render (ORDER MATTERS!)
         screen.fill((0, 0, 0))  # Clear screen first
-        renderer.draw_map(game.game_map, game.territory, game.faction_assignments)  # Draw map tiles and territory
-        renderer.draw_bases(game.bases, game.player_id, game.game_map, game.faction_assignments)  # Draw bases
-        renderer.draw_units(game.units, game.selected_unit, game.player_id, game.game_map, game.faction_assignments)  # Draw units on top
+        renderer.draw_map(game.game_map, game.territory)  # Draw map tiles and territory
+        renderer.draw_bases(game.bases, game.player_faction_id, game.game_map)  # Draw bases
+        renderer.draw_units(game.units, game.selected_unit, game.player_faction_id, game.game_map)  # Draw units on top
         renderer.draw_status_message(game)  # Draw status message
         ui_panel.draw(screen, game, renderer)  # Draw UI last
 

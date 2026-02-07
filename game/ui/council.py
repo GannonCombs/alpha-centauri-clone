@@ -258,7 +258,7 @@ class CouncilManager:
             return None
 
         # Get faction for this AI
-        faction_id = game.faction_assignments.get(ai_player_id)
+        faction_id = ai_player_id  # ai_player_id IS faction_id
         if faction_id is None or faction_id >= len(FACTIONS):
             return None
 

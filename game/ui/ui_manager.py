@@ -133,14 +133,8 @@ class UIManager:
         button_index = 0
 
         for faction_id in contacted_factions:
-            # Find which player_id has this faction_id (reverse lookup)
-            player_id = None
-            for pid, fid in game.faction_assignments.items():
-                if fid == faction_id:
-                    player_id = pid
-                    break
-
-            if player_id is not None and faction_id < len(FACTIONS):
+            # faction_id IS player_id in the new system
+            if faction_id < len(FACTIONS):
                 faction = FACTIONS[faction_id]
                 btn = Button(self.commlink_menu_rect.x + 5,
                            self.commlink_menu_rect.y + 5 + (button_index * 38),
@@ -148,7 +142,7 @@ class UIManager:
                            faction["full_name"],
                            faction["color"],
                            COLOR_BLACK)
-                btn.player_id = player_id  # Store player_id for click handling
+                btn.player_id = faction_id  # Store faction_id (same as player_id now)
                 btn.faction_id = faction_id  # Also store faction_id
                 self.faction_buttons.append(btn)
                 button_index += 1
@@ -298,18 +292,18 @@ class UIManager:
 
             elif event.key == pygame.K_RETURN:
                 # Battle prediction takes highest priority
-                if game.pending_battle:
+                if game.combat.pending_battle:
                     # Enter key acts as OK button
-                    attacker = game.pending_battle['attacker']
-                    defender = game.pending_battle['defender']
-                    target_x = game.pending_battle['target_x']
-                    target_y = game.pending_battle['target_y']
+                    attacker = game.combat.pending_battle['attacker']
+                    defender = game.combat.pending_battle['defender']
+                    target_x = game.combat.pending_battle['target_x']
+                    target_y = game.combat.pending_battle['target_y']
 
                     # Clear pending battle
-                    game.pending_battle = None
+                    game.combat.pending_battle = None
 
                     # Resolve combat
-                    game.resolve_combat(attacker, defender, target_x, target_y)
+                    game.combat.resolve_combat(attacker, defender, target_x, target_y)
                     return True
 
                 # Supply pod message takes priority
@@ -452,14 +446,14 @@ class UIManager:
                 return True  # Consume all clicks when game over
 
             # Battle prediction takes highest priority
-            if game.pending_battle:
+            if game.combat.pending_battle:
                 result = self.battle_ui.handle_battle_prediction_click(event.pos)
                 if result == 'ok':
                     # OK clicked - initiate combat
-                    attacker = game.pending_battle['attacker']
-                    defender = game.pending_battle['defender']
-                    target_x = game.pending_battle['target_x']
-                    target_y = game.pending_battle['target_y']
+                    attacker = game.combat.pending_battle['attacker']
+                    defender = game.combat.pending_battle['defender']
+                    target_x = game.combat.pending_battle['target_x']
+                    target_y = game.combat.pending_battle['target_y']
 
                     # Consume attacker's movement
                     if attacker.unit_type in [UNIT_SEA, UNIT_AIR]:
@@ -469,12 +463,12 @@ class UIManager:
                         # Land units: attack costs 1 move
                         attacker.moves_remaining -= 1
 
-                    game.resolve_combat(attacker, defender, target_x, target_y)
-                    game.pending_battle = None
+                    game.combat.resolve_combat(attacker, defender, target_x, target_y)
+                    game.combat.pending_battle = None
                     return True
                 elif result == 'cancel':
                     # Cancel clicked - abort attack
-                    game.pending_battle = None
+                    game.combat.pending_battle = None
                     return True
                 # Block all other clicks when prediction is showing
                 return True
@@ -557,7 +551,7 @@ class UIManager:
                     for btn in self.faction_buttons:
                         if btn.handle_event(event):
                             # Get the faction for this player_id
-                            faction_id = game.faction_assignments.get(btn.player_id)
+                            faction_id = btn.player_id  # player_id IS faction_id
                             if faction_id is not None and faction_id < len(FACTIONS):
                                 # Player is always index 0
                                 self.diplomacy.open_diplomacy(FACTIONS[faction_id], player_faction_index=0)
@@ -875,7 +869,7 @@ class UIManager:
             self.dialogs.draw_supply_pod_message(screen, game.supply_pod_message)
 
         # Battle prediction overlay (highest priority)
-        if game.pending_battle:
+        if game.combat.pending_battle:
             self.battle_ui.draw_battle_prediction(screen, game)
 
         # Upkeep phase popup (high priority)
@@ -888,7 +882,7 @@ class UIManager:
             request = game.pending_commlink_requests[0]
             self.commlink_request_active = True
             self.commlink_request_other_faction_id = request['other_faction_id']
-            self.commlink_request_player_id = request['player_id']
+            self.commlink_request_player_id = request['player_faction_id']
 
         # Commlink request popup
         if self.commlink_request_active:

@@ -312,8 +312,8 @@ class BaseScreenManager:
                         # Use faction color for base square
                         from game.data.data import FACTIONS
                         base_color = (255, 255, 255)  # Default to white
-                        if hasattr(game, 'faction_assignments') and base.owner in game.faction_assignments:
-                            faction_index = game.faction_assignments[base.owner]
+                        faction_index = base.owner  # owner IS faction_id
+                        if faction_index < len(FACTIONS):
                             base_color = FACTIONS[faction_index]['color']
                         pygame.draw.rect(screen, base_color, tile_rect, border_radius=4)
                     else:
@@ -444,13 +444,13 @@ class BaseScreenManager:
 
         # Get free facility from faction bonuses
         from game.data.data import FACTIONS
-        # Use faction_assignments to map player_id to faction_index
-        if hasattr(game, 'faction_assignments') and base.owner in game.faction_assignments:
-            faction_index = game.faction_assignments[base.owner]
+        # owner IS faction_id - use it directly
+        faction_index = base.owner
+        if faction_index < len(FACTIONS):
             faction = FACTIONS[faction_index]
+            free_facility = faction.get('bonuses', {}).get('free_facility')
         else:
-            faction = None
-        free_facility = faction.get('bonuses', {}).get('free_facility') if faction else None
+            free_facility = None
 
         # Combine regular facilities with free facility
         all_facilities = []
@@ -865,8 +865,8 @@ class BaseScreenManager:
         # Get free facility for this base's faction
         from game.data.data import FACTIONS
         free_facility_name = None
-        if hasattr(game, 'faction_assignments') and base.owner in game.faction_assignments:
-            faction_index = game.faction_assignments[base.owner]
+        faction_index = base.owner  # owner IS faction_id
+        if faction_index < len(FACTIONS):
             faction = FACTIONS[faction_index]
             free_facility_name = faction.get('bonuses', {}).get('free_facility')
 
