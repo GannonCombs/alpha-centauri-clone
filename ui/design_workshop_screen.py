@@ -1,9 +1,9 @@
 """Design Workshop screen for creating and managing unit designs."""
 
 import pygame
-import constants
-from constants import (COLOR_TEXT, COLOR_BUTTON, COLOR_BUTTON_HOVER,
-                       COLOR_BUTTON_BORDER, COLOR_BUTTON_HIGHLIGHT)
+from data import constants
+from data.constants import (COLOR_TEXT, COLOR_BUTTON, COLOR_BUTTON_HOVER,
+                            COLOR_BUTTON_BORDER, COLOR_BUTTON_HIGHLIGHT)
 import unit_components
 
 

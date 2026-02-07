@@ -12,11 +12,11 @@ The Renderer class manages the viewport, handles coordinate transformations,
 and draws all game entities to the screen.
 """
 import pygame
-import constants
-from constants import (TILE_SIZE, COLOR_OCEAN, COLOR_LAND, COLOR_GRID, COLOR_BLACK,
-                       COLOR_UNIT_SELECTED,
-                        COLOR_BASE_BORDER,
-                       UNIT_COLONY_POD_LAND, UNIT_COLONY_POD_SEA, UNIT_ARTIFACT)
+from data import constants
+from data.constants import (TILE_SIZE, COLOR_OCEAN, COLOR_LAND, COLOR_GRID, COLOR_BLACK,
+                            COLOR_UNIT_SELECTED,
+                            COLOR_BASE_BORDER,
+                            UNIT_COLONY_POD_LAND, UNIT_COLONY_POD_SEA, UNIT_ARTIFACT)
 from ui.data import FACTIONS
 
 

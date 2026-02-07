@@ -212,7 +212,7 @@ class Base:
             tuple: (production_added, completed) where completed is True if production finished
         """
         if not self.current_production:
-            return (0, False)
+            return 0, False
 
         remaining_cost = self.production_cost - self.production_progress
 
@@ -229,7 +229,7 @@ class Base:
         # Update turns remaining
         self.production_turns_remaining = self._calculate_production_turns()
 
-        return (production_added, completed)
+        return production_added, completed
 
     def change_production(self, new_item):
         """Change what this base is producing, applying retooling penalties.
@@ -363,7 +363,7 @@ class Base:
         """Calculate total energy production before allocation.
 
         For now, uses a simple formula: population * 2
-        In future, this will sum energy from worked tiles.
+        In the future, this will sum energy from worked tiles.
 
         Returns:
             int: Total energy production

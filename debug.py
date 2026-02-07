@@ -8,7 +8,7 @@ Usage: Press Ctrl+Shift+D to toggle debug mode, then use hotkeys.
 """
 
 import pygame
-from constants import UNIT_LAND, UNIT_SEA, UNIT_AIR, UNIT_COLONY_POD_LAND, UNIT_ARTIFACT
+from data.constants import UNIT_LAND, UNIT_SEA, UNIT_AIR, UNIT_COLONY_POD_LAND, UNIT_ARTIFACT
 from unit import Unit
 from base import Base
 

@@ -13,15 +13,13 @@ and renders the screen each frame.
 """
 import pygame
 import sys
-import constants
+from data import constants
 from game import Game
 from renderer import Renderer
 from ui import UIManager
 from ui.intro_screen import IntroScreenManager
 from ui.save_load_dialog import SaveLoadDialogManager
 from ui.exit_dialog import ExitDialogManager
-import save_load
-
 
 def main():
     """Initialize and run the game."""
@@ -46,10 +44,6 @@ def main():
     available_height = screen_height - constants.UI_PANEL_HEIGHT
     num_complete_tiles = available_height // constants.TILE_SIZE
     constants.MAP_AREA_HEIGHT = num_complete_tiles * constants.TILE_SIZE
-    constants.UI_PANEL_Y = constants.MAP_AREA_HEIGHT  # Panel starts right after last complete tile
-
-    # Calculate map size to be double screen size (both width and height)
-    constants.MAP_HEIGHT = (constants.MAP_AREA_HEIGHT // constants.TILE_SIZE) * 2
     # Width double of screen
     constants.MAP_WIDTH = (screen_width // constants.TILE_SIZE) * 2
 
@@ -72,11 +66,9 @@ def main():
     ui_panel = None
 
     # AI turn processing
-    ai_turn_delay = 350  # milliseconds between AI unit moves
     last_ai_action = 0
 
     # Map scrolling
-    scroll_delay = 350  # milliseconds between scroll ticks
     last_scroll_time = 0
 
     running = True
@@ -249,7 +241,8 @@ def main():
                                 # Unheld - unit can now be cycled to again
                                 game.set_status_message(f"{held_unit.name} unheld")
                     elif event.key == pygame.K_SPACE:
-                        # Try to heal unit, or end movement if can't heal
+                        # Try to heal unit, or end movement if it can't heal
+                        #TODO: healing should only activate next turn. This would incorrectly affect enemy-initiated battles.
                         if game.selected_unit and game.selected_unit.owner == game.player_id:
                             # Check if unit is in a friendly base
                             in_base = game.is_unit_in_friendly_base(game.selected_unit)
@@ -412,7 +405,7 @@ def main():
 
             if not popups_blocking:
                 current_time = pygame.time.get_ticks()
-                if current_time - last_ai_action >= ai_turn_delay:
+                if current_time - last_ai_action >= constants.ai_turn_delay:
                     game.process_ai_turns()
                     last_ai_action = current_time
 
@@ -420,7 +413,7 @@ def main():
         mouse_x, mouse_y = pygame.mouse.get_pos()
         if mouse_y < constants.MAP_AREA_HEIGHT:
             current_time = pygame.time.get_ticks()
-            if current_time - last_scroll_time >= scroll_delay:
+            if current_time - last_scroll_time >= constants.scroll_delay:
                 # Calculate 5% edge zones
                 edge_zone_width = int(constants.SCREEN_WIDTH * 0.05)
                 edge_zone_height = int(constants.MAP_AREA_HEIGHT * 0.05)

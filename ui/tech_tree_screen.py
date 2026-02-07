@@ -1,9 +1,9 @@
 """Tech Tree screen for viewing and selecting research."""
 
 import pygame
-import constants
-from constants import (COLOR_TEXT, COLOR_BUTTON, COLOR_BUTTON_HOVER,
-                       COLOR_BUTTON_BORDER, COLOR_BUTTON_HIGHLIGHT)
+from data import constants
+from data.constants import (COLOR_TEXT, COLOR_BUTTON, COLOR_BUTTON_HOVER,
+                            COLOR_BUTTON_BORDER, COLOR_BUTTON_HIGHLIGHT)
 from ui.data import FACTIONS
 
 

@@ -3,7 +3,7 @@
 import os
 import pygame
 import save_load
-import constants
+from data import constants
 
 
 class SaveLoadDialogManager:
@@ -111,7 +111,6 @@ class SaveLoadDialogManager:
 
     def _draw_save_dialog(self, screen, dialog_x, dialog_y, dialog_w, dialog_h):
         """Draw save dialog contents."""
-        import constants
 
         # Label
         label_y = dialog_y + 70
@@ -137,7 +136,7 @@ class SaveLoadDialogManager:
         if self.cursor_visible:
             cursor_x = text_x + text_surf.get_width() + 2
             pygame.draw.line(screen, constants.COLOR_TEXT,
-                           (cursor_x, text_y), (cursor_x, text_y + text_surf.get_height()), 2)
+                             (cursor_x, text_y), (cursor_x, text_y + text_surf.get_height()), 2)
 
         # Info text
         info_y = input_y + 60
@@ -161,7 +160,6 @@ class SaveLoadDialogManager:
 
     def _draw_load_dialog(self, screen, dialog_x, dialog_y, dialog_w, dialog_h):
         """Draw load dialog contents."""
-        import constants
 
         if not self.save_files:
             # No saves available
@@ -215,7 +213,6 @@ class SaveLoadDialogManager:
 
     def _draw_dialog_buttons(self, screen, dialog_x, dialog_y, dialog_w, dialog_h, action_label):
         """Draw Save/Load and Cancel buttons."""
-        import constants
 
         button_y = dialog_y + dialog_h - 70
         button_w = 140
@@ -227,7 +224,7 @@ class SaveLoadDialogManager:
 
         action_hover = self.save_button_rect.collidepoint(pygame.mouse.get_pos())
         pygame.draw.rect(screen, constants.COLOR_BUTTON_HOVER if action_hover else constants.COLOR_BUTTON,
-                        self.save_button_rect, border_radius=6)
+                         self.save_button_rect, border_radius=6)
         pygame.draw.rect(screen, constants.COLOR_BUTTON_BORDER, self.save_button_rect, 2, border_radius=6)
 
         action_surf = self.font.render(action_label, True, constants.COLOR_TEXT)
@@ -240,7 +237,7 @@ class SaveLoadDialogManager:
 
         cancel_hover = self.cancel_button_rect.collidepoint(pygame.mouse.get_pos())
         pygame.draw.rect(screen, constants.COLOR_BUTTON_HOVER if cancel_hover else constants.COLOR_BUTTON,
-                        self.cancel_button_rect, border_radius=6)
+                         self.cancel_button_rect, border_radius=6)
         pygame.draw.rect(screen, constants.COLOR_BUTTON_BORDER, self.cancel_button_rect, 2, border_radius=6)
 
         cancel_surf = self.font.render("Cancel", True, constants.COLOR_TEXT)

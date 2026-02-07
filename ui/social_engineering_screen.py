@@ -1,9 +1,9 @@
 """Social Engineering screen for managing faction policies."""
 
 import pygame
-import constants
-from constants import (COLOR_TEXT, COLOR_BUTTON, COLOR_BUTTON_HOVER,
-                       COLOR_BUTTON_BORDER, COLOR_BUTTON_HIGHLIGHT)
+from data import constants
+from data.constants import (COLOR_TEXT, COLOR_BUTTON, COLOR_BUTTON_HOVER,
+                            COLOR_BUTTON_BORDER, COLOR_BUTTON_HIGHLIGHT)
 import social_engineering
 from ui.data import SE_EFFECTS
 

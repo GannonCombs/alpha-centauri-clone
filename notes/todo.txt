@@ -177,6 +177,8 @@ Character I have treaties with are still attacking me. Note: it is possible to b
 But having TREATY status afterward is a bug. It should say VENDETTA.
 Right now, enemy bases say what they're working on. This should only be the case if I have a Pact with them, or Empath Guild,
 or am Governor, or have Infiltrated their Datalinks.
+Need to start decommissioning the UNIT types in constants, especially the colony pods. All data I need on a unit is in their
+chassis/weapon/armor etc. I don't need to call anyone out specifically.
 
 Scout patrol is hardcoded in too many places - check base.py, among others.
 Council is still not restricted if I am missing commlinks.

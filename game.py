@@ -13,16 +13,15 @@ The Game class coordinates all major game systems and handles turn processing,
 unit movement, combat, and AI behavior.
 """
 import pygame
-import constants
+from data import constants
 import facilities
-import social_engineering
 from map import GameMap
 from unit import Unit
 from base import Base
 from ai import AIPlayer
 from tech import TechTree
 from territory import TerritoryManager
-from constants import UNIT_LAND, UNIT_SEA, UNIT_AIR, UNIT_COLONY_POD_LAND, UNIT_COLONY_POD_SEA
+from data.constants import UNIT_LAND, UNIT_SEA, UNIT_AIR, UNIT_COLONY_POD_LAND, UNIT_COLONY_POD_SEA
 from debug import DebugManager  # DEBUG: Remove for release
 
 
@@ -47,6 +46,7 @@ class Game:
         self.energy_credits = 0  # Starting credits
 
         # Global energy allocation (applies to all bases)
+        #TODO: This should NOT be hardcoded. It is set in social engineering.
         self.global_energy_allocation = {
             'economy': 50,  # % to energy credits
             'labs': 50,     # % to research
@@ -281,7 +281,7 @@ class Game:
 
         # If there's a base, check if clicked on population square
         if tile.base and renderer.is_click_on_pop_square(screen_x, screen_y, tile.base, self.game_map):
-            return ('base_click', tile.base)
+            return 'base_click', tile.base
 
         # If there's a base with garrisoned units, clicking elsewhere cycles through units
         if tile.base and tile.base.garrison:
@@ -292,15 +292,15 @@ class Game:
                     current_idx = friendly_garrison.index(self.selected_unit)
                     next_idx = (current_idx + 1) % len(friendly_garrison)
                     self.selected_unit = friendly_garrison[next_idx]
-                    return ('unit_selected', self.selected_unit)
+                    return 'unit_selected', self.selected_unit
                 else:
                     # Select first garrison unit
                     self.selected_unit = friendly_garrison[0]
-                    return ('unit_selected', self.selected_unit)
+                    return 'unit_selected', self.selected_unit
 
         # If there's a base but no garrison units, clicking opens base view
         if tile.base:
-            return ('base_click', tile.base)
+            return 'base_click', tile.base
 
         # Check if clicked on a unit on the tile
         clicked_unit = self.game_map.get_unit_at(tile_x, tile_y)
@@ -321,7 +321,7 @@ class Game:
         Returns:
             bool: True if move violates ZOC, False if allowed
         """
-        from constants import UNIT_LAND, UNIT_ARTIFACT
+        from data.constants import UNIT_LAND, UNIT_ARTIFACT
 
         # Only land units are affected by ZOC
         if unit.unit_type not in [UNIT_LAND, UNIT_ARTIFACT]:
@@ -578,7 +578,7 @@ class Game:
             unit: The unit collecting the pod
         """
         import random
-        from constants import UNIT_ARTIFACT
+        from data.constants import UNIT_ARTIFACT
 
         # Remove the pod from the tile
         tile.supply_pod = False
@@ -1423,7 +1423,7 @@ class Game:
         if action == 'steal_tech':
             cost = 50
             if self.energy_credits < cost:
-                return (False, f"Insufficient energy ({cost} required)")
+                return False, f"Insufficient energy ({cost} required)"
 
             self.energy_credits -= cost
 
@@ -1436,18 +1436,18 @@ class Game:
                     stolen_tech = random.choice(list(stealable))
                     tech_name = self.tech_tree.technologies[stolen_tech]['name']
                     self.tech_tree.discovered_techs.add(stolen_tech)
-                    return (True, f"Stole technology: {tech_name}!")
+                    return True, f"Stole technology: {tech_name}!"
                 else:
-                    return (True, "No new technologies to steal")
+                    return True, "No new technologies to steal"
             else:
                 # Failed - lose probe team
                 self._remove_unit(probe_unit)
-                return (False, f"Probe team detected and eliminated!")
+                return False, f"Probe team detected and eliminated!"
 
         elif action == 'sabotage':
             cost = 100
             if self.energy_credits < cost:
-                return (False, f"Insufficient energy ({cost} required)")
+                return False, f"Insufficient energy ({cost} required)"
 
             self.energy_credits -= cost
 
@@ -1456,19 +1456,19 @@ class Game:
                 if target_base.facilities:
                     destroyed = random.choice(target_base.facilities)
                     target_base.facilities.remove(destroyed)
-                    return (True, f"Sabotaged {destroyed}!")
+                    return True, f"Sabotaged {destroyed}!"
                 else:
                     # Reset production instead
                     target_base.production_progress = 0
-                    return (True, "Sabotaged production!")
+                    return True, "Sabotaged production!"
             else:
                 self._remove_unit(probe_unit)
-                return (False, "Probe team detected and eliminated!")
+                return False, "Probe team detected and eliminated!"
 
         elif action == 'mind_control_base':
             cost = 500
             if self.energy_credits < cost:
-                return (False, f"Insufficient energy ({cost} required)")
+                return False, f"Insufficient energy ({cost} required)"
 
             self.energy_credits -= cost
 
@@ -1483,12 +1483,12 @@ class Game:
                     if unit.x == target_base.x and unit.y == target_base.y and unit.owner == old_owner:
                         unit.owner = probe_unit.owner
 
-                return (True, f"Mind controlled {target_base.name}!")
+                return True, f"Mind controlled {target_base.name}!"
             else:
                 self._remove_unit(probe_unit)
-                return (False, "Probe team detected and eliminated!")
+                return False, "Probe team detected and eliminated!"
 
-        return (False, "Unknown action")
+        return False, "Unknown action"
 
     def _check_first_contact(self, unit, x, y):
         """Check for first contact with adjacent enemy units and establish commlink.

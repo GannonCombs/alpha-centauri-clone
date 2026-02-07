@@ -1,8 +1,8 @@
 """Reusable UI components."""
 
 import pygame
-from constants import (COLOR_TEXT, COLOR_BUTTON, COLOR_BUTTON_HOVER,
-                       COLOR_BUTTON_BORDER, COLOR_BUTTON_HIGHLIGHT)
+from data.constants import (COLOR_TEXT, COLOR_BUTTON, COLOR_BUTTON_HOVER,
+                            COLOR_BUTTON_BORDER, COLOR_BUTTON_HIGHLIGHT)
 
 
 class Button:

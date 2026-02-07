@@ -5,7 +5,7 @@ This module defines the Unit class representing all mobile units in the game
 including military units, colony pods, and transports. Units can move across
 the map, garrison in bases, and respect terrain restrictions.
 """
-from constants import UNIT_LAND, UNIT_SEA, UNIT_AIR, UNIT_COLONY_POD_LAND, UNIT_COLONY_POD_SEA, UNIT_ARTIFACT, UNIT_PROBE_TEAM
+from data.constants import UNIT_LAND, UNIT_SEA, UNIT_AIR, UNIT_COLONY_POD_LAND, UNIT_COLONY_POD_SEA, UNIT_ARTIFACT, UNIT_PROBE_TEAM
 
 
 class Unit:

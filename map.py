@@ -53,7 +53,7 @@ class GameMap:
         self.height = height
         self.tiles = []
         # Default to 60% ocean (equivalent to old default of 40% land)
-        # TODO: This should not be here. Erase.
+        # TODO: This should not be here. Erase. (Edit: or do I randomize here, for Make Random Map?)
         self.ocean_percentage = ocean_percentage if ocean_percentage is not None else int(60)
         self.generate_random_map()
 
@@ -90,11 +90,11 @@ class GameMap:
                 row.append(tile)
             self.tiles.append(row)
 
-        # Place supply pods on 3% of tiles
-        self._place_supply_pods()
-
-        # Place monoliths on 1% of land tiles
-        self._place_monoliths()
+        # # Place supply pods on 3% of tiles
+        # self._place_supply_pods()
+        #
+        # # Place monoliths on 1% of land tiles
+        # self._place_monoliths()
 
     def _place_supply_pods(self):
         """Place supply pods randomly on 3% of tiles (excluding edge rows)."""

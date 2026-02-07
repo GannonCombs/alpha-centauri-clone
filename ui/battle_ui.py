@@ -1,9 +1,9 @@
 """Combat-related UI (prediction and animation)."""
 
 import pygame
-import constants
-from constants import (COLOR_TEXT, COLOR_BUTTON, COLOR_BUTTON_HOVER,
-                       COLOR_BUTTON_BORDER)
+from data import constants
+from data.constants import (COLOR_TEXT, COLOR_BUTTON, COLOR_BUTTON_HOVER,
+                            COLOR_BUTTON_BORDER)
 
 
 class BattleUIManager:

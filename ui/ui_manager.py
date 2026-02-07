@@ -1,9 +1,9 @@
 """Main UI coordinator - replaces UIPanel."""
 
 import pygame
-import constants
-from constants import (COLOR_UI_BACKGROUND, COLOR_UI_BORDER, COLOR_TEXT,
-                       COLOR_BLACK, COLOR_BUTTON_BORDER, UNIT_SEA, UNIT_AIR)
+from data import constants
+from data.constants import (COLOR_UI_BACKGROUND, COLOR_UI_BORDER, COLOR_TEXT,
+                            COLOR_BLACK, COLOR_BUTTON_BORDER, UNIT_SEA, UNIT_AIR)
 from .components import Button
 from .dialogs import DialogManager
 from .battle_ui import BattleUIManager
@@ -1325,7 +1325,7 @@ class UIManager:
 
     def _draw_game_over(self, screen, game):
         """Draw the game over screen with victory/defeat message and buttons."""
-        from constants import COLOR_BUTTON, COLOR_BUTTON_HOVER, COLOR_BUTTON_BORDER, COLOR_BUTTON_HIGHLIGHT
+        from data.constants import COLOR_BUTTON, COLOR_BUTTON_HOVER, COLOR_BUTTON_BORDER, COLOR_BUTTON_HIGHLIGHT
 
         # Semi-transparent overlay
         overlay = pygame.Surface((constants.SCREEN_WIDTH, constants.SCREEN_HEIGHT))

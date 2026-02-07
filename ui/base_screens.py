@@ -1,12 +1,11 @@
 """Base-related screens (naming and management)."""
 
 import pygame
-import random
-import constants
+from data import constants
 import facilities
-from constants import (COLOR_TEXT, COLOR_BUTTON, COLOR_BUTTON_HOVER,
-                       COLOR_BUTTON_BORDER, COLOR_BUTTON_HIGHLIGHT,
-                       COLOR_UI_BORDER, COLOR_BLACK)
+from data.constants import (COLOR_TEXT, COLOR_BUTTON, COLOR_BUTTON_HOVER,
+                            COLOR_BUTTON_BORDER, COLOR_BUTTON_HIGHLIGHT,
+                            COLOR_UI_BORDER, COLOR_BLACK)
 
 
 class BaseScreenManager:

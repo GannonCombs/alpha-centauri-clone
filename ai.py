@@ -1,12 +1,12 @@
 # ai.py
-"""AI player controller with 1990s-style decision making.
+"""AI player controller with 1990s-style decision-making.
 
 This module implements a simple but effective AI using if/then logic,
 distance calculations, and basic pathfinding. The AI can move units,
 found bases, and make strategic decisions without using modern ML techniques.
 """
 import random
-from constants import UNIT_COLONY_POD_LAND, UNIT_COLONY_POD_SEA, UNIT_LAND, UNIT_SEA
+from data.constants import UNIT_COLONY_POD_LAND, UNIT_COLONY_POD_SEA
 
 
 class AIPlayer:
@@ -81,7 +81,7 @@ class AIPlayer:
                     target_unit = check_tile.units[0]
                     if target_unit.owner == 0:  # Player unit
                         # Found adjacent enemy - consider attacking
-                        if self._should_attack(unit, target_unit, game):
+                        if self._should_attack(unit, target_unit):
                             # Attack by moving onto their tile
                             target_x = check_x
                             target_y = check_y
@@ -92,7 +92,7 @@ class AIPlayer:
         garrison_target = self._find_nearest_ungarrisoned_base(unit, game)
         if garrison_target:
             base_x, base_y, distance = garrison_target
-            if self._should_garrison(unit, distance, game):
+            if self._should_garrison(unit, distance):
                 # Move toward undefended base
                 self._move_toward(unit, base_x, base_y, game)
                 return
@@ -121,7 +121,7 @@ class AIPlayer:
         dx = target_x - unit.x
         dy = target_y - unit.y
 
-        # Handle horizontal wrapping - take shortest path
+        # Handle horizontal wrapping - take the shortest path
         map_width = game.game_map.width
         if dx > map_width // 2:
             dx -= map_width
@@ -178,7 +178,7 @@ class AIPlayer:
             target_unit = target_tile.units[0]
             if target_unit.owner != unit.owner:
                 # Enemy unit - only attack if odds are favorable
-                if self._should_attack(unit, target_unit, game):
+                if self._should_attack(unit, target_unit):
                     return self._try_move(unit, dx, dy, game)
                 else:
                     # Don't attack - bad odds
@@ -310,7 +310,7 @@ class AIPlayer:
 
         return nearest
 
-    def _should_garrison(self, unit, base_distance, game):
+    def _should_garrison(self, unit, base_distance):
         """Decide if unit should prioritize garrisoning over other actions.
 
         Uses distance-based priority system:
@@ -322,7 +322,6 @@ class AIPlayer:
         Args:
             unit (Unit): The unit considering garrison
             base_distance (int): Distance to nearest ungarrisoned base
-            game (Game): Current game state
 
         Returns:
             bool: True if unit should move to garrison
@@ -343,7 +342,7 @@ class AIPlayer:
     def _distance(self, x1, y1, x2, y2, map_width):
         """Calculate Manhattan distance with horizontal wrapping."""
         dx = abs(x2 - x1)
-        # Account for wrapping - take shortest path
+        # Account for wrapping - take the shortest path
         if dx > map_width // 2:
             dx = map_width - dx
         dy = abs(y2 - y1)
@@ -371,13 +370,12 @@ class AIPlayer:
 
         return attacker_strength / total_strength
 
-    def _should_attack(self, unit, target_unit, game):
+    def _should_attack(self, unit, target_unit):
         """Decide if unit should attack target based on odds and health.
 
         Args:
             unit (Unit): AI unit considering attack
             target_unit (Unit): Potential target
-            game (Game): Current game state
 
         Returns:
             bool: True if AI should attack
