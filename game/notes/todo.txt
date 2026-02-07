@@ -168,7 +168,8 @@ does not, in fact, Pay All. It seems to be paying one turn. I can then click hur
 Ensure that the amount offered with Pay All is truly the ENTIRE remaining cost. Then make sure the other displayed cost matches.
 The new design finally worked. The only issue was, the new design pop up should happen AFTER the new tech discovered popup.
 Otherwise, it seems strange that we can build these new units that we don't have the tech for.
-New unit design on better unit tech is still not popping up, at least not consistently.
+New unit design on better unit tech is still not popping up, at least not consistently. Is the pattern that chassis and
+ armor upgrade, but weapons don't?
 
 When I asked for a treaty, the faction responded with 2 messages instead of 1. Neither was in the messages I told you.
 They MUST respond with something in #MAKETREATYx or #REJTREATYy. For example: "With respect, $TITLE1, it appears there is little future in
@@ -192,12 +193,10 @@ I've removed votes from data.FACTIONS. This will cause an error once I vote.
 Santiago needs to start with a rover. (Does Morgan start with a Synthmetal Garrison, too?)
 Made a treaty with someone. It still showed truce in commlinks.
 Check save overwrites. If the exact same name exists, popup that says Are You Sure you want to overwrite?
-I broke load game.
 One time I landed on a supply pod simultaneously with meeting a faction. Faction pop up happened first, then
 supply pod popup happened over diplomacy screen. Let's flip those.
 When a faction is eliminated, all their units should disappear. They don't.
 I once met two factions in the same turn. As soon as I answered the first, the popup for the second obscured the second.
-Tech tree has disappeared.
 
 
 

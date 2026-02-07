@@ -1,42 +1,27 @@
-We have faction data in data.py. Some of this is set (title), some is dynamic (votes)
-We have faction data in individual files in flavorText. Mostly text filler.
+Flow for diplomacy activation and dialog tree:
 
-Do these need to combine?
+Edit: some of the below is outdated. Will try to update this later.
+faction_id is the current faction. 0-6, based on FACTIONS index.
+player_faction_id is my faction.
+I think there's something called ai_factions now.
+faction_assignments is gone.
+_assign_factions is gone.
+player_id is gone.
+unit.owner used to be weird. it's just faction_id now.
 
-There is also non-faction data in data.py (voting proposals)
-
-
-High level flow of dialog triggering:
-(expand this as I get more info)
 
 1 Try to move a unit: game.try_move_unit(self, unit, target_x, target_y).
  - Poorly named. It DOES move a unit if it can.
 2 After it moves, but still within try_move_unit, we call game._check_first_contact.
- - Problem: We check unit.owner against self.player_id to see if it's our unit. But both ids are 0 when neither player was Gaia.
- - So the ids are bad.
- - FISHY SMELL: we have a player_id and a faction_id...and then a player_faction_id, hardcoded to 0 and then assigned to itself?
- - No way this id is correct, and yet it's used 21 times.
- - Edit: Maybe I was wrong about the id types. Maybe player_faction_id IS supposed to be the one I selected.
- - And player_id is just the current faction selected? Very confused still. #TODO: Solve.
- - Compare to unit.owner, in unit.py: owner (int): Player ID (0 = human, 1+ = AI). This shit is so goofy.
 3 Within, we set game.pending_commlink_requests. Each entry in this list contains player_id and other_faction_id.
- - Study if the gathering of ids makes sense.
  - Fishy smell: self.faction_contacts.append(other_faction_id)
- - other_faction_id is pulled from faction_assignments. We look up the id from the faction name, which we had from other_unit.owner. Fishy name.
- - Note: what SHOULD be the main index be for looking up opponents?
- - faction_assignments is set in _assign_factions.
- - #TODO: _assign_factions looks horrible, and may be a source of my problems. There needs to be a basic 0-6 id for characters, then player_id stored separately.
- - #TODO: this function may be necessary to set correct enemy factions, though.
  - Fishy smell: # Check if we have all living factions now
  - This looks, at the very least, duplicated unnecessarily. But it might be in the wrong function.
 4 ui_manager.draw checks if it needs to draw a commlink request popup.
 5 If it does, ui_manager._draw_commlink_request draws a dialog box that says "x is requesting to speak with you." "A representative wishes to open communications."
 6 Clicking Answer triggers this conditional earlier in ui_manager: if self.commlink_request_answer_rect and self.commlink_request_answer_rect.collidepoint(pos):
  - This opens up the diplomacy view, I think: self.active_screen = "DIPLOMACY"
-
- - Note the values passed in. It's getting an other_faction_id. Edit: Actually, it's not passing in the id. It's plugging it into a FACTIONS array (from /ui.data.py). Very circular.
- - #TODO: Find out what data I actually need. Compare to faction_assignments.
- - #TODO: If I keep data.FACTIONS, I probably need to give each an id. Then remove flavor text, and possibly dynamic data, like votes.
+ - Note the values passed in. It's getting an other_faction_id.
  - Ok there's something possibly weird going on here. pending_commlink_requests is an array, because you can meet multiple new factions with one move. It's happened.
  - But when we pass it in, we store the data globally. Is this necessary? In some order...
  - On line 886 of ui_manager.draw, we store the two ids.
@@ -58,14 +43,7 @@ High level flow of dialog triggering:
 
 
 
- So. I think I've solved everything.
 
-Steps:
-I  Use FACTIONS for flavor in commlink_text.
-II Set player id elsewhere, in game.py.
-III Modify _assign_factions.
-IV Assign player_id and other_faction_id differently, when players bump. unit.owner should have (or BE) this data.
-V (optional) See if we can avoid the weird popping and storing of ids in ui_manager.
 
 
 
