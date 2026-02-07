@@ -1,0 +1,71 @@
+We have faction data in data.py. Some of this is set (title), some is dynamic (votes)
+We have faction data in individual files in flavorText. Mostly text filler.
+
+Do these need to combine?
+
+There is also non-faction data in data.py (voting proposals)
+
+
+High level flow of dialog triggering:
+(expand this as I get more info)
+
+1 Try to move a unit: game.try_move_unit(self, unit, target_x, target_y).
+ - Poorly named. It DOES move a unit if it can.
+2 After it moves, but still within try_move_unit, we call game._check_first_contact.
+ - Problem: We check unit.owner against self.player_id to see if it's our unit. But both ids are 0 when neither player was Gaia.
+ - So the ids are bad.
+ - FISHY SMELL: we have a player_id and a faction_id...and then a player_faction_id, hardcoded to 0 and then assigned to itself?
+ - No way this id is correct, and yet it's used 21 times.
+ - Edit: Maybe I was wrong about the id types. Maybe player_faction_id IS supposed to be the one I selected.
+ - And player_id is just the current faction selected? Very confused still. #TODO: Solve.
+ - Compare to unit.owner, in unit.py: owner (int): Player ID (0 = human, 1+ = AI). This shit is so goofy.
+3 Within, we set game.pending_commlink_requests. Each entry in this list contains player_id and other_faction_id.
+ - Study if the gathering of ids makes sense.
+ - Fishy smell: self.faction_contacts.append(other_faction_id)
+ - other_faction_id is pulled from faction_assignments. We look up the id from the faction name, which we had from other_unit.owner. Fishy name.
+ - Note: what SHOULD be the main index be for looking up opponents?
+ - faction_assignments is set in _assign_factions.
+ - #TODO: _assign_factions looks horrible, and may be a source of my problems. There needs to be a basic 0-6 id for characters, then player_id stored separately.
+ - #TODO: this function may be necessary to set correct enemy factions, though.
+ - Fishy smell: # Check if we have all living factions now
+ - This looks, at the very least, duplicated unnecessarily. But it might be in the wrong function.
+4 ui_manager.draw checks if it needs to draw a commlink request popup.
+5 If it does, ui_manager._draw_commlink_request draws a dialog box that says "x is requesting to speak with you." "A representative wishes to open communications."
+6 Clicking Answer triggers this conditional earlier in ui_manager: if self.commlink_request_answer_rect and self.commlink_request_answer_rect.collidepoint(pos):
+ - This opens up the diplomacy view, I think: self.active_screen = "DIPLOMACY"
+
+ - Note the values passed in. It's getting an other_faction_id. Edit: Actually, it's not passing in the id. It's plugging it into a FACTIONS array (from /ui.data.py). Very circular.
+ - #TODO: Find out what data I actually need. Compare to faction_assignments.
+ - #TODO: If I keep data.FACTIONS, I probably need to give each an id. Then remove flavor text, and possibly dynamic data, like votes.
+ - Ok there's something possibly weird going on here. pending_commlink_requests is an array, because you can meet multiple new factions with one move. It's happened.
+ - But when we pass it in, we store the data globally. Is this necessary? In some order...
+ - On line 886 of ui_manager.draw, we store the two ids.
+ - The global variable is used in ui_manager._draw_commlink_request
+ - The global variable is used when Answer is clicked
+ - So it definitely looks weird that the pop (and loss of data) is occurring right next to where most of the ids are being used. But maybe we can't pass the data through.
+ - Line 379 is REALLY smelly. Even if the two ids DO need to be global, this looks wrong. TODO: Solve this.
+ - Other fishy smell: self.diplomacy.diplo_stage = "greeting"
+ - This sets diplo_stage in the ui_manager. I can't see any need for this in ui_manager, or anywhere it's used.
+7 These are passed to diplomacy.open_diplomacy.
+  - This seems to only set variables.
+ - Other diplomacy.py functions? TBD. TODO: Solve this.
+ - Trace backwards from below to try to connect the dots.
+8 commlink_text.py functions
+ - class DialogSubstitution (imported in diplomacy.py) contains the following functions:
+ -get_dialog()...gets dialog. It calls set_context().
+ -set_context()...sets the context (meaning flavor text)
+ - Remember, commlink_dialogs ONLY sets the text.
+
+
+
+ So. I think I've solved everything.
+
+Steps:
+I  Use FACTIONS for flavor in commlink_text.
+II Set player id elsewhere, in game.py.
+III Modify _assign_factions.
+IV Assign player_id and other_faction_id differently, when players bump. unit.owner should have (or BE) this data.
+V (optional) See if we can avoid the weird popping and storing of ids in ui_manager.
+
+
+

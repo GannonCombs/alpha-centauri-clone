@@ -23,7 +23,7 @@ Thumbs.db
 
 # Game save files (if any)
 *.sav
-saves/
+game/saves/
 
 # Claude plans (optional - you can remove this line if you want to track plans)
 .claude/

@@ -13,13 +13,13 @@ and renders the screen each frame.
 """
 import pygame
 import sys
-from data import constants
-from game import Game
-from renderer import Renderer
-from ui import UIManager
-from ui.intro_screen import IntroScreenManager
-from ui.save_load_dialog import SaveLoadDialogManager
-from ui.exit_dialog import ExitDialogManager
+from game.data import constants
+from game.game import Game
+from game.renderer import Renderer
+from game.ui import UIManager
+from game.ui.intro_screen import IntroScreenManager
+from game.ui.save_load_dialog import SaveLoadDialogManager
+from game.ui.exit_dialog import ExitDialogManager
 
 def main():
     """Initialize and run the game."""
@@ -28,7 +28,7 @@ def main():
 
     # Create saves directory
     import os
-    os.makedirs('saves', exist_ok=True)
+    os.makedirs('game/saves', exist_ok=True)
 
     # Get display info for sizing
     display_info = pygame.display.Info()
@@ -174,9 +174,9 @@ def main():
                             ui_panel.handle_event(event, game)
                             continue
 
-                    # Diplomacy screen: Esc does NOT exit (must use dialog options)
+                    # Diplomacy screen
                     if ui_panel.active_screen == "DIPLOMACY":
-                        continue  # Ignore Esc during diplomacy
+                        continue
 
                     # Check if any overlay is active and close it instead of exiting
                     if ui_panel.active_screen != "GAME":
