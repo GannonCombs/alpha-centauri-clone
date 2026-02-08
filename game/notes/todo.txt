@@ -111,22 +111,18 @@ Notes:
 1 Once we get the commlink of every living faction, give a popup that we now have them all, and thus can now call council.
 2 If another unit gets all contacts first, they may call council. Add to the AI behavior that encourages them to call things
 that they like. Examples: remove atrocity prohibitions if their faction is warlike, elect governor if they are a candidate, etc.
-
-Under every base is current research. Fine for now, but enemy research is only visible in certain scenarios.
-I also just finished a conversation with a player without signing a treaty. This should put us in FORMAL truce and show "TRUCE"
+3 I also just finished a conversation with a player without signing a treaty. This should put us in FORMAL truce and show "TRUCE"
 in the commlinks. Instead, it shows nothing (informal truce). Zakharov then attacked me, and yet the commlink didn't convert to
 VENDETTA. Fix.
-
-New unit design on better unit tech is still not popping up, at least not consistently. Is the pattern that chassis and
+4 New unit design on better unit tech is still not popping up, at least not consistently. Is the pattern that chassis and
  armor upgrade, but weapons don't?
-Right now, enemy bases say what they're working on. This should only be the case if I have a Pact with them, or Empath Guild,
+5 Right now, enemy bases say what they're working on. This should only be the case if I have a Pact with them, or Empath Guild,
 or am Governor, or have Infiltrated their Datalinks.
-
-Got a diplomatic milestone popup when missing commlinks.
-Production times are off. Merchant Exchange takes 20 turns on Turn 1 for Morgan.
-Get rid of weapon_mode and armor_mode. We store the ids only. Any data that we need, we can look in unit_data.
-FACTION_DATA contains single quotes and double quotes.
-Not all faction bonuses are applied.
+6 Got a diplomatic milestone popup when missing commlinks.
+7 Production times are off. Merchant Exchange takes 20 turns on Turn 1 for Morgan.
+8 Get rid of weapon_mode and armor_mode. We store the ids only. Any data that we need, we can look in unit_data.
+9 FACTION_DATA contains single quotes and double quotes.
+10 Not all faction bonuses are applied.
 
 
 ***************************************************************************
@@ -149,4 +145,3 @@ V to hover
 Isometric
 Aliens/Fungus
 Governor
-Center and click screen
