@@ -114,7 +114,6 @@ Notes:
 that they like. Examples: remove atrocity prohibitions if their faction is warlike, elect governor if they are a candidate, etc.
 4 In the tech screen, there is a little text box inside the tech that is colored the correct category of the tech (it's 4x color).
 This is great. However, the outline for the tech box itself is always yellow. It should be the same 4x color.
-6 Hold unit isn't working. Still in W cycle, and End Turn still doesn't activate correctly after.
 
 More notes:
 The keyword "hand" for a 1-1-x should be "Scout" instead.

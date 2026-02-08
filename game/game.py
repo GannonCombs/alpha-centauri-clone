@@ -2231,15 +2231,15 @@ class Game:
         return None
 
     def all_friendly_units_moved(self):
-        """Check if all friendly units have exhausted their movement.
+        """Check if all friendly units have exhausted their movement or are held.
 
         Returns:
-            bool: True if all friendly units have moves_remaining <= 0
+            bool: True if all friendly units have moves_remaining <= 0 or are held
         """
         friendly_units = [u for u in self.units if u.is_friendly(self.player_faction_id)]
         if not friendly_units:
             return False
-        return all(u.moves_remaining <= 0 for u in friendly_units)
+        return all(u.moves_remaining <= 0 or u.held for u in friendly_units)
 
     def apply_council_proposal_effect(self, proposal_id, passed=True, winner=None):
         """Apply the effects of a passed council proposal.
