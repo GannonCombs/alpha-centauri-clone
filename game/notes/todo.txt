@@ -112,13 +112,10 @@ Notes:
 2 If another unit gets all contacts first, they may call council. Add to the AI behavior that encourages them to call things
 that they like. Examples: remove atrocity prohibitions if their faction is warlike, elect governor if they are a candidate, etc.
 
-Even with a faction having a treaty with me, I can attack them with impunity. Killing their unit did not switch to Vendetta.
-If I suggest an attack on an entreatied faction's unit, a popup should show. Check #BREAKINGTREATY and #BREAKINGTRUCE for info.
 Under every base is current research. Fine for now, but enemy research is only visible in certain scenarios.
 I also just finished a conversation with a player without signing a treaty. This should put us in FORMAL truce and show "TRUCE"
 in the commlinks. Instead, it shows nothing (informal truce). Zakharov then attacked me, and yet the commlink didn't convert to
 VENDETTA. Fix.
-
 
 New unit design on better unit tech is still not popping up, at least not consistently. Is the pattern that chassis and
  armor upgrade, but weapons don't?
@@ -154,3 +151,4 @@ V to hover
 Isometric
 Aliens/Fungus
 Governor
+Center and click screen

@@ -90,6 +90,8 @@ class Game:
         self.combat = Combat(self)
         self.pending_battle = None  # Dict with attacker, defender, target_x, target_y
         self.active_battle = None  # Dict tracking ongoing battle animation
+        self.pending_treaty_break = None  # Dict for player attacks that might break treaties
+        self.pending_ai_attack = None  # Dict for AI surprise attacks
 
         # Get list of AI faction IDs (all factions except player's)
         self.ai_faction_ids = [fid for fid in range(7) if fid != player_faction_id]
@@ -491,16 +493,25 @@ class Game:
             if first_unit.owner != unit.owner:
                 # Enemy stack - initiate combat with first unit
                 if unit.owner == self.player_faction_id:
-                    # Set up pending battle - UI will show prediction screen
-                    self.combat.pending_battle = {
+                    # Player attacking - check if this would break a treaty
+                    # (Pass to UI manager for handling)
+                    self.pending_treaty_break = {
                         'attacker': unit,
                         'defender': first_unit,
                         'target_x': target_x,
                         'target_y': target_y
                     }
-                    return True  # Battle initiated
+                    return True  # Will be handled by UI manager
                 else:
-                    # AI unit attacking - resolve immediately (no prediction screen)
+                    # AI unit attacking player - check if this breaks a treaty
+                    if first_unit.owner == self.player_faction_id:
+                        # AI attacking player - check for surprise attack
+                        self.pending_ai_attack = {
+                            'attacker': unit,
+                            'defender': first_unit,
+                            'ai_faction': unit.owner
+                        }
+                    # Resolve combat immediately (no prediction screen for AI)
                     self.resolve_combat(unit, first_unit, target_x, target_y)
                     return True
             # else: Friendly unit(s) - allow stacking, continue below
@@ -2789,6 +2800,8 @@ class Game:
         game.supply_pod_message = None
         game.pending_battle = None
         game.active_battle = None
+        game.pending_treaty_break = None
+        game.pending_ai_attack = None
         game.processing_ai = False
         game.current_ai_index = 0
         game.ai_unit_queue = []

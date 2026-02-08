@@ -75,6 +75,17 @@ class UIManager:
         self.new_designs_view_rect = None
         self.new_designs_ignore_rect = None
 
+        # Treaty breaking popups
+        self.break_treaty_popup_active = False  # Player breaking treaty
+        self.break_treaty_target_faction = None
+        self.break_treaty_pending_battle = None  # Store battle info if player chooses to attack
+        self.break_treaty_ok_rect = None
+        self.break_treaty_cancel_rect = None
+
+        self.surprise_attack_popup_active = False  # AI breaking treaty
+        self.surprise_attack_faction = None
+        self.surprise_attack_ok_rect = None
+
         # Unit stack panel
         self.unit_stack_scroll_offset = 0
         self.unit_stack_left_arrow_rect = None
@@ -420,6 +431,43 @@ class UIManager:
                     game.new_designs_available = False
                     return True
                 # Don't allow clicks through new designs popup
+                return True
+
+            # Break treaty popup buttons
+            if self.break_treaty_popup_active:
+                pos = pygame.mouse.get_pos()
+
+                if self.break_treaty_ok_rect and self.break_treaty_ok_rect.collidepoint(pos):
+                    # Player confirmed breaking treaty - set both to Vendetta and proceed with combat
+                    self.diplomacy.diplo_relations[self.break_treaty_target_faction] = "Vendetta"
+                    self.break_treaty_popup_active = False
+
+                    # Proceed with the pending battle
+                    if self.break_treaty_pending_battle:
+                        game.combat.pending_battle = self.break_treaty_pending_battle
+                        self.break_treaty_pending_battle = None
+                    self.break_treaty_target_faction = None
+                    return True
+                elif self.break_treaty_cancel_rect and self.break_treaty_cancel_rect.collidepoint(pos):
+                    # Cancel - no attack
+                    self.break_treaty_popup_active = False
+                    self.break_treaty_pending_battle = None
+                    self.break_treaty_target_faction = None
+                    return True
+                # Don't allow clicks through popup
+                return True
+
+            # Surprise attack popup button
+            if self.surprise_attack_popup_active:
+                pos = pygame.mouse.get_pos()
+
+                if self.surprise_attack_ok_rect and self.surprise_attack_ok_rect.collidepoint(pos):
+                    # Set both to Vendetta
+                    self.diplomacy.diplo_relations[self.surprise_attack_faction] = "Vendetta"
+                    self.surprise_attack_popup_active = False
+                    self.surprise_attack_faction = None
+                    return True
+                # Don't allow clicks through popup
                 return True
 
             # Handle save/load dialog clicks if open
@@ -905,6 +953,49 @@ class UIManager:
         if game.supply_pod_message and not self.commlink_request_active and self.active_screen != "DIPLOMACY":
             self.dialogs.draw_supply_pod_message(screen, game.supply_pod_message)
 
+        # Check for treaty-breaking attacks (before battle prediction)
+        if hasattr(game, 'pending_treaty_break') and game.pending_treaty_break and not self.break_treaty_popup_active:
+            attack_info = game.pending_treaty_break
+            defender_faction = attack_info['defender'].owner
+            relation = self.diplomacy.diplo_relations.get(defender_faction, "Uncommitted")
+
+            if relation == "Pact":
+                # Can't break pact by attacking
+                game.set_status_message("You cannot attack your pact brother!")
+                game.pending_treaty_break = None
+            elif relation in ["Treaty", "Truce"]:
+                # Show break treaty popup
+                self.break_treaty_popup_active = True
+                self.break_treaty_target_faction = defender_faction
+                self.break_treaty_pending_battle = {
+                    'attacker': attack_info['attacker'],
+                    'defender': attack_info['defender'],
+                    'target_x': attack_info['target_x'],
+                    'target_y': attack_info['target_y']
+                }
+                game.pending_treaty_break = None
+            else:
+                # Vendetta or Uncommitted - proceed with combat
+                game.combat.pending_battle = {
+                    'attacker': attack_info['attacker'],
+                    'defender': attack_info['defender'],
+                    'target_x': attack_info['target_x'],
+                    'target_y': attack_info['target_y']
+                }
+                game.pending_treaty_break = None
+
+        # Check for AI surprise attacks
+        if hasattr(game, 'pending_ai_attack') and game.pending_ai_attack and not self.surprise_attack_popup_active:
+            attack_info = game.pending_ai_attack
+            ai_faction = attack_info['ai_faction']
+            relation = self.diplomacy.diplo_relations.get(ai_faction, "Uncommitted")
+
+            if relation in ["Treaty", "Truce", "Pact"]:
+                # AI broke treaty - show surprise attack popup
+                self.surprise_attack_popup_active = True
+                self.surprise_attack_faction = ai_faction
+            game.pending_ai_attack = None
+
         # Battle prediction overlay (highest priority)
         if game.combat.pending_battle:
             self.battle_ui.draw_battle_prediction(screen, game)
@@ -944,6 +1035,13 @@ class UIManager:
         # New designs popup
         if self.new_designs_popup_active:
             self._draw_new_designs_popup(screen, game)
+
+        # Treaty breaking popups
+        if self.break_treaty_popup_active:
+            self._draw_break_treaty_popup(screen, game)
+
+        if self.surprise_attack_popup_active:
+            self._draw_surprise_attack_popup(screen, game)
 
         # Game over screen (highest priority)
         if game.game_over:
@@ -1354,6 +1452,98 @@ class UIManager:
         ignore_text = self.font.render("Ignore", True, COLOR_TEXT)
         screen.blit(ignore_text, (self.new_designs_ignore_rect.centerx - ignore_text.get_width() // 2,
                                  self.new_designs_ignore_rect.centery - 10))
+
+    def _draw_break_treaty_popup(self, screen, game):
+        """Draw popup asking player if they want to break a treaty."""
+        # Semi-transparent overlay
+        overlay = pygame.Surface((display.SCREEN_WIDTH, display.SCREEN_HEIGHT))
+        overlay.set_alpha(180)
+        overlay.fill((0, 0, 0))
+        screen.blit(overlay, (0, 0))
+
+        # Dialog box
+        box_w, box_h = 600, 250
+        box_x = display.SCREEN_WIDTH // 2 - box_w // 2
+        box_y = display.SCREEN_HEIGHT // 2 - box_h // 2
+
+        pygame.draw.rect(screen, (40, 30, 30), (box_x, box_y, box_w, box_h), border_radius=12)
+        pygame.draw.rect(screen, (220, 100, 100), (box_x, box_y, box_w, box_h), 3, border_radius=12)
+
+        # Title
+        title_text = "BREAK TREATY"
+        title_surf = self.font.render(title_text, True, (255, 150, 150))
+        screen.blit(title_surf, (box_x + box_w // 2 - title_surf.get_width() // 2, box_y + 40))
+
+        # Message
+        faction_name = FACTION_DATA[self.break_treaty_target_faction]['name']
+        msg_text = f"Are you sure you wish to attack {faction_name}?"
+        msg_surf = self.small_font.render(msg_text, True, COLOR_TEXT)
+        screen.blit(msg_surf, (box_x + box_w // 2 - msg_surf.get_width() // 2, box_y + 100))
+
+        msg_text2 = "This will break your treaty and result in VENDETTA."
+        msg_surf2 = self.small_font.render(msg_text2, True, (255, 200, 200))
+        screen.blit(msg_surf2, (box_x + box_w // 2 - msg_surf2.get_width() // 2, box_y + 130))
+
+        # Buttons
+        btn_w, btn_h = 140, 50
+        btn_y = box_y + box_h - 80
+
+        # OK button
+        ok_x = box_x + box_w // 2 - btn_w - 10
+        self.break_treaty_ok_rect = pygame.Rect(ok_x, btn_y, btn_w, btn_h)
+        is_hover = self.break_treaty_ok_rect.collidepoint(pygame.mouse.get_pos())
+        pygame.draw.rect(screen, (85, 60, 60) if is_hover else (65, 45, 45),
+                       self.break_treaty_ok_rect, border_radius=8)
+        pygame.draw.rect(screen, (220, 100, 100), self.break_treaty_ok_rect, 3, border_radius=8)
+        ok_text = self.font.render("OK", True, COLOR_TEXT)
+        screen.blit(ok_text, (self.break_treaty_ok_rect.centerx - ok_text.get_width() // 2,
+                             self.break_treaty_ok_rect.centery - 10))
+
+        # Cancel button
+        cancel_x = box_x + box_w // 2 + 10
+        self.break_treaty_cancel_rect = pygame.Rect(cancel_x, btn_y, btn_w, btn_h)
+        is_hover = self.break_treaty_cancel_rect.collidepoint(pygame.mouse.get_pos())
+        pygame.draw.rect(screen, (65, 85, 100) if is_hover else (45, 55, 65),
+                       self.break_treaty_cancel_rect, border_radius=8)
+        pygame.draw.rect(screen, (100, 140, 160), self.break_treaty_cancel_rect, 3, border_radius=8)
+        cancel_text = self.font.render("Cancel", True, COLOR_TEXT)
+        screen.blit(cancel_text, (self.break_treaty_cancel_rect.centerx - cancel_text.get_width() // 2,
+                                 self.break_treaty_cancel_rect.centery - 10))
+
+    def _draw_surprise_attack_popup(self, screen, game):
+        """Draw popup notifying player that AI broke treaty."""
+        # Semi-transparent overlay
+        overlay = pygame.Surface((display.SCREEN_WIDTH, display.SCREEN_HEIGHT))
+        overlay.set_alpha(180)
+        overlay.fill((0, 0, 0))
+        screen.blit(overlay, (0, 0))
+
+        # Dialog box
+        box_w, box_h = 600, 220
+        box_x = display.SCREEN_WIDTH // 2 - box_w // 2
+        box_y = display.SCREEN_HEIGHT // 2 - box_h // 2
+
+        pygame.draw.rect(screen, (40, 30, 30), (box_x, box_y, box_w, box_h), border_radius=12)
+        pygame.draw.rect(screen, (220, 100, 100), (box_x, box_y, box_w, box_h), 3, border_radius=12)
+
+        # Message
+        faction_name = FACTION_DATA[self.surprise_attack_faction]['name']
+        msg_text = f"{faction_name} has launched a surprise attack!"
+        msg_surf = self.font.render(msg_text, True, (255, 150, 150))
+        screen.blit(msg_surf, (box_x + box_w // 2 - msg_surf.get_width() // 2, box_y + 70))
+
+        # OK button
+        btn_w, btn_h = 140, 50
+        btn_y = box_y + box_h - 80
+        ok_x = box_x + box_w // 2 - btn_w // 2
+        self.surprise_attack_ok_rect = pygame.Rect(ok_x, btn_y, btn_w, btn_h)
+        is_hover = self.surprise_attack_ok_rect.collidepoint(pygame.mouse.get_pos())
+        pygame.draw.rect(screen, (85, 60, 60) if is_hover else (65, 45, 45),
+                       self.surprise_attack_ok_rect, border_radius=8)
+        pygame.draw.rect(screen, (220, 100, 100), self.surprise_attack_ok_rect, 3, border_radius=8)
+        ok_text = self.font.render("OK", True, COLOR_TEXT)
+        screen.blit(ok_text, (self.surprise_attack_ok_rect.centerx - ok_text.get_width() // 2,
+                             self.surprise_attack_ok_rect.centery - 10))
 
     def _draw_game_over(self, screen, game):
         """Draw the game over screen with victory/defeat message and buttons."""
