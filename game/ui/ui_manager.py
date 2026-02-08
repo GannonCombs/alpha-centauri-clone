@@ -1,8 +1,8 @@
 """Main UI coordinator - replaces UIPanel."""
 
 import pygame
-from game.data import constants
-from game.data.constants import (COLOR_UI_BACKGROUND, COLOR_UI_BORDER, COLOR_TEXT,
+from game.data import display
+from game.data.display import (COLOR_UI_BACKGROUND, COLOR_UI_BORDER, COLOR_TEXT,
                                  COLOR_BLACK, COLOR_BUTTON_BORDER)
 from .components import Button
 from .dialogs import DialogManager
@@ -85,7 +85,7 @@ class UIManager:
         if self.main_menu_button is not None:
             return  # Already initialized
 
-        button_y = constants.UI_PANEL_Y + 20
+        button_y = display.UI_PANEL_Y + 20
         self.main_menu_button = Button(20, button_y, 160, 45, "Main Menu")
         self.end_turn_button = Button(200, button_y, 140, 45, "End Turn")
 
@@ -100,12 +100,12 @@ class UIManager:
 
         # Minimap & Commlink Positioning - right side of UI panel
         minimap_size = 120
-        minimap_x = constants.SCREEN_WIDTH - 320  # Left edge of right area
-        minimap_y = constants.UI_PANEL_Y + 25  # More spacing from top to fit label
+        minimap_x = display.SCREEN_WIDTH - 320  # Left edge of right area
+        minimap_y = display.UI_PANEL_Y + 25  # More spacing from top to fit label
         self.minimap_rect = pygame.Rect(minimap_x, minimap_y, minimap_size, minimap_size)
 
         # Commlink button to the RIGHT of the minimap
-        self.commlink_button = Button(self.minimap_rect.right + 10, constants.UI_PANEL_Y + 10, 180, 35, "Commlink")
+        self.commlink_button = Button(self.minimap_rect.right + 10, display.UI_PANEL_Y + 10, 180, 35, "Commlink")
 
         # Commlink Drop-up dimensions
         menu_w, menu_h = 320, 300
@@ -234,6 +234,11 @@ class UIManager:
                     self.social_screens.design_workshop_open = True
                     # Reset editing panel state when opening
                     self.social_screens.design_workshop_screen.dw_editing_panel = None
+                    # Load first empty slot when opening
+                    workshop = self.social_screens.design_workshop_screen
+                    faction_designs = game.factions[game.player_faction_id].designs
+                    first_empty = faction_designs.find_first_empty_slot()
+                    workshop._load_slot_into_editor(first_empty, game)
                     # Rebuild designs if new tech was discovered (manual call, no specific tech)
                     if game.designs_need_rebuild:
                         player_tech_tree = game.factions[game.player_faction_id].tech_tree
@@ -554,8 +559,8 @@ class UIManager:
                             # Get the faction for this player_id
                             faction_id = btn.player_id  # player_id IS faction_id
                             if faction_id is not None and faction_id < len(FACTION_DATA):
-                                # Player is always index 0
-                                self.diplomacy.open_diplomacy(FACTION_DATA[faction_id], player_faction_index=0)
+                                # Open diplomacy with correct player faction ID
+                                self.diplomacy.open_diplomacy(FACTION_DATA[faction_id], player_faction_index=game.player_faction_id)
                                 self.active_screen = "DIPLOMACY"
                                 self.commlink_open = False
                                 return True
@@ -653,9 +658,9 @@ class UIManager:
 
         # Layer 1: Background
         pygame.draw.rect(screen, COLOR_UI_BACKGROUND,
-                         (0, constants.UI_PANEL_Y, constants.SCREEN_WIDTH, constants.UI_PANEL_HEIGHT))
-        pygame.draw.line(screen, COLOR_UI_BORDER, (0, constants.UI_PANEL_Y),
-                         (constants.SCREEN_WIDTH, constants.UI_PANEL_Y), 3)
+                         (0, display.UI_PANEL_Y, display.SCREEN_WIDTH, display.UI_PANEL_HEIGHT))
+        pygame.draw.line(screen, COLOR_UI_BORDER, (0, display.UI_PANEL_Y),
+                         (display.SCREEN_WIDTH, display.UI_PANEL_Y), 3)
 
         # Layer 2: Minimap
         pygame.draw.rect(screen, COLOR_BLACK, self.minimap_rect)
@@ -693,14 +698,14 @@ class UIManager:
 
         # Turn counter - below buttons
         turn_text = self.font.render(f"Turn: {game.turn}", True, COLOR_TEXT)
-        screen.blit(turn_text, (20, constants.UI_PANEL_Y + 75))
+        screen.blit(turn_text, (20, display.UI_PANEL_Y + 75))
 
         # Unit info panel - left-center area (always visible if unit selected)
         if game.selected_unit:
             unit = game.selected_unit
             # Position left of battle panel
             info_x = 370
-            info_y = constants.UI_PANEL_Y + 20
+            info_y = display.UI_PANEL_Y + 20
             info_box = pygame.Rect(info_x - 10, info_y - 5, 280, 135)
             pygame.draw.rect(screen, (35, 40, 45), info_box)
             pygame.draw.rect(screen, COLOR_BUTTON_BORDER, info_box, 2)
@@ -744,7 +749,7 @@ class UIManager:
         # Terrain panel - far right of console
         if game.selected_unit:
             terrain_x = 1080
-            terrain_y = constants.UI_PANEL_Y + 20
+            terrain_y = display.UI_PANEL_Y + 20
             terrain_box_w = 200
             terrain_box_h = 135
             terrain_box = pygame.Rect(terrain_x - 10, terrain_y - 5, terrain_box_w, terrain_box_h)
@@ -941,7 +946,7 @@ class UIManager:
                 tile = game.game_map.get_tile(x, y)
                 if tile:
                     # Determine color
-                    color = constants.COLOR_LAND if tile.is_land() else constants.COLOR_OCEAN
+                    color = display.COLOR_LAND if tile.is_land() else display.COLOR_OCEAN
 
                     # Draw tiny rectangle for this tile
                     tile_x = offset_x + int(x * scale)
@@ -975,8 +980,8 @@ class UIManager:
         # Draw viewport indicator - transparent white-bordered rectangle
         # showing the currently visible section of the map (with wrapping support)
         if renderer:
-            visible_tiles_x = constants.SCREEN_WIDTH // constants.TILE_SIZE
-            visible_tiles_y = constants.MAP_AREA_HEIGHT // constants.TILE_SIZE
+            visible_tiles_x = display.SCREEN_WIDTH // display.TILE_SIZE
+            visible_tiles_y = display.MAP_AREA_HEIGHT // display.TILE_SIZE
 
             # Get camera position from renderer
             camera_x = renderer.camera_offset_x % map_width  # Wrap horizontally
@@ -1043,15 +1048,15 @@ class UIManager:
             return
 
         # Semi-transparent overlay
-        overlay = pygame.Surface((constants.SCREEN_WIDTH, constants.SCREEN_HEIGHT))
+        overlay = pygame.Surface((display.SCREEN_WIDTH, display.SCREEN_HEIGHT))
         overlay.set_alpha(180)
         overlay.fill((0, 0, 0))
         screen.blit(overlay, (0, 0))
 
         # Event popup box
         box_w, box_h = 600, 300
-        box_x = constants.SCREEN_WIDTH // 2 - box_w // 2
-        box_y = constants.SCREEN_HEIGHT // 2 - box_h // 2
+        box_x = display.SCREEN_WIDTH // 2 - box_w // 2
+        box_y = display.SCREEN_HEIGHT // 2 - box_h // 2
 
         # Draw box
         pygame.draw.rect(screen, (40, 45, 50), (box_x, box_y, box_w, box_h), border_radius=10)
@@ -1159,15 +1164,15 @@ class UIManager:
     def _draw_commlink_request(self, screen, game):
         """Draw commlink request popup when AI wants to speak."""
         # Semi-transparent overlay
-        overlay = pygame.Surface((constants.SCREEN_WIDTH, constants.SCREEN_HEIGHT))
+        overlay = pygame.Surface((display.SCREEN_WIDTH, display.SCREEN_HEIGHT))
         overlay.set_alpha(180)
         overlay.fill((0, 0, 0))
         screen.blit(overlay, (0, 0))
 
         # Dialog box
         box_w, box_h = 600, 250
-        box_x = constants.SCREEN_WIDTH // 2 - box_w // 2
-        box_y = constants.SCREEN_HEIGHT // 2 - box_h // 2
+        box_x = display.SCREEN_WIDTH // 2 - box_w // 2
+        box_y = display.SCREEN_HEIGHT // 2 - box_h // 2
 
         pygame.draw.rect(screen, (30, 40, 50), (box_x, box_y, box_w, box_h), border_radius=12)
         pygame.draw.rect(screen, (100, 140, 160), (box_x, box_y, box_w, box_h), 3, border_radius=12)
@@ -1216,15 +1221,15 @@ class UIManager:
     def _draw_faction_elimination(self, screen, game):
         """Draw faction elimination notification popup."""
         # Semi-transparent overlay
-        overlay = pygame.Surface((constants.SCREEN_WIDTH, constants.SCREEN_HEIGHT))
+        overlay = pygame.Surface((display.SCREEN_WIDTH, display.SCREEN_HEIGHT))
         overlay.set_alpha(180)
         overlay.fill((0, 0, 0))
         screen.blit(overlay, (0, 0))
 
         # Dialog box
         box_w, box_h = 600, 250
-        box_x = constants.SCREEN_WIDTH // 2 - box_w // 2
-        box_y = constants.SCREEN_HEIGHT // 2 - box_h // 2
+        box_x = display.SCREEN_WIDTH // 2 - box_w // 2
+        box_y = display.SCREEN_HEIGHT // 2 - box_h // 2
 
         pygame.draw.rect(screen, (40, 30, 30), (box_x, box_y, box_w, box_h), border_radius=12)
         pygame.draw.rect(screen, (180, 100, 100), (box_x, box_y, box_w, box_h), 3, border_radius=12)
@@ -1265,15 +1270,15 @@ class UIManager:
     def _draw_new_designs_popup(self, screen, game):
         """Draw new unit designs available notification popup."""
         # Semi-transparent overlay
-        overlay = pygame.Surface((constants.SCREEN_WIDTH, constants.SCREEN_HEIGHT))
+        overlay = pygame.Surface((display.SCREEN_WIDTH, display.SCREEN_HEIGHT))
         overlay.set_alpha(180)
         overlay.fill((0, 0, 0))
         screen.blit(overlay, (0, 0))
 
         # Dialog box
         box_w, box_h = 600, 250
-        box_x = constants.SCREEN_WIDTH // 2 - box_w // 2
-        box_y = constants.SCREEN_HEIGHT // 2 - box_h // 2
+        box_x = display.SCREEN_WIDTH // 2 - box_w // 2
+        box_y = display.SCREEN_HEIGHT // 2 - box_h // 2
 
         pygame.draw.rect(screen, (30, 40, 50), (box_x, box_y, box_w, box_h), border_radius=12)
         pygame.draw.rect(screen, (100, 180, 140), (box_x, box_y, box_w, box_h), 3, border_radius=12)
@@ -1320,18 +1325,18 @@ class UIManager:
 
     def _draw_game_over(self, screen, game):
         """Draw the game over screen with victory/defeat message and buttons."""
-        from game.data.constants import COLOR_BUTTON, COLOR_BUTTON_HOVER, COLOR_BUTTON_BORDER, COLOR_BUTTON_HIGHLIGHT
+        from game.data.display import COLOR_BUTTON, COLOR_BUTTON_HOVER, COLOR_BUTTON_BORDER, COLOR_BUTTON_HIGHLIGHT
 
         # Semi-transparent overlay
-        overlay = pygame.Surface((constants.SCREEN_WIDTH, constants.SCREEN_HEIGHT))
+        overlay = pygame.Surface((display.SCREEN_WIDTH, display.SCREEN_HEIGHT))
         overlay.set_alpha(200)
         overlay.fill((10, 15, 20))
         screen.blit(overlay, (0, 0))
 
         # Dialog box
         dialog_w, dialog_h = 600, 400
-        dialog_x = constants.SCREEN_WIDTH // 2 - dialog_w // 2
-        dialog_y = constants.SCREEN_HEIGHT // 2 - dialog_h // 2
+        dialog_x = display.SCREEN_WIDTH // 2 - dialog_w // 2
+        dialog_y = display.SCREEN_HEIGHT // 2 - dialog_h // 2
         dialog_rect = pygame.Rect(dialog_x, dialog_y, dialog_w, dialog_h)
 
         pygame.draw.rect(screen, (30, 40, 50), dialog_rect, border_radius=12)
@@ -1397,7 +1402,7 @@ class UIManager:
         panel_w = 360  # Match battle panel width
         panel_h = 120
         panel_x = 680  # Same x as battle panel
-        panel_y = constants.UI_PANEL_Y + 145  # Below battle panel (battle panel is 130px + 10px offset + 5px gap)
+        panel_y = display.UI_PANEL_Y + 145  # Below battle panel (battle panel is 130px + 10px offset + 5px gap)
 
         # Draw panel background
         panel_rect = pygame.Rect(panel_x, panel_y, panel_w, panel_h)

@@ -1,4 +1,4 @@
-"""UI data structures and constants."""
+"""UI data structures and display."""
 
 # SMAC Faction Static Data
 # Each faction starts with one specific technology

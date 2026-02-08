@@ -13,7 +13,7 @@ and renders the screen each frame.
 """
 import pygame
 import sys
-from game.data import constants
+from game.data import display
 from game.game import Game
 from game.renderer import Renderer
 from game.ui import UIManager
@@ -32,28 +32,22 @@ def main():
 
     # Get display info for sizing
     display_info = pygame.display.Info()
-    screen_width = display_info.current_w
-    screen_height = display_info.current_h
-
-    # Update constants with actual screen dimensions
-    constants.SCREEN_WIDTH = screen_width
-    constants.SCREEN_HEIGHT = screen_height
+    display.SCREEN_WIDTH = display_info.current_w
+    display.SCREEN_HEIGHT = display_info.current_h
 
     # Calculate MAP_AREA_HEIGHT to be an exact multiple of TILE_SIZE
     # This ensures no partial tiles or gaps
-    available_height = screen_height - constants.UI_PANEL_HEIGHT
-    num_complete_tiles = available_height // constants.TILE_SIZE
-    constants.MAP_AREA_HEIGHT = num_complete_tiles * constants.TILE_SIZE
-    constants.UI_PANEL_Y = constants.MAP_AREA_HEIGHT  # Panel starts right after last complete tile
+    available_height = display.SCREEN_HEIGHT - display.UI_PANEL_HEIGHT
+    num_complete_tiles = available_height // display.TILE_SIZE
+    display.MAP_AREA_HEIGHT = num_complete_tiles * display.TILE_SIZE
+    display.UI_PANEL_Y = display.MAP_AREA_HEIGHT  # Panel starts right after last complete tile
 
     # Calculate map size to be double screen size (both width and height)
-    constants.MAP_HEIGHT = (constants.MAP_AREA_HEIGHT // constants.TILE_SIZE) * 2
-
-    # Width double of screen
-    constants.MAP_WIDTH = (screen_width // constants.TILE_SIZE) * 2
+    map_height = (display.MAP_AREA_HEIGHT // display.TILE_SIZE) * 2
+    map_width = (display.SCREEN_WIDTH // display.TILE_SIZE) * 2
 
     # Create window (not fullscreen, but maximized size)
-    screen = pygame.display.set_mode((screen_width, screen_height))
+    screen = pygame.display.set_mode((display.SCREEN_WIDTH, display.SCREEN_HEIGHT))
     pygame.display.set_caption("Alpha Centauri Clone")
 
     # Create game clock for frame rate control
@@ -116,7 +110,7 @@ def main():
                 elif isinstance(intro_result, tuple) and intro_result[0] == 'start_game':
                     # Start new game with selected faction, name, and ocean percentage
                     _, faction_id, player_name, ocean_percentage = intro_result
-                    game = Game(faction_id, player_name, ocean_percentage)
+                    game = Game(faction_id, player_name, ocean_percentage, map_width, map_height)
                     renderer = Renderer(screen)
                     ui_panel = UIManager()
                     # Give game reference to UI for accessing design workshop
@@ -336,7 +330,7 @@ def main():
                     game.ui_manager = ui_panel  # Restore UI reference
                 elif not ui_handled:
                     # UI didn't handle it - pass to game if in map area
-                    if mouse_y < constants.MAP_AREA_HEIGHT:
+                    if mouse_y < display.MAP_AREA_HEIGHT:
                         # Right-click - show context menu for artillery
                         if event.button == 3:  # Right mouse button
                             # Convert screen coordinates to map coordinates
@@ -380,14 +374,14 @@ def main():
 
             # Render intro screen
             screen.fill((0, 0, 0))
-            intro_screen.draw(screen, constants.SCREEN_WIDTH, constants.SCREEN_HEIGHT)
+            intro_screen.draw(screen, display.SCREEN_WIDTH, display.SCREEN_HEIGHT)
 
             # Draw load dialog if open
             if intro_load_dialog.mode is not None:
                 intro_load_dialog.draw(screen)
 
             pygame.display.flip()
-            clock.tick(constants.FPS)
+            clock.tick(display.FPS)
             continue
 
         # Game is active
@@ -410,25 +404,25 @@ def main():
 
             if not popups_blocking:
                 current_time = pygame.time.get_ticks()
-                if current_time - last_ai_action >= constants.ai_turn_delay:
+                if current_time - last_ai_action >= display.AI_TURN_DELAY:
                     game.process_ai_turns()
                     last_ai_action = current_time
 
         # Handle map scrolling when mouse is at edges (only in map area)
         mouse_x, mouse_y = pygame.mouse.get_pos()
-        if mouse_y < constants.MAP_AREA_HEIGHT:
+        if mouse_y < display.MAP_AREA_HEIGHT:
             current_time = pygame.time.get_ticks()
-            if current_time - last_scroll_time >= constants.scroll_delay:
+            if current_time - last_scroll_time >= display.SCROLL_DELAY:
                 # Calculate 5% edge zones
-                edge_zone_width = int(constants.SCREEN_WIDTH * 0.05)
-                edge_zone_height = int(constants.MAP_AREA_HEIGHT * 0.05)
+                edge_zone_width = int(display.SCREEN_WIDTH * 0.05)
+                edge_zone_height = int(display.MAP_AREA_HEIGHT * 0.05)
 
                 # Horizontal scrolling (wraps)
                 if mouse_x < edge_zone_width:
                     # Scroll left (decrease camera offset)
                     renderer.scroll_camera(-1, 0)
                     last_scroll_time = current_time
-                elif mouse_x > constants.SCREEN_WIDTH - edge_zone_width:
+                elif mouse_x > display.SCREEN_WIDTH - edge_zone_width:
                     # Scroll right (increase camera offset)
                     renderer.scroll_camera(1, 0)
                     last_scroll_time = current_time
@@ -438,7 +432,7 @@ def main():
                     # Scroll up
                     renderer.scroll_camera(0, -1)
                     last_scroll_time = current_time
-                elif mouse_y > constants.MAP_AREA_HEIGHT - edge_zone_height:
+                elif mouse_y > display.MAP_AREA_HEIGHT - edge_zone_height:
                     # Scroll down
                     renderer.scroll_camera(0, 1)
                     last_scroll_time = current_time
@@ -469,16 +463,16 @@ def main():
 
         # Draw exit dialog on top of everything if showing
         if exit_dialog.show_dialog:
-            exit_dialog.draw(screen, constants.SCREEN_WIDTH, constants.SCREEN_HEIGHT)
+            exit_dialog.draw(screen, display.SCREEN_WIDTH, display.SCREEN_HEIGHT)
 
         # Draw menu dialog on top of everything if showing
         if menu_dialog.show_dialog:
-            menu_dialog.draw(screen, constants.SCREEN_WIDTH, constants.SCREEN_HEIGHT)
+            menu_dialog.draw(screen, display.SCREEN_WIDTH, display.SCREEN_HEIGHT)
 
         pygame.display.flip()  # Update display
 
         # Cap frame rate
-        clock.tick(constants.FPS)
+        clock.tick(display.FPS)
 
     # Cleanup
     pygame.quit()

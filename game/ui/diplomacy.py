@@ -1,8 +1,8 @@
 """Faction diplomacy interface."""
 
 import pygame
-from game.data import constants
-from game.data.constants import COLOR_TEXT, COLOR_BUTTON_BORDER
+from game.data import display
+from game.data.display import COLOR_TEXT, COLOR_BUTTON_BORDER
 from game.data.data import FACTION_DATA
 from game.commlink_text import DialogSubstitution, select_greeting_dialog
 
@@ -86,7 +86,7 @@ class DiplomacyManager:
         for i, line in enumerate(info_lines):
             screen.blit(self.mono_font.render(line, True, (180, 200, 190)), (info_x, info_y + 45 + i * 32))
 
-        msg_rect = pygame.Rect(60, 300, constants.SCREEN_WIDTH - 120, 150)
+        msg_rect = pygame.Rect(60, 300, display.SCREEN_WIDTH - 120, 150)
         pygame.draw.rect(screen, (12, 18, 22), msg_rect)
         pygame.draw.rect(screen, self.target_faction['color'], msg_rect, 3)
 
@@ -108,7 +108,7 @@ class DiplomacyManager:
             available_responses = self._filter_responses(self.current_responses, relation)
 
             for i, response in enumerate(available_responses):
-                opt_rect = pygame.Rect(constants.SCREEN_WIDTH // 2 - 400, options_y + i * 60, 800, 50)
+                opt_rect = pygame.Rect(display.SCREEN_WIDTH // 2 - 400, options_y + i * 60, 800, 50)
                 action = response.get('action', 'diplo')
                 self.diplo_option_rects.append((opt_rect, action))
                 is_hover = opt_rect.collidepoint(pygame.mouse.get_pos())

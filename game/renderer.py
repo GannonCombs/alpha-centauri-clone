@@ -12,8 +12,8 @@ The Renderer class manages the viewport, handles coordinate transformations,
 and draws all game entities to the screen.
 """
 import pygame
-from game.data import constants
-from game.data.constants import (TILE_SIZE, COLOR_OCEAN, COLOR_LAND, COLOR_GRID, COLOR_BLACK,
+from game.data import display
+from game.data.display import (TILE_SIZE, COLOR_OCEAN, COLOR_LAND, COLOR_GRID, COLOR_BLACK,
                                  COLOR_UNIT_SELECTED,
                                  COLOR_BASE_BORDER)
 from game.data.data import FACTION_DATA
@@ -47,8 +47,8 @@ class Renderer:
         """Calculate horizontal offset to center the map."""
         map_pixel_width = game_map.width * TILE_SIZE
         # Only center if map is smaller than screen, otherwise no offset
-        if map_pixel_width < constants.SCREEN_WIDTH:
-            self.base_offset_x = (constants.SCREEN_WIDTH - map_pixel_width) // 2
+        if map_pixel_width < display.SCREEN_WIDTH:
+            self.base_offset_x = (display.SCREEN_WIDTH - map_pixel_width) // 2
         else:
             self.base_offset_x = 0
 
@@ -74,12 +74,12 @@ class Renderer:
             game_map: The game map
         """
         # Horizontal centering (always possible due to wrapping)
-        visible_tiles_x = constants.SCREEN_WIDTH // TILE_SIZE
+        visible_tiles_x = display.SCREEN_WIDTH // TILE_SIZE
         center_offset_x = visible_tiles_x // 2
         self.camera_offset_x = (tile_x - center_offset_x) % game_map.width
 
         # Vertical centering (bounded by map edges)
-        visible_tiles_y = constants.MAP_AREA_HEIGHT // TILE_SIZE
+        visible_tiles_y = display.MAP_AREA_HEIGHT // TILE_SIZE
         center_offset_y = visible_tiles_y // 2
         target_y = tile_y - center_offset_y
 
@@ -97,12 +97,12 @@ class Renderer:
         self._update_offsets(game_map)
 
         # Calculate visible tiles (only complete tiles, no partial)
-        visible_tiles_y = constants.MAP_AREA_HEIGHT // TILE_SIZE
+        visible_tiles_y = display.MAP_AREA_HEIGHT // TILE_SIZE
         max_y_offset = max(0, game_map.height - visible_tiles_y)
         self.camera_offset_y = max(0, min(self.camera_offset_y, max_y_offset))
 
         # Calculate visible tile range with wrapping
-        visible_tiles_x = (constants.SCREEN_WIDTH // TILE_SIZE) + 2
+        visible_tiles_x = (display.SCREEN_WIDTH // TILE_SIZE) + 2
 
         for screen_y_idx in range(visible_tiles_y):
             map_y = self.camera_offset_y + screen_y_idx
@@ -175,11 +175,11 @@ class Renderer:
         screen_y = (unit.y - self.camera_offset_y) * TILE_SIZE
 
         # Only draw if on screen (excluding border areas)
-        if screen_x < -TILE_SIZE or screen_x > constants.SCREEN_WIDTH:
+        if screen_x < -TILE_SIZE or screen_x > display.SCREEN_WIDTH:
             return
 
         # Calculate visible area
-        visible_tiles_y = constants.MAP_AREA_HEIGHT // TILE_SIZE
+        visible_tiles_y = display.MAP_AREA_HEIGHT // TILE_SIZE
         max_y_offset = max(0, game_map.height - visible_tiles_y)
 
         # Don't draw in top border area (when at top of map)
@@ -193,7 +193,7 @@ class Renderer:
                 return
 
         # Don't draw if completely off screen
-        if screen_y < 0 or screen_y >= constants.MAP_AREA_HEIGHT:
+        if screen_y < 0 or screen_y >= display.MAP_AREA_HEIGHT:
             return
 
         # Determine unit color based on faction (unit.owner IS faction_id)
@@ -326,11 +326,11 @@ class Renderer:
         screen_y = (base.y - self.camera_offset_y) * TILE_SIZE
 
         # Only draw if on screen (excluding border areas)
-        if screen_x < -TILE_SIZE or screen_x > constants.SCREEN_WIDTH:
+        if screen_x < -TILE_SIZE or screen_x > display.SCREEN_WIDTH:
             return
 
         # Calculate visible area
-        visible_tiles_y = constants.MAP_AREA_HEIGHT // TILE_SIZE
+        visible_tiles_y = display.MAP_AREA_HEIGHT // TILE_SIZE
         max_y_offset = max(0, game_map.height - visible_tiles_y)
 
         # Don't draw in top border area (when at top of map)
@@ -344,7 +344,7 @@ class Renderer:
                 return
 
         # Don't draw if completely off screen
-        if screen_y < 0 or screen_y >= constants.MAP_AREA_HEIGHT:
+        if screen_y < 0 or screen_y >= display.MAP_AREA_HEIGHT:
             return
 
         # Determine color based on faction (base.owner IS faction_id)
@@ -415,8 +415,8 @@ class Renderer:
             font = pygame.font.Font(None, 24)
             text_surf = font.render(game.status_message, True, (255, 255, 255))
             text_rect = text_surf.get_rect()
-            text_rect.centerx = constants.SCREEN_WIDTH // 2
-            text_rect.bottom = constants.MAP_AREA_HEIGHT - 10
+            text_rect.centerx = display.SCREEN_WIDTH // 2
+            text_rect.bottom = display.MAP_AREA_HEIGHT - 10
 
             # Draw background
             bg_rect = text_rect.inflate(20, 10)
@@ -444,8 +444,8 @@ class Renderer:
             return (150, 150, 150)
 
         # Calculate visible range with wrapping
-        visible_tiles_x = (constants.SCREEN_WIDTH // TILE_SIZE) + 2
-        visible_tiles_y = constants.MAP_AREA_HEIGHT // TILE_SIZE
+        visible_tiles_x = (display.SCREEN_WIDTH // TILE_SIZE) + 2
+        visible_tiles_y = display.MAP_AREA_HEIGHT // TILE_SIZE
 
         # For each visible tile, draw border edges with dual colors
         for screen_y_idx in range(visible_tiles_y):
@@ -558,7 +558,7 @@ class Renderer:
                 if neighbor_color:
                     pygame.draw.line(self.screen, neighbor_color, (x_pos_outer, y_start), (x_pos_outer, y_end), 1)
 
-    def _draw_tile_borders(self, tile_x, tile_y, edges, color):
+    def _draw_tile_borders(self, tile_x, tile_y, edges, color, game_map):
         """Draw dotted borders on specified edges of a tile.
 
         Args:
@@ -566,8 +566,9 @@ class Renderer:
             tile_y (int): Tile Y coordinate
             edges (list): List of edge directions ('N', 'E', 'S', 'W')
             color (tuple): RGB color for the border
+            game_map: The game map for width wrapping
         """
-        wrapped_x = (tile_x - self.camera_offset_x) % constants.MAP_WIDTH
+        wrapped_x = (tile_x - self.camera_offset_x) % game_map.width
         screen_x = (wrapped_x * TILE_SIZE) + self.base_offset_x
         screen_y = tile_y * TILE_SIZE
 
@@ -629,8 +630,8 @@ class Renderer:
 
     def draw_supply_pods(self, game_map):
         """Draw supply pods on the map."""
-        visible_tiles_x = (constants.SCREEN_WIDTH // TILE_SIZE) + 2
-        visible_tiles_y = constants.MAP_AREA_HEIGHT // TILE_SIZE
+        visible_tiles_x = (display.SCREEN_WIDTH // TILE_SIZE) + 2
+        visible_tiles_y = display.MAP_AREA_HEIGHT // TILE_SIZE
 
         for screen_y_idx in range(visible_tiles_y):
             map_y = self.camera_offset_y + screen_y_idx
@@ -647,9 +648,9 @@ class Renderer:
                     screen_y = screen_y_idx * TILE_SIZE
 
                     # Only draw if on screen
-                    if screen_x < -TILE_SIZE or screen_x > constants.SCREEN_WIDTH:
+                    if screen_x < -TILE_SIZE or screen_x > display.SCREEN_WIDTH:
                         continue
-                    if screen_y < 0 or screen_y >= constants.MAP_AREA_HEIGHT:
+                    if screen_y < 0 or screen_y >= display.MAP_AREA_HEIGHT:
                         continue
 
                     # Draw gray circle for supply pod
@@ -662,8 +663,8 @@ class Renderer:
 
     def draw_monoliths(self, game_map):
         """Draw monoliths on the map (brown towers)."""
-        visible_tiles_x = (constants.SCREEN_WIDTH // TILE_SIZE) + 2
-        visible_tiles_y = constants.MAP_AREA_HEIGHT // TILE_SIZE
+        visible_tiles_x = (display.SCREEN_WIDTH // TILE_SIZE) + 2
+        visible_tiles_y = display.MAP_AREA_HEIGHT // TILE_SIZE
 
         for screen_y_idx in range(visible_tiles_y):
             map_y = self.camera_offset_y + screen_y_idx
@@ -680,9 +681,9 @@ class Renderer:
                     screen_y = screen_y_idx * TILE_SIZE
 
                     # Only draw if on screen
-                    if screen_x < -TILE_SIZE or screen_x > constants.SCREEN_WIDTH:
+                    if screen_x < -TILE_SIZE or screen_x > display.SCREEN_WIDTH:
                         continue
-                    if screen_y < 0 or screen_y >= constants.MAP_AREA_HEIGHT:
+                    if screen_y < 0 or screen_y >= display.MAP_AREA_HEIGHT:
                         continue
 
                     # Draw brown square for monolith base
@@ -710,12 +711,12 @@ class Renderer:
 
     def draw_map_edge_indicators(self, game_map):
         """Draw full tile height black bars at top and bottom when map edges are visible."""
-        visible_tiles_y = constants.MAP_AREA_HEIGHT // TILE_SIZE
+        visible_tiles_y = display.MAP_AREA_HEIGHT // TILE_SIZE
         max_y_offset = max(0, game_map.height - visible_tiles_y)
 
         # Top border: when at y=0, show 1 tile of black at top
         if self.camera_offset_y == 0:
-            border_rect = pygame.Rect(0, 0, constants.SCREEN_WIDTH, TILE_SIZE)
+            border_rect = pygame.Rect(0, 0, display.SCREEN_WIDTH, TILE_SIZE)
             pygame.draw.rect(self.screen, COLOR_BLACK, border_rect)
 
         # Bottom border: when at max scroll, show 1 tile of black instead of last tile row
@@ -723,5 +724,5 @@ class Renderer:
         if self.camera_offset_y >= max_y_offset and max_y_offset > 0:
             # Draw black rectangle at the position of the last tile row (visible_tiles_y - 1)
             bottom_border_y = (visible_tiles_y - 1) * TILE_SIZE
-            border_rect = pygame.Rect(0, bottom_border_y, constants.SCREEN_WIDTH, TILE_SIZE)
+            border_rect = pygame.Rect(0, bottom_border_y, display.SCREEN_WIDTH, TILE_SIZE)
             pygame.draw.rect(self.screen, COLOR_BLACK, border_rect)

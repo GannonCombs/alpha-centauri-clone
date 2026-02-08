@@ -1,8 +1,8 @@
 """Simple modal dialogs."""
 
 import pygame
-from game.data import constants
-from game.data.constants import (COLOR_TEXT, COLOR_BUTTON, COLOR_BUTTON_HOVER,
+from game.data import display
+from game.data.display import (COLOR_TEXT, COLOR_BUTTON, COLOR_BUTTON_HOVER,
                                  COLOR_BUTTON_BORDER)
 
 
@@ -18,15 +18,15 @@ class DialogManager:
     def draw_supply_pod_message(self, screen, message):
         """Draw supply pod discovery message."""
         # Semi-transparent overlay
-        overlay = pygame.Surface((constants.SCREEN_WIDTH, constants.SCREEN_HEIGHT))
+        overlay = pygame.Surface((display.SCREEN_WIDTH, display.SCREEN_HEIGHT))
         overlay.set_alpha(180)
         overlay.fill((0, 0, 0))
         screen.blit(overlay, (0, 0))
 
         # Message box
         box_w, box_h = 500, 250
-        box_x = (constants.SCREEN_WIDTH - box_w) // 2
-        box_y = (constants.SCREEN_HEIGHT - box_h) // 2
+        box_x = (display.SCREEN_WIDTH - box_w) // 2
+        box_y = (display.SCREEN_HEIGHT - box_h) // 2
 
         box_rect = pygame.Rect(box_x, box_y, box_w, box_h)
         pygame.draw.rect(screen, (30, 50, 40), box_rect, border_radius=10)

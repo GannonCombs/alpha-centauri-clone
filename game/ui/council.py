@@ -2,8 +2,8 @@
 
 import pygame
 import random
-from game.data import constants
-from game.data.constants import (COLOR_TEXT, COLOR_COUNCIL_BG, COLOR_COUNCIL_ACCENT,
+from game.data import display
+from game.data.display import (COLOR_TEXT, COLOR_COUNCIL_BG, COLOR_COUNCIL_ACCENT,
                                  COLOR_COUNCIL_BORDER, COLOR_COUNCIL_BOX)
 from game.data.data import FACTION_DATA, PROPOSALS
 
@@ -88,9 +88,9 @@ class CouncilManager:
     def _draw_council_selection(self, screen, game=None):
         """Draw Planetary Council proposal selection screen."""
         screen.fill(COLOR_COUNCIL_BG)
-        pygame.draw.rect(screen, (20, 40, 30), (0, 40, constants.SCREEN_WIDTH, 60))
+        pygame.draw.rect(screen, (20, 40, 30), (0, 40, display.SCREEN_WIDTH, 60))
         t = self.font.render("PLANETARY COUNCIL - SELECT PROPOSAL", True, COLOR_COUNCIL_ACCENT)
-        screen.blit(t, (constants.SCREEN_WIDTH // 2 - t.get_width() // 2, 60))
+        screen.blit(t, (display.SCREEN_WIDTH // 2 - t.get_width() // 2, 60))
 
         # Filter proposals by discovered techs
         available_proposals = []
@@ -103,11 +103,11 @@ class CouncilManager:
         if not available_proposals:
             # No proposals available
             no_prop_text = self.font.render("No motions available at this time.", True, COLOR_TEXT)
-            screen.blit(no_prop_text, (constants.SCREEN_WIDTH // 2 - no_prop_text.get_width() // 2, 300))
+            screen.blit(no_prop_text, (display.SCREEN_WIDTH // 2 - no_prop_text.get_width() // 2, 300))
 
         self.proposal_rects = []
         for i, prop in enumerate(available_proposals):
-            rect = pygame.Rect(constants.SCREEN_WIDTH // 2 - 400, 150 + i * 90, 800, 75)
+            rect = pygame.Rect(display.SCREEN_WIDTH // 2 - 400, 150 + i * 90, 800, 75)
             self.proposal_rects.append((rect, prop))
             is_hover = rect.collidepoint(pygame.mouse.get_pos())
             pygame.draw.rect(screen, (35, 55, 45) if is_hover else COLOR_COUNCIL_BOX, rect, border_radius=8)
@@ -118,7 +118,7 @@ class CouncilManager:
                 screen.blit(self.small_font.render(prop["desc"], True, (180, 220, 200)), (rect.x + 25, rect.y + 45))
 
         # Exit button
-        self.council_exit_rect = pygame.Rect(constants.SCREEN_WIDTH // 2 - 100, constants.SCREEN_HEIGHT - 100, 200, 55)
+        self.council_exit_rect = pygame.Rect(display.SCREEN_WIDTH // 2 - 100, display.SCREEN_HEIGHT - 100, 200, 55)
         is_hover = self.council_exit_rect.collidepoint(pygame.mouse.get_pos())
         pygame.draw.rect(screen, (50, 35, 35) if is_hover else (35, 25, 25), self.council_exit_rect, border_radius=8)
         pygame.draw.rect(screen, (180, 100, 100), self.council_exit_rect, 3, border_radius=8)
@@ -129,11 +129,11 @@ class CouncilManager:
     def _draw_council_too_recent(self, screen, game):
         """Draw error screen when trying to vote on proposal in cooldown."""
         screen.fill(COLOR_COUNCIL_BG)
-        pygame.draw.rect(screen, (40, 25, 25), (0, 180, constants.SCREEN_WIDTH, 60))
+        pygame.draw.rect(screen, (40, 25, 25), (0, 180, display.SCREEN_WIDTH, 60))
         t = self.font.render("PLANETARY COUNCIL - MOTION DENIED", True, (255, 140, 120))
-        screen.blit(t, (constants.SCREEN_WIDTH // 2 - t.get_width() // 2, 200))
+        screen.blit(t, (display.SCREEN_WIDTH // 2 - t.get_width() // 2, 200))
 
-        box = pygame.Rect(constants.SCREEN_WIDTH // 2 - 350, 280, 700, 180)
+        box = pygame.Rect(display.SCREEN_WIDTH // 2 - 350, 280, 700, 180)
         pygame.draw.rect(screen, COLOR_COUNCIL_BOX, box, border_radius=10)
         pygame.draw.rect(screen, (255, 140, 120), box, 3, border_radius=10)
 
@@ -142,9 +142,9 @@ class CouncilManager:
                 f"Cooldown: {self.selected_proposal['cooldown']} turns.", f"Remaining: {rem}"]
         for i, m in enumerate(msgs):
             s = self.font.render(m, True, COLOR_TEXT)
-            screen.blit(s, (constants.SCREEN_WIDTH // 2 - s.get_width() // 2, 310 + i * 40))
+            screen.blit(s, (display.SCREEN_WIDTH // 2 - s.get_width() // 2, 310 + i * 40))
 
-        self.council_too_recent_ok_rect = pygame.Rect(constants.SCREEN_WIDTH // 2 - 80, constants.SCREEN_HEIGHT - 120,
+        self.council_too_recent_ok_rect = pygame.Rect(display.SCREEN_WIDTH // 2 - 80, display.SCREEN_HEIGHT - 120,
                                                       160, 50)
         pygame.draw.rect(screen, (40, 30, 25), self.council_too_recent_ok_rect, border_radius=8)
         ok_t = self.font.render("OK", True, COLOR_TEXT)
@@ -154,12 +154,12 @@ class CouncilManager:
     def _draw_council_voting(self, screen, game):
         """Draw voting interface for selected council proposal."""
         screen.fill(COLOR_COUNCIL_BG)
-        pygame.draw.rect(screen, (20, 40, 30), (0, 20, constants.SCREEN_WIDTH, 60))
+        pygame.draw.rect(screen, (20, 40, 30), (0, 20, display.SCREEN_WIDTH, 60))
         t = self.font.render(f"COUNCIL - {self.selected_proposal['name'].upper()}", True, COLOR_COUNCIL_ACCENT)
-        screen.blit(t, (constants.SCREEN_WIDTH // 2 - t.get_width() // 2, 40))
+        screen.blit(t, (display.SCREEN_WIDTH // 2 - t.get_width() // 2, 40))
 
         box_w, box_h = 180, 100
-        start_x = constants.SCREEN_WIDTH // 2 - (4 * box_w + 3 * 20) // 2
+        start_x = display.SCREEN_WIDTH // 2 - (4 * box_w + 3 * 20) // 2
         for i, f in enumerate(FACTION_DATA):
             x = start_x + (i % 4) * (box_w + 20)
             y = 120 + (i // 4) * (box_h + 25)
@@ -173,7 +173,7 @@ class CouncilManager:
             self.vote_option_rects = []
             opts = ["YES", "NO", "ABSTAIN"] if self.selected_proposal['type'] == 'yesno' else self._get_top_candidates()
             for i, opt in enumerate(opts):
-                rect = pygame.Rect(constants.SCREEN_WIDTH // 2 - (len(opts) * 100) + i * 210, vote_y, 180, 55)
+                rect = pygame.Rect(display.SCREEN_WIDTH // 2 - (len(opts) * 100) + i * 210, vote_y, 180, 55)
                 self.vote_option_rects.append((rect, opt))
                 pygame.draw.rect(screen, (25, 50, 35), rect, border_radius=8)
                 txt = self.font.render(opt, True, COLOR_TEXT)
@@ -184,19 +184,19 @@ class CouncilManager:
     def _draw_council_results(self, screen):
         """Draw final voting results with all faction votes tallied."""
         screen.fill(COLOR_COUNCIL_BG)
-        pygame.draw.rect(screen, (20, 40, 30), (0, 20, constants.SCREEN_WIDTH, 60))
+        pygame.draw.rect(screen, (20, 40, 30), (0, 20, display.SCREEN_WIDTH, 60))
         t = self.font.render("COUNCIL VOTE - RESULTS", True, COLOR_COUNCIL_ACCENT)
-        screen.blit(t, (constants.SCREEN_WIDTH // 2 - t.get_width() // 2, 40))
+        screen.blit(t, (display.SCREEN_WIDTH // 2 - t.get_width() // 2, 40))
 
         for i, entry in enumerate(self.council_votes):
-            x = constants.SCREEN_WIDTH // 2 + (-400 if i < 4 else 50)
+            x = display.SCREEN_WIDTH // 2 + (-400 if i < 4 else 50)
             y = 160 + (i % 4) * 40
             rect = pygame.Rect(x, y - 5, 400, 35)
             pygame.draw.rect(screen, COLOR_COUNCIL_BOX, rect, border_radius=5)
             pygame.draw.rect(screen, entry["color"], rect, 2, border_radius=5)
             screen.blit(self.small_font.render(f"{entry['name']} → {entry['vote']}", True, entry["color"]), (x + 10, y))
 
-        self.council_ok_rect = pygame.Rect(constants.SCREEN_WIDTH // 2 - 80, constants.SCREEN_HEIGHT - 80, 160, 50)
+        self.council_ok_rect = pygame.Rect(display.SCREEN_WIDTH // 2 - 80, display.SCREEN_HEIGHT - 80, 160, 50)
         pygame.draw.rect(screen, (25, 50, 35), self.council_ok_rect, border_radius=8)
         ok_t = self.font.render("OK", True, COLOR_TEXT)
         screen.blit(ok_t, (self.council_ok_rect.centerx - ok_t.get_width() // 2, self.council_ok_rect.centery - 10))

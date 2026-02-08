@@ -1,8 +1,8 @@
 """Tech Tree screen for viewing and selecting research."""
 
 import pygame
-from game.data import constants
-from game.data.constants import (COLOR_TEXT, COLOR_BUTTON, COLOR_BUTTON_HOVER,
+from game.data import display
+from game.data.display import (COLOR_TEXT, COLOR_BUTTON, COLOR_BUTTON_HOVER,
                                  COLOR_BUTTON_BORDER, COLOR_BUTTON_HIGHLIGHT)
 from game.data.data import FACTION_DATA
 
@@ -57,8 +57,8 @@ class TechTreeScreen:
         # Fill background
         screen.fill((15, 20, 25))
 
-        screen_w = constants.SCREEN_WIDTH
-        screen_h = constants.SCREEN_HEIGHT
+        screen_w = display.SCREEN_WIDTH
+        screen_h = display.SCREEN_HEIGHT
 
         # TOP PROGRESS BAR (~80% screen width)
         progress_bar_w = int(screen_w * 0.8)

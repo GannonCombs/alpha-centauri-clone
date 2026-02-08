@@ -98,6 +98,7 @@ Use it to test the following issues, but also test debug mode along the way.
   - Some hot key also activates
 
 
+
 ***************************************************************************
 
 ** Known Bugs **
@@ -118,12 +119,8 @@ This is great. However, the outline for the tech box itself is always yellow. It
 
 More notes:
 The keyword "hand" for a 1-1-x should be "Scout" instead.
-My dialogue text to exit is "Deirdre out." I am the Spartans! The dialog must be dynamic!
-I have dialog texts at the same time to sign a treaty AND a pact. You can only offer a pact after you're already in a treaty.
 When I offer a treaty to Zakharov, his response is to pitch a treaty to me. That makes no sense. Look at the script notes for
 #MAKETREATY and #REJTREATY. Those should be the responses.
-When I rejected the treaty, Zakharov said something about opportunities not presenting themselves twice. Again, you are NOT
-allowed to invent your own dialog under any circumstances!
 When I asked for a loan, I was offered one, but my choices were to reject it, or Agreed. But if you rob me you shall feel my wrath."
 That doesn't make sense. I'm receiving the loan. Find the correct dialog here.
 
@@ -135,15 +132,12 @@ If I suggest an attack on an entreatied faction's unit, a popup should show. Che
 There is new odd behavior in the Hurry screen. On the first turn, I tried to hurry a scout patrol. It says "Remaining: 3 turns (6 credits)
 Your credits: 500" (I got a supply pod.) I click Pay All, and it fills with 30. It can't be 6 AND 30. My guess is, you've started
 to get off the hardcoded costs we set a while back. That would be fine. But consistency is most important now. But at least OK works.
-The speeder creation is still not fixed. I created another speeder and it can only move 1 a turn. Also, make sure the unit stats
-show at the bottom of its square in the Select Production view. Ditto in the Saved Design squares. This will help debug where the issue is.
 Under every base is current research. Fine for now, but enemy research is only visible in certain scenarios.
 
 You have not fixed the dialog where we propose the treaty. They should respond with one of the #MAKETREATY or #REJTREATY scripts.
 They should not prompt US to sign a treaty. If they accept, the treaty is done; no decision is needed on our end if we proposed it.
 Also, when I ask a faction for a loan, they respond by asking ME for a loan. You have your prompts all messed up.
 Really try to reason through prompts that I should initiate versus NPC-initiated. Focus on implementing player-initiated for now.
-Also, the exit dialog is STILL hardcoded to "Deirdre out." When I am NOT Deirdre!!! Edit: Also got "Greetings, Deirdre."
 I also just finished a conversation with a player without signing a treaty. This should put us in FORMAL truce and show "TRUCE"
 in the commlinks. Instead, it shows nothing (informal truce). Zakharov then attacked me, and yet the commlink didn't convert to
 VENDETTA. Fix.
@@ -165,19 +159,14 @@ or am Governor, or have Infiltrated their Datalinks.
 Got a diplomatic milestone popup when missing commlinks.
 Production times are off. Merchant Exchange takes 20 turns on Turn 1 for Morgan.
 Clean up constants. Many of the values inside are not...constants.
-My unit "met" the opponent's empty base. It did not trigger a call.
 I've removed votes from data.FACTIONS. This will cause an error once I vote.
-Santiago needs to start with a rover.
 Made a treaty with someone. It still showed truce in commlinks.
 Check save overwrites. If the exact same name exists, popup that says Are You Sure you want to overwrite?
 One time I landed on a supply pod simultaneously with meeting a faction. Faction pop up happened first, then
 supply pod popup happened over diplomacy screen. Let's flip those.
-When a faction is eliminated, all their units should disappear. They don't.
 I once met two factions in the same turn. As soon as I answered the first, the popup for the second obscured the second.
 Get rid of weapon_mode and armor_mode. We store the ids only. Any data that we need, we can look in unit_data.
 FACTIONS contains single quotes and double quotes.
-There's still something broken in diplomacy with ids. It got reverted to Deirdre for me again.
-The design workshop used to open with the first empty window selected. Now it starts on the scout patrol (first) cell.
 
 
 

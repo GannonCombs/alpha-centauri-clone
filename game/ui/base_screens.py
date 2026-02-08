@@ -1,9 +1,9 @@
 """Base-related screens (naming and management)."""
 
 import pygame
-from game.data import constants
+from game.data import display
 from game import facilities
-from game.data.constants import (COLOR_TEXT, COLOR_BUTTON, COLOR_BUTTON_HOVER,
+from game.data.display import (COLOR_TEXT, COLOR_BUTTON, COLOR_BUTTON_HOVER,
                                  COLOR_BUTTON_BORDER, COLOR_BUTTON_HIGHLIGHT,
                                  COLOR_UI_BORDER, COLOR_BLACK)
 
@@ -70,15 +70,15 @@ class BaseScreenManager:
     def draw_base_naming(self, screen):
         """Draw the base naming dialog."""
         # Semi-transparent overlay
-        overlay = pygame.Surface((constants.SCREEN_WIDTH, constants.SCREEN_HEIGHT))
+        overlay = pygame.Surface((display.SCREEN_WIDTH, display.SCREEN_HEIGHT))
         overlay.set_alpha(180)
         overlay.fill((10, 15, 20))
         screen.blit(overlay, (0, 0))
 
         # Dialog box
         dialog_w, dialog_h = 600, 400
-        dialog_x = constants.SCREEN_WIDTH // 2 - dialog_w // 2
-        dialog_y = constants.SCREEN_HEIGHT // 2 - dialog_h // 2
+        dialog_x = display.SCREEN_WIDTH // 2 - dialog_w // 2
+        dialog_y = display.SCREEN_HEIGHT // 2 - dialog_h // 2
         dialog_rect = pygame.Rect(dialog_x, dialog_y, dialog_w, dialog_h)
 
         pygame.draw.rect(screen, (30, 40, 50), dialog_rect, border_radius=12)
@@ -240,8 +240,8 @@ class BaseScreenManager:
         screen.fill((15, 20, 25))
 
         # Calculate layout dimensions
-        screen_w = constants.SCREEN_WIDTH
-        screen_h = constants.SCREEN_HEIGHT
+        screen_w = display.SCREEN_WIDTH
+        screen_h = display.SCREEN_HEIGHT
 
         # TOP BAR: Automation buttons (full width)
         top_bar_y = 10
@@ -303,9 +303,9 @@ class BaseScreenManager:
                     actual_tile = game.game_map.get_tile(map_x, map_y)
                     # Draw actual terrain color
                     if actual_tile.is_land():
-                        terrain_color = constants.COLOR_LAND
+                        terrain_color = display.COLOR_LAND
                     else:
-                        terrain_color = constants.COLOR_OCEAN
+                        terrain_color = display.COLOR_OCEAN
 
                     # Center tile is the base
                     if dx == 1 and dy == 1:
@@ -732,15 +732,15 @@ class BaseScreenManager:
     def _draw_hurry_production_popup(self, screen, base, game):
         """Draw the hurry production popup dialog."""
         # Semi-transparent overlay
-        overlay = pygame.Surface((constants.SCREEN_WIDTH, constants.SCREEN_HEIGHT))
+        overlay = pygame.Surface((display.SCREEN_WIDTH, display.SCREEN_HEIGHT))
         overlay.set_alpha(150)
         overlay.fill((0, 0, 0))
         screen.blit(overlay, (0, 0))
 
         # Dialog box
         dialog_w, dialog_h = 450, 280
-        dialog_x = constants.SCREEN_WIDTH // 2 - dialog_w // 2
-        dialog_y = constants.SCREEN_HEIGHT // 2 - dialog_h // 2
+        dialog_x = display.SCREEN_WIDTH // 2 - dialog_w // 2
+        dialog_y = display.SCREEN_HEIGHT // 2 - dialog_h // 2
         dialog_rect = pygame.Rect(dialog_x, dialog_y, dialog_w, dialog_h)
 
         pygame.draw.rect(screen, (30, 40, 50), dialog_rect, border_radius=12)
@@ -821,7 +821,7 @@ class BaseScreenManager:
     def _draw_production_selection_popup(self, screen, base, game):
         """Draw the production selection popup dialog."""
         # Semi-transparent overlay
-        overlay = pygame.Surface((constants.SCREEN_WIDTH, constants.SCREEN_HEIGHT))
+        overlay = pygame.Surface((display.SCREEN_WIDTH, display.SCREEN_HEIGHT))
         overlay.set_alpha(150)
         overlay.fill((0, 0, 0))
         screen.blit(overlay, (0, 0))
@@ -907,8 +907,8 @@ class BaseScreenManager:
         # Dialog dimensions
         dialog_w = items_per_row * item_size + (items_per_row + 1) * item_spacing
         dialog_h = 100 + rows * item_size + (rows + 1) * item_spacing + 80  # Title + grid + buttons
-        dialog_x = constants.SCREEN_WIDTH // 2 - dialog_w // 2
-        dialog_y = constants.SCREEN_HEIGHT // 2 - dialog_h // 2
+        dialog_x = display.SCREEN_WIDTH // 2 - dialog_w // 2
+        dialog_y = display.SCREEN_HEIGHT // 2 - dialog_h // 2
         dialog_rect = pygame.Rect(dialog_x, dialog_y, dialog_w, dialog_h)
 
         pygame.draw.rect(screen, (30, 40, 50), dialog_rect, border_radius=12)
@@ -1054,15 +1054,15 @@ class BaseScreenManager:
     def _draw_queue_management_popup(self, screen, base, game):
         """Draw the production queue management popup dialog."""
         # Semi-transparent overlay
-        overlay = pygame.Surface((constants.SCREEN_WIDTH, constants.SCREEN_HEIGHT))
+        overlay = pygame.Surface((display.SCREEN_WIDTH, display.SCREEN_HEIGHT))
         overlay.set_alpha(150)
         overlay.fill((0, 0, 0))
         screen.blit(overlay, (0, 0))
 
         # Dialog box
         dialog_w, dialog_h = 500, 450
-        dialog_x = constants.SCREEN_WIDTH // 2 - dialog_w // 2
-        dialog_y = constants.SCREEN_HEIGHT // 2 - dialog_h // 2
+        dialog_x = display.SCREEN_WIDTH // 2 - dialog_w // 2
+        dialog_y = display.SCREEN_HEIGHT // 2 - dialog_h // 2
         dialog_rect = pygame.Rect(dialog_x, dialog_y, dialog_w, dialog_h)
 
         pygame.draw.rect(screen, (30, 40, 50), dialog_rect, border_radius=12)

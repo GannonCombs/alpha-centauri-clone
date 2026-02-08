@@ -13,7 +13,7 @@ The Game class coordinates all major game systems and handles turn processing,
 unit movement, combat, and AI behavior.
 """
 import pygame
-from game.data import constants
+from game.data import display
 from game import facilities
 from game.map import GameMap
 from game.unit import Unit
@@ -28,15 +28,21 @@ from game.debug import DebugManager  # DEBUG: Remove for release
 class Game:
     """Main game state manager."""
 
-    def __init__(self, player_faction_id=0, player_name=None, ocean_percentage=None):
+    def __init__(self, player_faction_id=0, player_name=None, ocean_percentage=None, map_width=None, map_height=None):
         """Initialize a new game.
 
         Args:
             player_faction_id (int): Faction ID for the player (0-6)
             player_name (str): Player's custom name (optional)
             ocean_percentage (int): Percentage of ocean tiles (30-90)
+            map_width (int): Map width in tiles
+            map_height (int): Map height in tiles
         """
-        self.game_map = GameMap(constants.MAP_WIDTH, constants.MAP_HEIGHT, ocean_percentage)
+        # Store map dimensions for new_game() resets
+        self.map_width = map_width
+        self.map_height = map_height
+
+        self.game_map = GameMap(map_width, map_height, ocean_percentage)
         self.turn = 1
         self.running = True
         self.player_faction_id = player_faction_id  # Which faction the player chose
@@ -227,21 +233,28 @@ class Game:
                 x, y = land_tiles[tile_idx]
                 tile_idx += 1  # Move to next tile for next faction
 
-                # Scout Patrol (owner = faction_id)
+                # Starting military unit (faction-specific)
                 from game.unit_components import generate_unit_name
-                scout_name = generate_unit_name('hand_weapons', 'infantry', 'no_armor', 'fission')
+                # Santiago (faction 4) starts with a Rover, others get Scout Patrol
+                if faction_id == 4:  # Santiago/Spartans
+                    chassis = 'speeder'
+                    unit_name = generate_unit_name('hand_weapons', 'speeder', 'no_armor', 'fission')
+                else:
+                    chassis = 'infantry'
+                    unit_name = generate_unit_name('hand_weapons', 'infantry', 'no_armor', 'fission')
+
                 scout = Unit(
                     x=x, y=y,
-                    chassis='infantry',
+                    chassis=chassis,
                     owner=faction_id,
-                    name=f"{faction_prefix} {scout_name}",
+                    name=f"{faction_prefix} {unit_name}",
                     weapon='hand_weapons',
                     armor='no_armor',
                     reactor='fission'
                 )
                 self.units.append(scout)
                 self.game_map.set_unit_at(x, y, scout)
-                print(f"Spawned {faction_prefix} {scout_name} at ({x}, {y})")
+                print(f"Spawned {faction_prefix} {unit_name} at ({x}, {y})")
 
                 # Colony Pod (same tile, owner = faction_id)
                 colony_name = generate_unit_name('colony_pod', 'infantry', 'no_armor', 'fission')
@@ -1526,10 +1539,61 @@ class Game:
                 if not adj_tile:
                     continue
 
-                # Check for other bases on adjacent tile
-                for other_base in adj_tile.bases:
-                    #TODO: handle in just the same way
-                    continue
+                # Check for bases on adjacent tile
+                if adj_tile.base:
+                    other_base = adj_tile.base
+                    # Skip if same owner
+                    if other_base.owner == unit.owner:
+                        continue
+
+                    # Establish commlink between the two factions
+                    if unit.owner == self.player_faction_id:
+                        # Player met the AI faction's base
+                        other_faction_id = other_base.owner
+                        if other_faction_id not in self.faction_contacts:
+                            self.faction_contacts.add(other_faction_id)
+                            print(f"Player established contact with faction {other_faction_id} (via base)")
+
+                            # Show commlink request popup
+                            if not hasattr(self, 'pending_commlink_requests'):
+                                self.pending_commlink_requests = []
+                            self.pending_commlink_requests.append({
+                                'other_faction_id': other_faction_id,
+                                'player_faction_id': self.player_faction_id
+                            })
+
+                            # Check if we have all living factions now
+                            living_factions = set()
+                            for base in self.bases:
+                                if base.owner != self.player_faction_id:
+                                    living_factions.add(base.owner)
+
+                            if living_factions.issubset(self.faction_contacts):
+                                self.all_contacts_obtained = True
+
+                    elif other_base.owner == self.player_faction_id:
+                        # AI unit met the player's base
+                        other_faction_id = unit.owner
+                        if other_faction_id not in self.faction_contacts:
+                            self.faction_contacts.add(other_faction_id)
+                            print(f"Player established contact with faction {other_faction_id} (via base)")
+
+                            # Show commlink request popup
+                            if not hasattr(self, 'pending_commlink_requests'):
+                                self.pending_commlink_requests = []
+                            self.pending_commlink_requests.append({
+                                'other_faction_id': other_faction_id,
+                                'player_faction_id': self.player_faction_id
+                            })
+
+                            # Check if we have all living factions now
+                            living_factions = set()
+                            for base in self.bases:
+                                if base.owner != self.player_faction_id:
+                                    living_factions.add(base.owner)
+
+                            if living_factions.issubset(self.faction_contacts):
+                                self.all_contacts_obtained = True
 
                 # Check for units on adjacent tile
                 for other_unit in adj_tile.units:
@@ -1781,7 +1845,12 @@ class Game:
                 if faction_id in self.faction_contacts:
                     self.faction_contacts.remove(faction_id)
 
-                print(f"Faction {faction_id} has been eliminated!")
+                # Remove all units belonging to this faction
+                units_to_remove = [u for u in self.units if u.owner == faction_id]
+                for unit in units_to_remove:
+                    self._remove_unit(unit)
+
+                print(f"Faction {faction_id} has been eliminated! Removed {len(units_to_remove)} units.")
 
     def _spawn_production(self, base, item_name):
         """Spawn a completed production item at a base.
@@ -2468,7 +2537,7 @@ class Game:
         if player_name is not None:
             self.player_name = player_name
 
-        self.game_map = GameMap(constants.MAP_WIDTH, constants.MAP_HEIGHT)
+        self.game_map = GameMap(self.map_width, self.map_height)
         self.turn = 1
         self.mission_year = 2100
         self.energy_credits = 0
@@ -2611,6 +2680,9 @@ class Game:
 
         # Rebuild complex objects
         game.game_map = GameMap.from_dict(data['map'])
+        # Store map dimensions for new_game() resets
+        game.map_width = game.game_map.width
+        game.map_height = game.game_map.height
         game.units = [Unit.from_dict(u) for u in data['units']]
         game.bases = [Base.from_dict(b, game.units) for b in data['bases']]
 

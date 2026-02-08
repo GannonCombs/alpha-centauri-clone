@@ -3,7 +3,7 @@
 import os
 import pygame
 from game import save_load
-from game.data import constants
+from game.data import display
 
 
 class SaveLoadDialogManager:
@@ -75,7 +75,7 @@ class SaveLoadDialogManager:
             return
 
         # Semi-transparent overlay
-        overlay = pygame.Surface((constants.SCREEN_WIDTH, constants.SCREEN_HEIGHT))
+        overlay = pygame.Surface((display.SCREEN_WIDTH, display.SCREEN_HEIGHT))
         overlay.set_alpha(180)
         overlay.fill((10, 15, 20))
         screen.blit(overlay, (0, 0))
@@ -86,17 +86,17 @@ class SaveLoadDialogManager:
         else:  # load
             dialog_w, dialog_h = 600, 500
 
-        dialog_x = constants.SCREEN_WIDTH // 2 - dialog_w // 2
-        dialog_y = constants.SCREEN_HEIGHT // 2 - dialog_h // 2
+        dialog_x = display.SCREEN_WIDTH // 2 - dialog_w // 2
+        dialog_y = display.SCREEN_HEIGHT // 2 - dialog_h // 2
         self.dialog_rect = pygame.Rect(dialog_x, dialog_y, dialog_w, dialog_h)
 
         # Draw dialog background
         pygame.draw.rect(screen, (30, 40, 50), self.dialog_rect, border_radius=12)
-        pygame.draw.rect(screen, constants.COLOR_BUTTON_HIGHLIGHT, self.dialog_rect, 3, border_radius=12)
+        pygame.draw.rect(screen, display.COLOR_BUTTON_HIGHLIGHT, self.dialog_rect, 3, border_radius=12)
 
         # Title
         title_text = "Save Game" if self.mode == 'save' else "Load Game"
-        title_surf = self.font.render(title_text, True, constants.COLOR_TEXT)
+        title_surf = self.font.render(title_text, True, display.COLOR_TEXT)
         screen.blit(title_surf, (dialog_x + dialog_w // 2 - title_surf.get_width() // 2, dialog_y + 20))
 
         if self.mode == 'save':
@@ -114,7 +114,7 @@ class SaveLoadDialogManager:
 
         # Label
         label_y = dialog_y + 70
-        label_surf = self.small_font.render("Filename:", True, constants.COLOR_TEXT)
+        label_surf = self.small_font.render("Filename:", True, display.COLOR_TEXT)
         screen.blit(label_surf, (dialog_x + 40, label_y))
 
         # Text input field
@@ -124,10 +124,10 @@ class SaveLoadDialogManager:
         self.input_rect = pygame.Rect(dialog_x + 40, input_y, input_w, input_h)
 
         pygame.draw.rect(screen, (50, 60, 70), self.input_rect, border_radius=4)
-        pygame.draw.rect(screen, constants.COLOR_BUTTON_BORDER, self.input_rect, 2, border_radius=4)
+        pygame.draw.rect(screen, display.COLOR_BUTTON_BORDER, self.input_rect, 2, border_radius=4)
 
         # Text content
-        text_surf = self.font.render(self.save_name_input, True, constants.COLOR_TEXT)
+        text_surf = self.font.render(self.save_name_input, True, display.COLOR_TEXT)
         text_x = self.input_rect.x + 10
         text_y = self.input_rect.centery - text_surf.get_height() // 2
         screen.blit(text_surf, (text_x, text_y))
@@ -135,7 +135,7 @@ class SaveLoadDialogManager:
         # Blinking cursor
         if self.cursor_visible:
             cursor_x = text_x + text_surf.get_width() + 2
-            pygame.draw.line(screen, constants.COLOR_TEXT,
+            pygame.draw.line(screen, display.COLOR_TEXT,
                              (cursor_x, text_y), (cursor_x, text_y + text_surf.get_height()), 2)
 
         # Info text
@@ -189,10 +189,10 @@ class SaveLoadDialogManager:
                 # Background
                 bg_color = (70, 90, 110) if is_selected else (45, 55, 65)
                 pygame.draw.rect(screen, bg_color, item_rect, border_radius=6)
-                pygame.draw.rect(screen, constants.COLOR_BUTTON_BORDER, item_rect, 2, border_radius=6)
+                pygame.draw.rect(screen, display.COLOR_BUTTON_BORDER, item_rect, 2, border_radius=6)
 
                 # Filename
-                filename_surf = self.font.render(save_file['filename'], True, constants.COLOR_TEXT)
+                filename_surf = self.font.render(save_file['filename'], True, display.COLOR_TEXT)
                 screen.blit(filename_surf, (item_rect.x + 10, item_rect.y + 8))
 
                 # Mission year and timestamp
@@ -223,11 +223,11 @@ class SaveLoadDialogManager:
         self.save_button_rect = pygame.Rect(action_x, button_y, button_w, button_h)
 
         action_hover = self.save_button_rect.collidepoint(pygame.mouse.get_pos())
-        pygame.draw.rect(screen, constants.COLOR_BUTTON_HOVER if action_hover else constants.COLOR_BUTTON,
+        pygame.draw.rect(screen, display.COLOR_BUTTON_HOVER if action_hover else display.COLOR_BUTTON,
                          self.save_button_rect, border_radius=6)
-        pygame.draw.rect(screen, constants.COLOR_BUTTON_BORDER, self.save_button_rect, 2, border_radius=6)
+        pygame.draw.rect(screen, display.COLOR_BUTTON_BORDER, self.save_button_rect, 2, border_radius=6)
 
-        action_surf = self.font.render(action_label, True, constants.COLOR_TEXT)
+        action_surf = self.font.render(action_label, True, display.COLOR_TEXT)
         screen.blit(action_surf, (self.save_button_rect.centerx - action_surf.get_width() // 2,
                                  self.save_button_rect.centery - 10))
 
@@ -236,11 +236,11 @@ class SaveLoadDialogManager:
         self.cancel_button_rect = pygame.Rect(cancel_x, button_y, button_w, button_h)
 
         cancel_hover = self.cancel_button_rect.collidepoint(pygame.mouse.get_pos())
-        pygame.draw.rect(screen, constants.COLOR_BUTTON_HOVER if cancel_hover else constants.COLOR_BUTTON,
+        pygame.draw.rect(screen, display.COLOR_BUTTON_HOVER if cancel_hover else display.COLOR_BUTTON,
                          self.cancel_button_rect, border_radius=6)
-        pygame.draw.rect(screen, constants.COLOR_BUTTON_BORDER, self.cancel_button_rect, 2, border_radius=6)
+        pygame.draw.rect(screen, display.COLOR_BUTTON_BORDER, self.cancel_button_rect, 2, border_radius=6)
 
-        cancel_surf = self.font.render("Cancel", True, constants.COLOR_TEXT)
+        cancel_surf = self.font.render("Cancel", True, display.COLOR_TEXT)
         screen.blit(cancel_surf, (self.cancel_button_rect.centerx - cancel_surf.get_width() // 2,
                                  self.cancel_button_rect.centery - 10))
 

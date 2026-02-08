@@ -1,8 +1,8 @@
 """Design Workshop screen for creating and managing unit designs."""
 
 import pygame
-from game.data import constants
-from game.data.constants import (COLOR_TEXT, COLOR_BUTTON, COLOR_BUTTON_HOVER,
+from game.data import display
+from game.data.display import (COLOR_TEXT, COLOR_BUTTON, COLOR_BUTTON_HOVER,
                                  COLOR_BUTTON_BORDER, COLOR_BUTTON_HIGHLIGHT)
 from game import unit_components
 
@@ -337,8 +337,8 @@ class DesignWorkshopScreen:
         # Fill background
         screen.fill((20, 25, 30))
 
-        screen_w = constants.SCREEN_WIDTH
-        screen_h = constants.SCREEN_HEIGHT
+        screen_w = display.SCREEN_WIDTH
+        screen_h = display.SCREEN_HEIGHT
 
         # Title
         title_font = pygame.font.Font(None, 48)
@@ -667,7 +667,7 @@ class DesignWorkshopScreen:
             game: Game instance for accessing tech tree
         """
         # Semi-transparent overlay
-        overlay = pygame.Surface((constants.SCREEN_WIDTH, constants.SCREEN_HEIGHT))
+        overlay = pygame.Surface((display.SCREEN_WIDTH, display.SCREEN_HEIGHT))
         overlay.set_alpha(180)
         overlay.fill((0, 0, 0))
         screen.blit(overlay, (0, 0))
@@ -675,8 +675,8 @@ class DesignWorkshopScreen:
         # Selection box
         box_w = 700
         box_h = 600
-        box_x = (constants.SCREEN_WIDTH - box_w) // 2
-        box_y = (constants.SCREEN_HEIGHT - box_h) // 2
+        box_x = (display.SCREEN_WIDTH - box_w) // 2
+        box_y = (display.SCREEN_HEIGHT - box_h) // 2
 
         pygame.draw.rect(screen, (30, 35, 40), pygame.Rect(box_x, box_y, box_w, box_h), border_radius=10)
         pygame.draw.rect(screen, (150, 180, 200), pygame.Rect(box_x, box_y, box_w, box_h), 3, border_radius=10)
@@ -832,7 +832,7 @@ class DesignWorkshopScreen:
             screen: Pygame screen surface to draw on
         """
         # Semi-transparent overlay
-        overlay = pygame.Surface((constants.SCREEN_WIDTH, constants.SCREEN_HEIGHT))
+        overlay = pygame.Surface((display.SCREEN_WIDTH, display.SCREEN_HEIGHT))
         overlay.set_alpha(180)
         overlay.fill((0, 0, 0))
         screen.blit(overlay, (0, 0))
@@ -840,8 +840,8 @@ class DesignWorkshopScreen:
         # Popup box
         box_w = 500
         box_h = 200
-        box_x = (constants.SCREEN_WIDTH - box_w) // 2
-        box_y = (constants.SCREEN_HEIGHT - box_h) // 2
+        box_x = (display.SCREEN_WIDTH - box_w) // 2
+        box_y = (display.SCREEN_HEIGHT - box_h) // 2
 
         pygame.draw.rect(screen, (30, 35, 40), pygame.Rect(box_x, box_y, box_w, box_h), border_radius=10)
         pygame.draw.rect(screen, (150, 180, 200), pygame.Rect(box_x, box_y, box_w, box_h), 3, border_radius=10)
@@ -928,8 +928,8 @@ class DesignWorkshopScreen:
                 return None
 
             # Click in input box - deselect text
-            input_box_x = (constants.SCREEN_WIDTH - 500) // 2 + 30
-            input_box_y = (constants.SCREEN_HEIGHT - 200) // 2 + 70
+            input_box_x = (display.SCREEN_WIDTH - 500) // 2 + 30
+            input_box_y = (display.SCREEN_HEIGHT - 200) // 2 + 70
             input_box_rect = pygame.Rect(input_box_x, input_box_y, 440, 40)
             if input_box_rect.collidepoint(pos):
                 self.rename_text_selected = False

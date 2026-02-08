@@ -1,8 +1,8 @@
 """Social Engineering screen for managing faction policies."""
 
 import pygame
-from game.data import constants
-from game.data.constants import (COLOR_TEXT, COLOR_BUTTON, COLOR_BUTTON_HOVER,
+from game.data import display
+from game.data.display import (COLOR_TEXT, COLOR_BUTTON, COLOR_BUTTON_HOVER,
                                  COLOR_BUTTON_BORDER, COLOR_BUTTON_HIGHLIGHT)
 from game import social_engineering
 from game.data.data import SE_EFFECTS
@@ -81,8 +81,8 @@ class SocialEngineeringScreen:
         # Fill background
         screen.fill((20, 25, 30))
 
-        screen_w = constants.SCREEN_WIDTH
-        screen_h = constants.SCREEN_HEIGHT
+        screen_w = display.SCREEN_WIDTH
+        screen_h = display.SCREEN_HEIGHT
 
         # Title
         title_font = pygame.font.Font(None, 48)
@@ -446,15 +446,15 @@ class SocialEngineeringScreen:
             game: Game instance for checking credits
         """
         # Semi-transparent overlay
-        overlay = pygame.Surface((constants.SCREEN_WIDTH, constants.SCREEN_HEIGHT))
+        overlay = pygame.Surface((display.SCREEN_WIDTH, display.SCREEN_HEIGHT))
         overlay.set_alpha(150)
         overlay.fill((0, 0, 0))
         screen.blit(overlay, (0, 0))
 
         # Dialog dimensions
         dialog_w, dialog_h = 500, 250
-        dialog_x = constants.SCREEN_WIDTH // 2 - dialog_w // 2
-        dialog_y = constants.SCREEN_HEIGHT // 2 - dialog_h // 2
+        dialog_x = display.SCREEN_WIDTH // 2 - dialog_w // 2
+        dialog_y = display.SCREEN_HEIGHT // 2 - dialog_h // 2
 
         # Draw dialog background
         dialog_rect = pygame.Rect(dialog_x, dialog_y, dialog_w, dialog_h)
