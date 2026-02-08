@@ -119,8 +119,6 @@ VENDETTA. Fix.
 
 New unit design on better unit tech is still not popping up, at least not consistently. Is the pattern that chassis and
  armor upgrade, but weapons don't?
-Character I have treaties with are still attacking me. Note: it is possible to betray someone (though this is rare behavior).
-But having TREATY status afterward is a bug. It should say VENDETTA.
 Right now, enemy bases say what they're working on. This should only be the case if I have a Pact with them, or Empath Guild,
 or am Governor, or have Infiltrated their Datalinks.
 

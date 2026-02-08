@@ -268,6 +268,12 @@ class UIManager:
                     self.social_screens.tech_tree_open = True
                     return True
 
+            if event.key == pygame.K_c:
+                # Center camera on selected unit
+                if self.active_screen == "GAME" and game.selected_unit:
+                    game.center_camera_on_tile = (game.selected_unit.x, game.selected_unit.y)
+                    return True
+
             if event.key == pygame.K_ESCAPE:
                 if self.active_screen == "TECH_TREE":
                     self.active_screen = "GAME"

@@ -332,10 +332,14 @@ class Game:
                     current_idx = friendly_garrison.index(self.selected_unit)
                     next_idx = (current_idx + 1) % len(friendly_garrison)
                     self.selected_unit = friendly_garrison[next_idx]
+                    # Center camera on this tile when cycling units
+                    self.center_camera_on_tile = (tile_x, tile_y)
                     return 'unit_selected', self.selected_unit
                 else:
                     # Select first garrison unit
                     self.selected_unit = friendly_garrison[0]
+                    # Center camera on this tile when selecting garrison
+                    self.center_camera_on_tile = (tile_x, tile_y)
                     return 'unit_selected', self.selected_unit
 
         # If there's a base but no garrison units, clicking opens base view
@@ -346,13 +350,19 @@ class Game:
         clicked_unit = self.game_map.get_unit_at(tile_x, tile_y)
         if clicked_unit:
             if clicked_unit.is_friendly(self.player_faction_id):
-                # Select friendly unit
+                # Select friendly unit and center camera
                 self.selected_unit = clicked_unit
+                self.center_camera_on_tile = (tile_x, tile_y)
             else:
                 # Clicked on enemy unit - try to attack with selected unit
                 if self.selected_unit and self.selected_unit.is_friendly(self.player_faction_id):
                     # Try to move to enemy unit (will initiate combat)
                     self.try_move_unit(self.selected_unit, tile_x, tile_y)
+                # Also center camera on enemy unit
+                self.center_camera_on_tile = (tile_x, tile_y)
+        else:
+            # Clicked on empty tile - center camera
+            self.center_camera_on_tile = (tile_x, tile_y)
 
         return None
 
