@@ -616,15 +616,28 @@ class UIManager:
                 game.end_turn()
                 return True
 
-        # 3. Mouse Wheel Scrolling
+        # 3. Mouse Button Up (for drag end)
+        if event.type == pygame.MOUSEBUTTONUP and event.button == 1:
+            # Always end any scrollbar drag on mouse up, regardless of screen
+            # This prevents the drag state from getting stuck
+            if self.active_screen == "TECH_TREE":
+                self.social_screens.handle_tech_tree_drag_end()
+                # Don't return True here - let other handlers process the mouse up
+
+        # 4. Mouse Wheel Scrolling
         if event.type == pygame.MOUSEWHEEL:
             # Handle scrolling in tech tree screen
             if self.active_screen == "TECH_TREE":
                 self.social_screens.handle_tech_tree_scroll(event.y, game)
                 return True
 
-        # 4. Motion (Hover)
+        # 5. Motion (Hover and Drag)
         if event.type == pygame.MOUSEMOTION:
+            # Handle scrollbar drag in tech tree
+            if self.active_screen == "TECH_TREE":
+                if self.social_screens.handle_tech_tree_drag_motion(event.pos, game):
+                    return True
+
             self.main_menu_button.handle_event(event)
             self.end_turn_button.handle_event(event)
             self.commlink_button.handle_event(event)

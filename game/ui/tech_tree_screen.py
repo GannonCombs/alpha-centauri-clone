@@ -25,6 +25,9 @@ class TechTreeScreen:
         self.tech_tree_scroll_offset = 0
         self.tech_tree_focused_tech = None  # Will be set to player's faction starting tech on first draw
         self.viewed_faction_id = None  # Which faction's tech tree to view (None = player's faction)
+        self.is_dragging_scrollbar = False  # Track if user is dragging scrollbar
+        self.drag_start_y = 0  # Y position where drag started
+        self.drag_start_offset = 0  # Scroll offset when drag started
 
         # UI elements
         self.tech_tree_selection_rects = []
@@ -34,6 +37,8 @@ class TechTreeScreen:
         self.tech_tree_prereq_rects = []  # List of (rect, tech_id) tuples for clickable prerequisites
         self.tech_tree_unlock_rects = []  # List of (rect, tech_id) tuples for clickable unlocks
         self.faction_icon_rects = []  # List of (rect, faction_id) tuples for faction selector
+        self.scrollbar_rect = None  # Scrollbar background rect
+        self.scrollbar_thumb_rect = None  # Scrollbar thumb rect
 
     def draw_tech_tree(self, screen, game):
         """Draw the Technology Tree screen with visualization.
@@ -124,15 +129,21 @@ class TechTreeScreen:
             scrollbar_x = left_panel_x + left_panel_w - 25
             scrollbar_y = left_panel_y + 40
             scrollbar_h = left_panel_h - 80
-            scrollbar_rect = pygame.Rect(scrollbar_x, scrollbar_y, 15, scrollbar_h)
-            pygame.draw.rect(screen, (30, 35, 40), scrollbar_rect, border_radius=4)
+            self.scrollbar_rect = pygame.Rect(scrollbar_x, scrollbar_y, 15, scrollbar_h)
+            pygame.draw.rect(screen, (30, 35, 40), self.scrollbar_rect, border_radius=4)
 
             # Scroll bar thumb
             scroll_ratio = self.tech_tree_scroll_offset / max(1, len(all_techs) - visible_lines)
             thumb_h = max(20, int(scrollbar_h * (visible_lines / len(all_techs))))
             thumb_y = scrollbar_y + int((scrollbar_h - thumb_h) * scroll_ratio)
-            thumb_rect = pygame.Rect(scrollbar_x, thumb_y, 15, thumb_h)
-            pygame.draw.rect(screen, (100, 120, 140), thumb_rect, border_radius=4)
+            self.scrollbar_thumb_rect = pygame.Rect(scrollbar_x, thumb_y, 15, thumb_h)
+
+            # Highlight thumb on hover or drag
+            thumb_color = (100, 120, 140)
+            if self.is_dragging_scrollbar or (self.scrollbar_thumb_rect and self.scrollbar_thumb_rect.collidepoint(pygame.mouse.get_pos())):
+                thumb_color = (140, 160, 180)
+
+            pygame.draw.rect(screen, thumb_color, self.scrollbar_thumb_rect, border_radius=4)
 
             # Up arrow
             up_arrow_rect = pygame.Rect(left_panel_x + left_panel_w - 30, left_panel_y + 10, 20, 20)
@@ -242,36 +253,38 @@ class TechTreeScreen:
         # Draw center tech (focused)
         center_rect = pygame.Rect(center_x - tech_box_w // 2, center_y - tech_box_h // 2, tech_box_w, tech_box_h)
 
-        # Get category color for border
+        # Get category color (always use full color, never gray out)
         category = focused_data.get('category', 'unknown')
         category_color = tech_tree.get_category_color(category)
 
-        # Color based on status
+        # Determine ownership status for text colors
         status = tech_tree.get_tech_status(focused_id)
+        is_discovered = (status == "Completed")
+
+        # Text colors: White if discovered, gray if not
+        text_color = (255, 255, 255) if is_discovered else (120, 120, 120)
+
+        # Background color based on status
         if status == "Completed":
             bg_color = (40, 60, 40)
-            text_color = (255, 255, 255)  # White for completed
         elif status == "Researching":
             bg_color = (60, 60, 40)
-            text_color = (255, 255, 100)  # Yellow for researching
         elif status == "Available":
             bg_color = (40, 50, 60)
-            text_color = (180, 180, 180)  # Light gray for available
         else:  # Locked
             bg_color = (30, 30, 30)
-            category_color = (80, 80, 80)  # Gray out locked techs
-            text_color = (100, 100, 100)  # Dark gray for locked
 
+        # Draw tech box with category color border (always full color)
         pygame.draw.rect(screen, bg_color, center_rect, border_radius=10)
-        pygame.draw.rect(screen, category_color, center_rect, 3, border_radius=10)  # Use category color for border
+        pygame.draw.rect(screen, category_color, center_rect, 3, border_radius=10)
 
-        # Tech icon (simple placeholder)
+        # Tech icon circle (always category color)
         icon_size = 80
         icon_rect = pygame.Rect(center_rect.centerx - icon_size // 2, center_rect.top + 20, icon_size, icon_size)
         pygame.draw.circle(screen, category_color, icon_rect.center, icon_size // 2)
         pygame.draw.circle(screen, bg_color, icon_rect.center, icon_size // 2 - 3)
 
-        # Tech ID abbreviation in icon
+        # Tech ID abbreviation in icon (white if discovered, gray if not)
         abbrev_font = pygame.font.Font(None, 32)
         abbrev_text = abbrev_font.render(focused_id[:4], True, text_color)
         screen.blit(abbrev_text, (icon_rect.centerx - abbrev_text.get_width() // 2, icon_rect.centery - 12))
@@ -313,16 +326,15 @@ class TechTreeScreen:
                 # Store for click detection
                 self.tech_tree_prereq_rects.append((prereq_rect, prereq_id))
 
-                # Color based on status
+                # Color based on status: white if discovered, gray if not
                 prereq_status = tech_tree.get_tech_status(prereq_id)
+                prereq_bg = (25, 25, 25)  # Dark background for all
                 if prereq_status == "Completed":
-                    prereq_bg = (30, 50, 30)
-                    prereq_border = (80, 180, 80)
-                    prereq_text_color = (200, 220, 200)
+                    prereq_border = (255, 255, 255)  # White border for discovered
+                    prereq_text_color = (255, 255, 255)  # White text for discovered
                 else:
-                    prereq_bg = (25, 25, 25)
-                    prereq_border = (60, 60, 60)
-                    prereq_text_color = (100, 100, 100)
+                    prereq_border = (80, 80, 80)  # Gray border for not discovered
+                    prereq_text_color = (120, 120, 120)  # Gray text for not discovered
 
                 # Highlight on hover
                 is_hovered = prereq_rect.collidepoint(pygame.mouse.get_pos())
@@ -356,9 +368,11 @@ class TechTreeScreen:
                 unlocks.append((tech_id, tech_data))
 
         unlock_x = center_x + tech_box_w // 2 + 200
-        unlock_start_y = center_y - (len(unlocks) - 1) * arrow_spacing // 2
+        # Center based on number of unlocks we'll actually display (max 4)
+        displayed_count = min(len(unlocks), 4)
+        unlock_start_y = center_y - (displayed_count - 1) * arrow_spacing // 2
 
-        for i, (unlock_id, unlock_data) in enumerate(unlocks[:3]):  # Max 3 to avoid clutter
+        for i, (unlock_id, unlock_data) in enumerate(unlocks[:4]):  # Max 4 (tech unlock limit)
             unlock_y = unlock_start_y + i * arrow_spacing
 
             # Small unlock box
@@ -368,20 +382,15 @@ class TechTreeScreen:
             # Store for click detection
             self.tech_tree_unlock_rects.append((unlock_rect, unlock_id))
 
-            # Color based on status
+            # Color based on status: white if discovered, gray if not
             unlock_status = tech_tree.get_tech_status(unlock_id)
+            unlock_bg = (25, 25, 25)  # Dark background for all
             if unlock_status == "Completed":
-                unlock_bg = (30, 50, 30)
-                unlock_border = (80, 180, 80)
-                unlock_text_color = (200, 220, 200)
-            elif unlock_status == "Available":
-                unlock_bg = (30, 40, 50)
-                unlock_border = (100, 150, 180)
-                unlock_text_color = (180, 200, 220)
+                unlock_border = (255, 255, 255)  # White border for discovered
+                unlock_text_color = (255, 255, 255)  # White text for discovered
             else:
-                unlock_bg = (25, 25, 25)
-                unlock_border = (60, 60, 60)
-                unlock_text_color = (100, 100, 100)
+                unlock_border = (80, 80, 80)  # Gray border for not discovered
+                unlock_text_color = (120, 120, 120)  # Gray text for not discovered
 
             # Highlight on hover
             is_hovered = unlock_rect.collidepoint(pygame.mouse.get_pos())
@@ -408,10 +417,10 @@ class TechTreeScreen:
                 (arrow_end[0] - 10, arrow_end[1] + 5)
             ])
 
-        # Show count if more unlocks exist
-        if len(unlocks) > 3:
-            more_text = self.small_font.render(f"+{len(unlocks) - 3} more", True, (150, 150, 150))
-            screen.blit(more_text, (unlock_x - more_text.get_width() // 2, unlock_start_y + 3 * arrow_spacing - 20))
+        # Show count if more than 4 unlocks exist (shouldn't happen, but just in case)
+        if len(unlocks) > 4:
+            more_text = self.small_font.render(f"+{len(unlocks) - 4} more", True, (150, 150, 150))
+            screen.blit(more_text, (unlock_x - more_text.get_width() // 2, unlock_start_y + 4 * arrow_spacing - 20))
 
     def _draw_faction_selector(self, screen, game, main_rect):
         """Draw faction selector icons at bottom of screen.
@@ -447,23 +456,28 @@ class TechTreeScreen:
 
             # Draw icon background
             if is_selected:
-                # Bright border for selected faction
-                pygame.draw.rect(screen, (255, 255, 255), icon_rect, border_radius=6)
-                inner_rect = icon_rect.inflate(-4, -4)
+                # Bright silver outer border for selected faction
+                pygame.draw.rect(screen, (230, 230, 240), icon_rect, border_radius=6)
+                inner_rect = icon_rect.inflate(-6, -6)
                 pygame.draw.rect(screen, color, inner_rect, border_radius=4)
+                # Add a darker inner border for depth
+                highlight_rect = icon_rect.inflate(-4, -4)
+                pygame.draw.rect(screen, (180, 180, 190), highlight_rect, 2, border_radius=5)
             else:
                 # Normal faction color
                 pygame.draw.rect(screen, color, icon_rect, border_radius=6)
                 if is_hovered:
-                    # White overlay on hover
+                    # Light gray overlay on hover
                     overlay_rect = icon_rect.inflate(-2, -2)
-                    pygame.draw.rect(screen, (255, 255, 255), overlay_rect, 2, border_radius=5)
+                    pygame.draw.rect(screen, (200, 200, 210), overlay_rect, 2, border_radius=5)
 
             # Draw faction initial in icon
+            # Use cool gray with slight blue tint for selected, darker gray for unselected
             # Override for "The Hive" to show "H" instead of "T"
             faction_initial_overrides = {1: 'H'}  # Faction 1 = "The Hive"
             faction_initial = faction_initial_overrides.get(faction_id, faction_data['name'][0])
-            initial_text = self.font.render(faction_initial, True, (255, 255, 255) if is_selected else (0, 0, 0))
+            letter_color = (200, 205, 210) if is_selected else (85, 85, 85)
+            initial_text = self.font.render(faction_initial, True, letter_color)
             text_x = icon_rect.centerx - initial_text.get_width() // 2
             text_y = icon_rect.centery - initial_text.get_height() // 2
             screen.blit(initial_text, (text_x, text_y))
@@ -509,6 +523,74 @@ class TechTreeScreen:
                 return True
         return False
 
+    def handle_scrollbar_drag_start(self, pos, game):
+        """Handle start of scrollbar thumb drag.
+
+        Args:
+            pos: Mouse position tuple (x, y)
+            game: Game instance for accessing tech tree
+
+        Returns:
+            True if drag started
+        """
+        if self.scrollbar_thumb_rect and self.scrollbar_thumb_rect.collidepoint(pos):
+            self.is_dragging_scrollbar = True
+            self.drag_start_y = pos[1]
+            self.drag_start_offset = self.tech_tree_scroll_offset
+            return True
+        return False
+
+    def handle_scrollbar_drag_motion(self, pos, game):
+        """Handle scrollbar thumb drag motion.
+
+        Args:
+            pos: Mouse position tuple (x, y)
+            game: Game instance for accessing tech tree
+
+        Returns:
+            True if drag was handled
+        """
+        # Safety check: if mouse button isn't pressed, end drag immediately
+        import pygame
+        if self.is_dragging_scrollbar and not pygame.mouse.get_pressed()[0]:
+            self.is_dragging_scrollbar = False
+            return False
+
+        if not self.is_dragging_scrollbar or not self.scrollbar_rect:
+            return False
+
+        # Get the tech tree for the faction being viewed
+        if self.viewed_faction_id is None:
+            self.viewed_faction_id = game.player_faction_id
+        tech_tree = game.factions[self.viewed_faction_id].tech_tree
+
+        all_techs_count = len(tech_tree.technologies)
+        visible_lines = 25  # Approximate
+        max_scroll = max(0, all_techs_count - visible_lines)
+
+        # Calculate scroll delta from mouse movement
+        delta_y = pos[1] - self.drag_start_y
+        scrollbar_h = self.scrollbar_rect.height
+        thumb_h = self.scrollbar_thumb_rect.height if self.scrollbar_thumb_rect else 20
+
+        # Convert pixel delta to scroll offset delta
+        usable_height = scrollbar_h - thumb_h
+        if usable_height > 0:
+            scroll_delta = int((delta_y / usable_height) * max_scroll)
+            self.tech_tree_scroll_offset = max(0, min(max_scroll, self.drag_start_offset + scroll_delta))
+
+        return True
+
+    def handle_scrollbar_drag_end(self):
+        """Handle end of scrollbar thumb drag.
+
+        Returns:
+            True if drag was active
+        """
+        was_dragging = self.is_dragging_scrollbar
+        self.is_dragging_scrollbar = False
+        return was_dragging
+
     def handle_tech_tree_click(self, pos, game):
         """Handle clicks in the Tech Tree screen.
 
@@ -523,6 +605,10 @@ class TechTreeScreen:
         if self.viewed_faction_id is None:
             self.viewed_faction_id = game.player_faction_id
         tech_tree = game.factions[self.viewed_faction_id].tech_tree
+
+        # Check scrollbar thumb for drag start
+        if self.handle_scrollbar_drag_start(pos, game):
+            return None
 
         # Check faction selector icons
         if hasattr(self, 'faction_icon_rects'):

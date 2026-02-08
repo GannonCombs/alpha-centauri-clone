@@ -135,6 +135,26 @@ class SocialScreensManager:
         """
         return self.tech_tree_screen.handle_tech_tree_scroll(y_delta, game)
 
+    def handle_tech_tree_drag_motion(self, pos, game):
+        """Handle scrollbar drag motion in the Tech Tree screen.
+
+        Args:
+            pos: Mouse position tuple (x, y)
+            game: Game instance for accessing game state
+
+        Returns:
+            True if drag was handled
+        """
+        return self.tech_tree_screen.handle_scrollbar_drag_motion(pos, game)
+
+    def handle_tech_tree_drag_end(self):
+        """Handle end of scrollbar drag in the Tech Tree screen.
+
+        Returns:
+            True if drag was active
+        """
+        return self.tech_tree_screen.handle_scrollbar_drag_end()
+
     def handle_tech_tree_click(self, pos, game):
         """Handle clicks in the Tech Tree screen.
 

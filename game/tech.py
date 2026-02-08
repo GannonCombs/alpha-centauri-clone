@@ -228,7 +228,7 @@ class TechTree:
         """
         colors = {
             'explore': (50, 200, 50),    # Green
-            'discover': (150, 150, 150),  # Gray
+            'discover': (255, 255, 255),  # White
             'build': (220, 180, 50),      # Yellow
             'conquer': (220, 50, 50)      # Red
         }
