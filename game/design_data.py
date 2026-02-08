@@ -68,7 +68,7 @@ class DesignData:
                 "ability1": "none",
                 "ability2": "none"
             }
-        elif faction_id == 1:  # Morgan - starts with Biogenetics (synthmetal armor)
+        elif faction_id == 3:  # Morgan - starts with Biogenetics (synthmetal armor)
             # Upgraded infantry (1-2-1)
             self.design_slots[2] = {
                 "chassis": "infantry",

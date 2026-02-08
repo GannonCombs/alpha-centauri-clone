@@ -77,6 +77,9 @@ class Base:
         self.talents = 0            # Happy citizens
         self.drone_riot = False     # Riot status
 
+        # Production management
+        self.hurried_this_turn = False  # Track if base has used hurry this turn
+
         # Unit support
         self.free_support = 2       # Free units supported
         self.support_cost_paid = 0  # Minerals spent on support
@@ -528,7 +531,8 @@ class Base:
             'support_cost_paid': self.support_cost_paid,
             'turns_since_capture': self.turns_since_capture,
             'disloyal_drones': self.disloyal_drones,
-            'production_queue': list(self.production_queue)
+            'production_queue': list(self.production_queue),
+            'hurried_this_turn': self.hurried_this_turn
         }
 
     @classmethod
@@ -572,6 +576,7 @@ class Base:
         base.support_cost_paid = data.get('support_cost_paid', 0)
         base.turns_since_capture = data.get('turns_since_capture', None)
         base.disloyal_drones = data.get('disloyal_drones', 0)
+        base.hurried_this_turn = data.get('hurried_this_turn', False)
         base.production_queue = data.get('production_queue', [])
 
         # Initialize derived/calculated values

@@ -33,6 +33,7 @@ class DiplomacyManager:
         self.dialog_system = DialogSubstitution()
         self.current_dialog = None
         self.current_responses = []
+        self.dialog_numbers = None  # Numeric placeholders for current dialog ($NUM0, etc.)
 
         # UI elements
         self.diplo_option_rects = []
@@ -119,7 +120,7 @@ class DiplomacyManager:
                 pygame.draw.rect(screen, self.target_faction['color'] if is_hover else COLOR_BUTTON_BORDER, opt_rect, 3)
 
                 # Substitute variables in response text
-                response_text = self.dialog_system.substitute(response['text'])
+                response_text = self.dialog_system.substitute(response['text'], numbers=self.dialog_numbers)
                 screen.blit(self.font.render(response_text, True, COLOR_TEXT), (opt_rect.x + 30, opt_rect.centery - 10))
 
     def _update_dialog(self, relation):
@@ -141,7 +142,8 @@ class DiplomacyManager:
         self.current_dialog = self.dialog_system.get_dialog(
             dialog_id,
             self.player_faction,
-            self.target_faction
+            self.target_faction,
+            numbers=self.dialog_numbers
         )
         self.current_responses = self.current_dialog.get('responses', [])
 
@@ -307,20 +309,42 @@ class DiplomacyManager:
             # Check if AI faction has enough credits to lend
             # AI needs at least 100 credits to offer a loan
             can_afford_loan = False
+            loan_amount = 0
+
             if self.game and faction_id is not None:
                 ai_faction = self.game.factions[faction_id]
                 can_afford_loan = ai_faction.energy_credits >= 100
 
+                if can_afford_loan:
+                    # Calculate loan terms based on AI's wealth
+                    # Offer roughly half of available credits, rounded to nearest 50
+                    loan_amount = (ai_faction.energy_credits // 2)
+                    loan_amount = (loan_amount // 50) * 50  # Round to nearest 50
+                    loan_amount = max(50, min(loan_amount, 500))  # Clamp between 50-500
+
             if can_afford_loan:
+                # Calculate loan payment terms
+                loan_years = 10  # Standard 10-year loan
+                payment_per_year = loan_amount // loan_years
+
+                # Set numeric placeholders for dialog
+                self.dialog_numbers = {
+                    0: loan_amount,
+                    1: payment_per_year,
+                    2: loan_years
+                }
                 self.diplo_stage = 'accept_loan'
             else:
+                self.dialog_numbers = None
                 self.diplo_stage = 'reject_loan'
         elif action == 'reject_loan':
             # After showing AI's rejection, return to diplo
+            self.dialog_numbers = None
             self.diplo_stage = 'diplo'
         elif action == 'accept_loan':
             # After showing AI's acceptance, return to diplo
             # TODO: Actually transfer credits and set up loan repayment
+            self.dialog_numbers = None
             self.diplo_stage = 'diplo'
         elif action == 'battleplans':
             # TODO: Implement battle plans

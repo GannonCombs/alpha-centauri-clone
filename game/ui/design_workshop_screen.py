@@ -704,9 +704,11 @@ class DesignWorkshopScreen:
         else:
             all_components = []
 
-        # Filter components by tech prerequisites
+        # Filter components by tech prerequisites and buildability
         player_tech_tree = game.factions[game.player_faction_id].tech_tree
-        components = [c for c in all_components if unit_components.is_component_available(c, player_tech_tree)]
+        components = [c for c in all_components
+                      if unit_components.is_component_available(c, player_tech_tree)
+                      and not (self.dw_editing_panel == 'weapon' and c['id'] == 'artifact')]
 
         # Draw components
         self.dw_component_selection_rects = []

@@ -118,8 +118,22 @@ class TechTreeScreen:
         visible_lines = (left_panel_h - 60) // tech_line_h
         self.tech_tree_selection_rects = []
 
-        # Draw scroll arrows if needed
+        # Draw scroll bar and arrows if needed
         if len(all_techs) > visible_lines:
+            # Scroll bar background
+            scrollbar_x = left_panel_x + left_panel_w - 25
+            scrollbar_y = left_panel_y + 40
+            scrollbar_h = left_panel_h - 80
+            scrollbar_rect = pygame.Rect(scrollbar_x, scrollbar_y, 15, scrollbar_h)
+            pygame.draw.rect(screen, (30, 35, 40), scrollbar_rect, border_radius=4)
+
+            # Scroll bar thumb
+            scroll_ratio = self.tech_tree_scroll_offset / max(1, len(all_techs) - visible_lines)
+            thumb_h = max(20, int(scrollbar_h * (visible_lines / len(all_techs))))
+            thumb_y = scrollbar_y + int((scrollbar_h - thumb_h) * scroll_ratio)
+            thumb_rect = pygame.Rect(scrollbar_x, thumb_y, 15, thumb_h)
+            pygame.draw.rect(screen, (100, 120, 140), thumb_rect, border_radius=4)
+
             # Up arrow
             up_arrow_rect = pygame.Rect(left_panel_x + left_panel_w - 30, left_panel_y + 10, 20, 20)
             pygame.draw.polygon(screen, (150, 180, 200), [
@@ -409,12 +423,14 @@ class TechTreeScreen:
         """
         self.faction_icon_rects = []
 
-        # Position icons at bottom of main panel, above OK button
+        # Position icons at bottom of main panel, above OK button (moved up 15%)
         icon_size = 40
         icon_spacing = 10
         total_width = 7 * icon_size + 6 * icon_spacing
         start_x = main_rect.centerx - total_width // 2
-        y = main_rect.bottom - 80  # Above OK button
+        # Move up by 15% of main panel height plus original offset
+        extra_offset = int(main_rect.height * 0.15)
+        y = main_rect.bottom - 80 - extra_offset  # Above OK button
 
         # Draw each faction icon
         for faction_id in range(7):
@@ -444,7 +460,9 @@ class TechTreeScreen:
                     pygame.draw.rect(screen, (255, 255, 255), overlay_rect, 2, border_radius=5)
 
             # Draw faction initial in icon
-            faction_initial = faction_data['name'][0]
+            # Override for "The Hive" to show "H" instead of "T"
+            faction_initial_overrides = {1: 'H'}  # Faction 1 = "The Hive"
+            faction_initial = faction_initial_overrides.get(faction_id, faction_data['name'][0])
             initial_text = self.font.render(faction_initial, True, (255, 255, 255) if is_selected else (0, 0, 0))
             text_x = icon_rect.centerx - initial_text.get_width() // 2
             text_y = icon_rect.centery - initial_text.get_height() // 2
@@ -460,6 +478,36 @@ class TechTreeScreen:
         label_x = main_rect.centerx - label_surf.get_width() // 2
         label_y = y - 25
         screen.blit(label_surf, (label_x, label_y))
+
+    def handle_tech_tree_scroll(self, y_delta, game):
+        """Handle mouse wheel scrolling in the Tech Tree screen.
+
+        Args:
+            y_delta: Mouse wheel scroll amount (positive = scroll up, negative = scroll down)
+            game: Game instance for accessing tech tree
+
+        Returns:
+            True if scroll was handled
+        """
+        # Get the tech tree for the faction being viewed
+        if self.viewed_faction_id is None:
+            self.viewed_faction_id = game.player_faction_id
+        tech_tree = game.factions[self.viewed_faction_id].tech_tree
+
+        all_techs_count = len(tech_tree.technologies)
+        visible_lines = 25  # Approximate
+
+        if y_delta > 0:
+            # Scroll up
+            if self.tech_tree_scroll_offset > 0:
+                self.tech_tree_scroll_offset = max(0, self.tech_tree_scroll_offset - 3)
+                return True
+        elif y_delta < 0:
+            # Scroll down
+            if self.tech_tree_scroll_offset < all_techs_count - visible_lines:
+                self.tech_tree_scroll_offset = min(all_techs_count - visible_lines, self.tech_tree_scroll_offset + 3)
+                return True
+        return False
 
     def handle_tech_tree_click(self, pos, game):
         """Handle clicks in the Tech Tree screen.
@@ -487,17 +535,17 @@ class TechTreeScreen:
                     self.tech_tree_focused_tech = viewed_faction.get('starting_tech', 'Ecology')
                     return None
 
-        # Check scroll arrows
+        # Check scroll arrows (scroll 3 lines at a time)
         if hasattr(self, 'tech_tree_up_arrow') and self.tech_tree_up_arrow and self.tech_tree_up_arrow.collidepoint(pos):
             if self.tech_tree_scroll_offset > 0:
-                self.tech_tree_scroll_offset -= 1
+                self.tech_tree_scroll_offset = max(0, self.tech_tree_scroll_offset - 3)
             return None
 
         if hasattr(self, 'tech_tree_down_arrow') and self.tech_tree_down_arrow and self.tech_tree_down_arrow.collidepoint(pos):
             all_techs_count = len(tech_tree.technologies)
             visible_lines = 25  # Approximate
             if self.tech_tree_scroll_offset < all_techs_count - visible_lines:
-                self.tech_tree_scroll_offset += 1
+                self.tech_tree_scroll_offset = min(all_techs_count - visible_lines, self.tech_tree_scroll_offset + 3)
             return None
 
         # Check prerequisite boxes (left side of visualization)

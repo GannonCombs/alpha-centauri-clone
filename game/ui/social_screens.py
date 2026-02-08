@@ -123,6 +123,18 @@ class SocialScreensManager:
         """
         return self.social_engineering_screen.handle_social_engineering_click(pos, game)
 
+    def handle_tech_tree_scroll(self, y_delta, game):
+        """Handle mouse wheel scrolling in the Tech Tree screen.
+
+        Args:
+            y_delta: Mouse wheel scroll amount
+            game: Game instance for accessing game state
+
+        Returns:
+            True if scroll was handled
+        """
+        return self.tech_tree_screen.handle_tech_tree_scroll(y_delta, game)
+
     def handle_tech_tree_click(self, pos, game):
         """Handle clicks in the Tech Tree screen.
 

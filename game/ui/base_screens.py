@@ -41,6 +41,8 @@ class BaseScreenManager:
         self.hurry_ok_rect = None
         self.hurry_cancel_rect = None
         self.hurry_all_rect = None
+        self.hurry_error_message = ""
+        self.hurry_error_time = 0
         self.prod_select_ok_rect = None
         self.prod_select_cancel_rect = None
         self.queue_add_rect = None
@@ -196,18 +198,32 @@ class BaseScreenManager:
                 base = self.viewing_base
                 if base and base.current_production and self.hurry_input:
                     try:
+                        # Check if base has already hurried this turn
+                        if base.hurried_this_turn:
+                            import time
+                            self.hurry_error_message = "Already hurried this turn!"
+                            self.hurry_error_time = time.time()
+                            return True
+
                         credits_to_spend = int(self.hurry_input)
                         if credits_to_spend <= 0:
-                            game.set_status_message("Must spend at least 1 credit")
+                            import time
+                            self.hurry_error_message = "Must spend at least 1 credit"
+                            self.hurry_error_time = time.time()
                             return True
 
                         if credits_to_spend > game.energy_credits:
-                            game.set_status_message(f"Not enough credits! You have {game.energy_credits}")
+                            import time
+                            self.hurry_error_message = "Not enough funds!"
+                            self.hurry_error_time = time.time()
                             return True
 
                         # Perform the hurry
                         game.energy_credits -= credits_to_spend
                         production_added, completed = base.hurry_production(credits_to_spend)
+
+                        # Mark base as hurried this turn
+                        base.hurried_this_turn = True
 
                         if completed:
                             game.set_status_message(f"Rushed {base.current_production}! Will complete next turn.")
@@ -644,11 +660,18 @@ class BaseScreenManager:
         change_text = self.small_font.render("Change", True, COLOR_TEXT)
         screen.blit(change_text, (change_rect.centerx - change_text.get_width() // 2, change_rect.centery - 7))
 
-        # Hurry button
-        hurry_hover = hurry_rect.collidepoint(pygame.mouse.get_pos())
-        pygame.draw.rect(screen, COLOR_BUTTON_HOVER if hurry_hover else COLOR_BUTTON, hurry_rect, border_radius=4)
-        pygame.draw.rect(screen, COLOR_BUTTON_BORDER, hurry_rect, 1, border_radius=4)
-        hurry_text = self.small_font.render("Hurry", True, COLOR_TEXT)
+        # Hurry button (grayed out if already hurried this turn)
+        hurry_disabled = base.hurried_this_turn
+        if hurry_disabled:
+            # Gray out the button
+            pygame.draw.rect(screen, (40, 40, 40), hurry_rect, border_radius=4)
+            pygame.draw.rect(screen, (80, 80, 80), hurry_rect, 1, border_radius=4)
+            hurry_text = self.small_font.render("Hurry", True, (100, 100, 100))
+        else:
+            hurry_hover = hurry_rect.collidepoint(pygame.mouse.get_pos())
+            pygame.draw.rect(screen, COLOR_BUTTON_HOVER if hurry_hover else COLOR_BUTTON, hurry_rect, border_radius=4)
+            pygame.draw.rect(screen, COLOR_BUTTON_BORDER, hurry_rect, 1, border_radius=4)
+            hurry_text = self.small_font.render("Hurry", True, COLOR_TEXT)
         screen.blit(hurry_text, (hurry_rect.centerx - hurry_text.get_width() // 2, hurry_rect.centery - 7))
 
         # Queue button
@@ -765,6 +788,15 @@ class BaseScreenManager:
         credits_text = self.small_font.render(f"Your credits: {game.energy_credits}", True, (200, 220, 100))
         screen.blit(credits_text, (dialog_x + 30, info_y + 50))
 
+        # Error message (shown for 3 seconds)
+        import time
+        if self.hurry_error_message and (time.time() - self.hurry_error_time) < 3.0:
+            error_surf = self.font.render(self.hurry_error_message, True, (255, 50, 50))
+            screen.blit(error_surf, (dialog_x + dialog_w // 2 - error_surf.get_width() // 2, dialog_y + 100))
+        elif self.hurry_error_message:
+            # Clear error after 3 seconds
+            self.hurry_error_message = ""
+
         # Input label
         input_label_y = dialog_y + 140
         label_surf = self.small_font.render("Credits to spend:", True, COLOR_TEXT)
@@ -844,6 +876,10 @@ class BaseScreenManager:
         from game.unit_components import generate_unit_name, get_chassis_by_id
         faction_designs = game.factions[base.owner].designs
         for design in faction_designs.get_designs():
+            # Skip artifacts - they can't be built, only found
+            if design['weapon'] == 'artifact':
+                continue
+
             # Generate unit name from component IDs
             unit_name = generate_unit_name(
                 design['weapon'], design['chassis'], design['armor'], design['reactor'],
@@ -1240,6 +1276,7 @@ class BaseScreenManager:
             if hasattr(self, 'hurry_cancel_rect') and self.hurry_cancel_rect.collidepoint(pos):
                 self.hurry_production_open = False
                 self.hurry_input = ""
+                self.hurry_error_message = ""
                 return None
 
             # Check Pay All button
@@ -1254,18 +1291,32 @@ class BaseScreenManager:
             if hasattr(self, 'hurry_ok_rect') and self.hurry_ok_rect.collidepoint(pos):
                 if base and base.current_production and self.hurry_input:
                     try:
+                        # Check if base has already hurried this turn
+                        if base.hurried_this_turn:
+                            import time
+                            self.hurry_error_message = "Already hurried this turn!"
+                            self.hurry_error_time = time.time()
+                            return None  # Keep popup open
+
                         credits_to_spend = int(self.hurry_input)
                         if credits_to_spend <= 0:
-                            game.set_status_message("Must spend at least 1 credit")
-                            return None
+                            import time
+                            self.hurry_error_message = "Must spend at least 1 credit"
+                            self.hurry_error_time = time.time()
+                            return None  # Keep popup open
 
                         if credits_to_spend > game.energy_credits:
-                            game.set_status_message(f"Not enough credits! You have {game.energy_credits}")
-                            return None
+                            import time
+                            self.hurry_error_message = "Not enough funds!"
+                            self.hurry_error_time = time.time()
+                            return None  # Keep popup open
 
                         # Perform the hurry
                         game.energy_credits -= credits_to_spend
                         production_added, completed = base.hurry_production(credits_to_spend)
+
+                        # Mark base as hurried this turn
+                        base.hurried_this_turn = True
 
                         if completed:
                             game.set_status_message(f"Rushed {base.current_production}! Will complete next turn.")
@@ -1273,10 +1324,20 @@ class BaseScreenManager:
                             turns_saved = production_added
                             game.set_status_message(f"Rushed production: {turns_saved} turns saved")
 
+                        # Only close popup on success
                         self.hurry_production_open = False
                         self.hurry_input = ""
+                        self.hurry_error_message = ""  # Clear any error
                     except ValueError:
-                        game.set_status_message("Invalid amount entered")
+                        import time
+                        self.hurry_error_message = "Invalid amount entered"
+                        self.hurry_error_time = time.time()
+                        return None  # Keep popup open
+                else:
+                    # No input - just close
+                    self.hurry_production_open = False
+                    self.hurry_input = ""
+                    self.hurry_error_message = ""
                 return None
 
             # Click outside popup closes it
@@ -1299,12 +1360,15 @@ class BaseScreenManager:
         # Check Hurry button - open popup
         if hasattr(self, 'prod_hurry_rect') and self.prod_hurry_rect.collidepoint(pos):
             if base and base.current_production:
-                remaining_cost = base.production_cost - base.production_progress
-                if remaining_cost <= 0:
-                    game.set_status_message("Production already complete!")
+                if base.hurried_this_turn:
+                    game.set_status_message("Base has already hurried this turn!")
                 else:
-                    self.hurry_production_open = True
-                    self.hurry_input = ""
+                    remaining_cost = base.production_cost - base.production_progress
+                    if remaining_cost <= 0:
+                        game.set_status_message("Production already complete!")
+                    else:
+                        self.hurry_production_open = True
+                        self.hurry_input = ""
             return None
 
         # Check Queue button - open queue management

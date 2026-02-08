@@ -55,10 +55,11 @@ class DialogSubstitution:
             'THE_ENVIRONMENTAL_CODE9': get_f('$LAW_NAME', 'laws'),
         }
 
-    def substitute(self, text, ai_gender_index=1):
+    def substitute(self, text, ai_gender_index=1, numbers=None):
         """
         text: The raw dialog string
         ai_gender_index: 1=Male, 2=Female (used for $<2:he:she> logic)
+        numbers: Dict of numeric placeholders {0: value, 1: value, ...} for $NUM0, $NUM1, etc.
         """
         result = text
 
@@ -74,13 +75,29 @@ class DialogSubstitution:
 
         result = re.sub(r'\$<(\d):([^>]+)>', replace_conditional, result)
 
-        # 2. Simple Variable Substitution ($NAME3, etc)
+        # 2. Numeric Placeholders ($NUM0, $NUM1, etc)
+        if numbers:
+            for num_index, value in numbers.items():
+                result = result.replace(f'$NUM{num_index}', str(value))
+
+        # 3. Simple Variable Substitution ($NAME3, etc)
         for var, value in self.variables.items():
             result = result.replace(f'${var}', str(value))
 
         return result
 
-    def get_dialog(self, dialog_id, player_faction, ai_faction):
+    def get_dialog(self, dialog_id, player_faction, ai_faction, numbers=None):
+        """Get dialog with variable substitution.
+
+        Args:
+            dialog_id: Dialog ID to retrieve
+            player_faction: Player's faction dict
+            ai_faction: AI faction dict
+            numbers: Optional dict of numeric placeholders {0: value, 1: value, ...}
+
+        Returns:
+            Dict with 'text' (substituted) and 'responses'
+        """
         self.set_context(player_faction, ai_faction)
 
         # Look for override (e.g., #FACTIONTRUCE)
@@ -101,7 +118,7 @@ class DialogSubstitution:
             res = dialog_data['responses']
 
         return {
-            'text': self.substitute(text),
+            'text': self.substitute(text, numbers=numbers),
             'responses': res
         }
 

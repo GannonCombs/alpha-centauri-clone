@@ -60,7 +60,10 @@ class Game:
 
         # Legacy: Keep energy_credits as direct attribute for now
         # TODO: Migrate to self.factions[player_faction_id].energy_credits
-        self.energy_credits = 0  # Starting credits
+        # Apply starting_credits bonus from faction data
+        from game.data.data import FACTION_DATA
+        player_faction_data = FACTION_DATA[player_faction_id]
+        self.energy_credits = player_faction_data.get('bonuses', {}).get('starting_credits', 0)
 
         # Global energy allocation (applies to all bases)
         self.global_energy_allocation = {
@@ -233,12 +236,13 @@ class Game:
                 x, y = land_tiles[tile_idx]
                 tile_idx += 1  # Move to next tile for next faction
 
-                # Starting military unit - Santiago/Morgan get advanced unit, others get Scout Patrol
+                # Starting military unit - only Santiago actually starts with special unit
                 from game.unit_components import generate_unit_name
-                # Santiago and Morgan start with their faction-specific design (slot 2)
-                if faction_id in [1, 4]:  # Morgan or Santiago
+                # Santiago starts with Scout Rover, all others get Scout Patrol
+                if faction_id == 4:  # Santiago only
                     military_design = self.factions[faction_id].designs.get_design(2)
                 else:
+                    # Everyone else starts with Scout Patrol (slot 0)
                     military_design = self.factions[faction_id].designs.get_design(0)
 
                 military_name = generate_unit_name(
@@ -2069,6 +2073,8 @@ class Game:
         total_labs = 0
         for base in self.bases:
             if base.owner == self.player_faction_id:
+                # Reset hurry flag at start of turn
+                base.hurried_this_turn = False
                 completed_item = base.process_turn(self.global_energy_allocation)
                 if completed_item:
                     # Store for spawning at start of next turn (after upkeep)
@@ -2195,6 +2201,8 @@ class Game:
 
             for base in self.bases:
                 if base.owner == ai_player.player_id:
+                    # Reset hurry flag at start of AI turn
+                    base.hurried_this_turn = False
                     completed_item = base.process_turn(ai_energy_allocation)
                     if completed_item:
                         # Store for spawning at start of next turn (after upkeep)

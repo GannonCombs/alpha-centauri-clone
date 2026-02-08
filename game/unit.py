@@ -474,7 +474,11 @@ class Unit:
         Returns:
             str: Stats string (e.g., "1-1-1", "1-1-4*2", "0-1-1")
         """
-        base = f"{self.weapon}-{self.armor}-{self.max_moves()}"
+        # Get numeric values from component data
+        attack = self.weapon_data.get('attack', 0)
+        defense = self.armor_data.get('defense', 0)
+
+        base = f"{attack}-{defense}-{self.max_moves()}"
         if self.reactor_level > 1:
             return f"{base}*{self.reactor_level}"
         return base

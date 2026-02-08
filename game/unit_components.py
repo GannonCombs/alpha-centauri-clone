@@ -40,7 +40,7 @@ def get_reactor_by_id(reactor_id):
     return REACTORS[0]  # Default to fission
 
 
-def generate_unit_name(weapon_id, chassis_id, armor_id=None, reactor_id='fission', ability1='none', ability2='none'):
+def generate_unit_name(weapon_id, chassis_id, armor_id, reactor_id, ability1, ability2):
     """Generate a unit name using SMAC naming: [abilities] <component> <chassis variant>.
 
     Naming logic:
@@ -97,19 +97,26 @@ def generate_unit_name(weapon_id, chassis_id, armor_id=None, reactor_id='fission
             if ability_prefix:
                 name_parts.append(ability_prefix)
 
-    # SMAC naming convention for hand weapons:
-    # - Land units with hand weapons: "Scout [chassis]"
-    # - All other units: "[Weapon] [chassis]"
-    if weapon_id == 'hand_weapons':
-        chassis_type = chassis.get('type', 'land')
+    # - Land units with hand weapons and no armor (1-1-X): "Scout [chassis]"
+    # - Sea/Air units with hand weapons and no armor (1-1-X): "Gun [chassis]"
+    if weapon_id == 'hand_weapons' and armor_id == 'no_armor':
+        chassis_type = chassis['type']
+
+        # Scout prefix for 1-1-X land units (hand weapons + no armor)
         if chassis_type == 'land':
-            # Land units with hand weapons use "Scout" prefix
             name_parts.append("Scout")
             chassis_names = chassis.get('offensive_names', [chassis['name']])
             chassis_name = chassis_names[0]
             name_parts.append(chassis_name)
             return " ".join(name_parts)
-        # Sea/air units with hand weapons fall through to standard naming
+        # Gun prefix for sea/air hand weapons units
+        elif chassis_type in ['sea', 'air']:
+            name_parts.append("Gun")
+            chassis_names = chassis.get('offensive_names', [chassis['name']])
+            chassis_name = chassis_names[0]
+            name_parts.append(chassis_name)
+            return " ".join(name_parts)
+        # Land units with armor fall through to standard naming
 
     # For combat units, determine offensive vs defensive
     armor = get_armor_by_id(armor_id) if armor_id else ARMOR[0]

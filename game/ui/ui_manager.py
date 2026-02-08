@@ -616,7 +616,14 @@ class UIManager:
                 game.end_turn()
                 return True
 
-        # 3. Motion (Hover)
+        # 3. Mouse Wheel Scrolling
+        if event.type == pygame.MOUSEWHEEL:
+            # Handle scrolling in tech tree screen
+            if self.active_screen == "TECH_TREE":
+                self.social_screens.handle_tech_tree_scroll(event.y, game)
+                return True
+
+        # 4. Motion (Hover)
         if event.type == pygame.MOUSEMOTION:
             self.main_menu_button.handle_event(event)
             self.end_turn_button.handle_event(event)
