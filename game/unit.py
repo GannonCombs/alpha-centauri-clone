@@ -16,9 +16,15 @@ class Unit:
     Attributes:
         x (int): X coordinate on the map
         y (int): Y coordinate on the map
-        unit_type (str): Type constant (UNIT_LAND, UNIT_SEA, UNIT_AIR, etc.)
+        chassis (str): Chassis ID ('infantry', 'foil', 'needlejet', etc.)
+        weapon (str): Weapon ID ('hand_weapons', 'laser', 'probe', etc.)
+        armor (str): Armor ID ('no_armor', 'synthmetal', etc.)
+        reactor (str): Reactor ID ('fission', 'fusion', 'quantum', 'singularity')
+        ability1 (str): First special ability ID
+        ability2 (str): Second special ability ID
         owner (int): Player ID (0 = human, 1+ = AI)
         name (str): Display name of the unit
+        type (str): Derived from chassis ('land', 'sea', or 'air')
         moves_remaining (int): Movement points left this turn
         has_moved (bool): Whether unit has moved this turn
     """

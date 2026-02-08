@@ -840,8 +840,8 @@ class UIManager:
             screen.blit(self.font.render(f"Unit: {unit.name}", True, COLOR_TEXT), (info_x, info_y))
 
             # Capitalize unit type
-            unit_type_display = unit.type.capitalize()
-            screen.blit(self.small_font.render(f"Type: {unit_type_display}", True, (200, 210, 220)), (info_x, info_y + 30))
+            type_display = unit.type.capitalize()
+            screen.blit(self.small_font.render(f"Type: {type_display}", True, (200, 210, 220)), (info_x, info_y + 30))
 
             # Stats: weapon-armor-moves*health
             stats_str = unit.get_stats_string()

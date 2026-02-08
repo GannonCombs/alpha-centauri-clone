@@ -20,7 +20,6 @@ class DebugManager:
         self.enabled = False
         self.show_help = True  # Show help overlay when debug mode first enabled
         self.cursor_spawn_mode = None  # 'unit' or 'base' when waiting for cursor click
-        self.pending_unit_type = None  # Unit type to spawn at cursor
         self.tech_selection_active = False
         self.unit_selection_active = False
         self.show_all_production = False  # See all faction production
