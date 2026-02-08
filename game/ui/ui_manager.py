@@ -376,7 +376,7 @@ class UIManager:
                     # Use the other_faction_id we already have from the commlink request
                     if self.commlink_request_other_faction_id is not None and self.commlink_request_other_faction_id < len(FACTION_DATA):
                         # Player is always index 0
-                        self.diplomacy.open_diplomacy(FACTION_DATA[self.commlink_request_other_faction_id], self.commlink_request_player_id)
+                        self.diplomacy.open_diplomacy(FACTION_DATA[self.commlink_request_other_faction_id], self.commlink_request_player_id, game)
                     self.diplomacy.diplo_stage = "greeting"
                     return True
                 elif self.commlink_request_ignore_rect and self.commlink_request_ignore_rect.collidepoint(pos):
@@ -560,7 +560,7 @@ class UIManager:
                             faction_id = btn.player_id  # player_id IS faction_id
                             if faction_id is not None and faction_id < len(FACTION_DATA):
                                 # Open diplomacy with correct player faction ID
-                                self.diplomacy.open_diplomacy(FACTION_DATA[faction_id], player_faction_index=game.player_faction_id)
+                                self.diplomacy.open_diplomacy(FACTION_DATA[faction_id], player_faction_index=game.player_faction_id, game=game)
                                 self.active_screen = "DIPLOMACY"
                                 self.commlink_open = False
                                 return True

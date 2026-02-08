@@ -19,6 +19,7 @@ class DiplomacyManager:
         # State
         self.target_faction = None
         self.player_faction = None  # Will be set when opening diplomacy
+        self.game = None  # Game reference for accessing faction data
         self.diplo_stage = "greeting"  # greeting, diplo, proposal, exit, etc.
         self.diplo_relations = {}  # faction_id -> status
         self.diplo_mood = "CORDIAL"  # CORDIAL, WARY, HOSTILE, FRIENDLY
@@ -39,15 +40,17 @@ class DiplomacyManager:
         self._current_diplo_message = ""
         self._last_diplo_stage = None
 
-    def open_diplomacy(self, faction, player_faction_index):
+    def open_diplomacy(self, faction, player_faction_index, game=None):
         """Initialize diplomacy with a faction.
 
         Args:
             faction: AI faction dictionary
             player_faction_index: Index of player's faction in FACTION_DATA list
+            game: Game instance (for accessing faction energy_credits)
         """
         self.target_faction = faction
         self.player_faction = FACTION_DATA[player_faction_index]  # Get actual player faction
+        self.game = game  # Store game reference
         self.diplo_stage = "greeting"
         self._last_diplo_stage = None  # Force dialog refresh
 
@@ -174,10 +177,10 @@ class DiplomacyManager:
             return 'REJTREATY'
         elif self.diplo_stage == "propose_tech":
             return 'BUYTECH0'
-        elif self.diplo_stage == "propose_loan":
-            # TODO: Need correct dialog for player asking AI for loan
-            # ASKFORLOAN1 is AI asking player, which is backwards
-            return 'GENERIC'  # Placeholder until we have the right dialog
+        elif self.diplo_stage == "accept_loan":
+            return 'ENERGYLOAN1'  # AI accepts and offers loan
+        elif self.diplo_stage == "reject_loan":
+            return 'REJENERGY0'  # AI rejects - no credits to spare
         elif self.diplo_stage == "exit":
             return None  # No dialog on exit, just close
         else:
@@ -298,7 +301,27 @@ class DiplomacyManager:
         elif action == 'propose_tech':
             self.diplo_stage = 'propose_tech'
         elif action == 'propose_loan':
-            self.diplo_stage = 'propose_loan'
+            # Player asks AI for a loan - AI decides based on available credits
+            faction_id = next((i for i, f in enumerate(FACTION_DATA) if f['name'] == self.target_faction['name']), None)
+
+            # Check if AI faction has enough credits to lend
+            # AI needs at least 100 credits to offer a loan
+            can_afford_loan = False
+            if self.game and faction_id is not None:
+                ai_faction = self.game.factions[faction_id]
+                can_afford_loan = ai_faction.energy_credits >= 100
+
+            if can_afford_loan:
+                self.diplo_stage = 'accept_loan'
+            else:
+                self.diplo_stage = 'reject_loan'
+        elif action == 'reject_loan':
+            # After showing AI's rejection, return to diplo
+            self.diplo_stage = 'diplo'
+        elif action == 'accept_loan':
+            # After showing AI's acceptance, return to diplo
+            # TODO: Actually transfer credits and set up loan repayment
+            self.diplo_stage = 'diplo'
         elif action == 'battleplans':
             # TODO: Implement battle plans
             self.diplo_stage = 'diplo'

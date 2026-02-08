@@ -36,6 +36,12 @@ class SaveLoadDialogManager:
         self.input_rect = None
         self.file_list_rects = []
 
+        # Confirmation dialog state
+        self.confirmation_mode = None  # 'overwrite' when showing overwrite warning
+        self.pending_filepath = None  # File to save after confirmation
+        self.confirm_ok_rect = None
+        self.confirm_cancel_rect = None
+
     def show_save_dialog(self, game):
         """Open the save dialog with suggested filename.
 
@@ -108,6 +114,10 @@ class SaveLoadDialogManager:
         if self.error_message:
             error_surf = self.small_font.render(self.error_message, True, (255, 100, 100))
             screen.blit(error_surf, (dialog_x + dialog_w // 2 - error_surf.get_width() // 2, dialog_y + dialog_h - 100))
+
+        # Draw confirmation popup if active
+        if self.confirmation_mode == 'overwrite':
+            self._draw_confirmation_popup(screen)
 
     def _draw_save_dialog(self, screen, dialog_x, dialog_y, dialog_w, dialog_h):
         """Draw save dialog contents."""
@@ -244,6 +254,66 @@ class SaveLoadDialogManager:
         screen.blit(cancel_surf, (self.cancel_button_rect.centerx - cancel_surf.get_width() // 2,
                                  self.cancel_button_rect.centery - 10))
 
+    def _draw_confirmation_popup(self, screen):
+        """Draw overwrite confirmation popup."""
+        # Semi-transparent overlay
+        overlay = pygame.Surface((display.SCREEN_WIDTH, display.SCREEN_HEIGHT))
+        overlay.set_alpha(220)
+        overlay.fill((0, 0, 0))
+        screen.blit(overlay, (0, 0))
+
+        # Confirmation dialog
+        confirm_w, confirm_h = 500, 200
+        confirm_x = display.SCREEN_WIDTH // 2 - confirm_w // 2
+        confirm_y = display.SCREEN_HEIGHT // 2 - confirm_h // 2
+        confirm_rect = pygame.Rect(confirm_x, confirm_y, confirm_w, confirm_h)
+
+        pygame.draw.rect(screen, (40, 50, 60), confirm_rect, border_radius=8)
+        pygame.draw.rect(screen, display.COLOR_BUTTON_HIGHLIGHT, confirm_rect, 3, border_radius=8)
+
+        # Warning message
+        message_lines = [
+            "This will overwrite your save file.",
+            "Are you sure?"
+        ]
+
+        for i, line in enumerate(message_lines):
+            text_surf = self.font.render(line, True, display.COLOR_TEXT)
+            text_x = confirm_x + confirm_w // 2 - text_surf.get_width() // 2
+            text_y = confirm_y + 40 + i * 35
+            screen.blit(text_surf, (text_x, text_y))
+
+        # OK and Cancel buttons
+        button_y = confirm_y + confirm_h - 60
+        button_w = 120
+        button_h = 40
+
+        # OK button
+        ok_x = confirm_x + confirm_w // 2 - button_w - 10
+        self.confirm_ok_rect = pygame.Rect(ok_x, button_y, button_w, button_h)
+
+        ok_hover = self.confirm_ok_rect.collidepoint(pygame.mouse.get_pos())
+        pygame.draw.rect(screen, display.COLOR_BUTTON_HOVER if ok_hover else display.COLOR_BUTTON,
+                         self.confirm_ok_rect, border_radius=6)
+        pygame.draw.rect(screen, display.COLOR_BUTTON_BORDER, self.confirm_ok_rect, 2, border_radius=6)
+
+        ok_surf = self.font.render("OK", True, display.COLOR_TEXT)
+        screen.blit(ok_surf, (self.confirm_ok_rect.centerx - ok_surf.get_width() // 2,
+                             self.confirm_ok_rect.centery - 10))
+
+        # Cancel button
+        cancel_x = confirm_x + confirm_w // 2 + 10
+        self.confirm_cancel_rect = pygame.Rect(cancel_x, button_y, button_w, button_h)
+
+        cancel_hover = self.confirm_cancel_rect.collidepoint(pygame.mouse.get_pos())
+        pygame.draw.rect(screen, display.COLOR_BUTTON_HOVER if cancel_hover else display.COLOR_BUTTON,
+                         self.confirm_cancel_rect, border_radius=6)
+        pygame.draw.rect(screen, display.COLOR_BUTTON_BORDER, self.confirm_cancel_rect, 2, border_radius=6)
+
+        cancel_surf = self.font.render("Cancel", True, display.COLOR_TEXT)
+        screen.blit(cancel_surf, (self.confirm_cancel_rect.centerx - cancel_surf.get_width() // 2,
+                                 self.confirm_cancel_rect.centery - 10))
+
     def handle_event(self, event, game):
         """Process events for the dialog.
 
@@ -274,6 +344,18 @@ class SaveLoadDialogManager:
         Returns:
             str or bool: Result of action or True to consume event
         """
+        # Block keyboard input when confirmation is showing
+        if self.confirmation_mode == 'overwrite':
+            if event.key == pygame.K_RETURN:
+                # Enter confirms the overwrite
+                return self._perform_save(game, self.pending_filepath)
+            elif event.key == pygame.K_ESCAPE:
+                # Escape cancels
+                self.confirmation_mode = None
+                self.pending_filepath = None
+                return True
+            return True
+
         if self.mode == 'save':
             # Text input for filename
             if event.key == pygame.K_BACKSPACE:
@@ -321,6 +403,18 @@ class SaveLoadDialogManager:
         Returns:
             str or tuple or bool: Result of action or True to consume event
         """
+        # Handle confirmation dialog clicks first
+        if self.confirmation_mode == 'overwrite':
+            if self.confirm_ok_rect and self.confirm_ok_rect.collidepoint(pos):
+                # User confirmed overwrite - proceed with save
+                return self._perform_save(game, self.pending_filepath)
+            elif self.confirm_cancel_rect and self.confirm_cancel_rect.collidepoint(pos):
+                # User cancelled - close confirmation and return to save dialog
+                self.confirmation_mode = None
+                self.pending_filepath = None
+                return True
+            return True  # Consume all clicks when confirmation is showing
+
         # Check Cancel button
         if self.cancel_button_rect and self.cancel_button_rect.collidepoint(pos):
             self.mode = None
@@ -348,7 +442,7 @@ class SaveLoadDialogManager:
         return True
 
     def _try_save(self, game):
-        """Attempt to save the game.
+        """Attempt to save the game. Shows overwrite confirmation if file exists.
 
         Args:
             game: Current game instance
@@ -367,13 +461,37 @@ class SaveLoadDialogManager:
 
         filepath = os.path.join('game/saves', filename)
 
+        # Check if file already exists
+        if os.path.exists(filepath):
+            # Show overwrite confirmation
+            self.confirmation_mode = 'overwrite'
+            self.pending_filepath = filepath
+            return True
+
+        # File doesn't exist - save directly
+        return self._perform_save(game, filepath)
+
+    def _perform_save(self, game, filepath):
+        """Perform the actual save operation.
+
+        Args:
+            game: Current game instance
+            filepath: Full path to save file
+
+        Returns:
+            str: 'save_complete' if successful, True otherwise
+        """
         success, message = save_load.save_game(game, filepath)
 
         if success:
             self.mode = None
+            self.confirmation_mode = None
+            self.pending_filepath = None
             return 'save_complete'
         else:
             self.error_message = message
+            self.confirmation_mode = None
+            self.pending_filepath = None
             return True
 
     def _try_load(self, game):

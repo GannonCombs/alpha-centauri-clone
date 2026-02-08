@@ -115,12 +115,7 @@ that they like. Examples: remove atrocity prohibitions if their faction is warli
 4 In the tech screen, there is a little text box inside the tech that is colored the correct category of the tech (it's 4x color).
 This is great. However, the outline for the tech box itself is always yellow. It should be the same 4x color.
 
-When I offer a treaty to Zakharov, his response is to pitch a treaty to me. That makes no sense. Look at the script notes for
-#MAKETREATY and #REJTREATY. Those should be the responses.
-When I asked for a loan, I was offered one, but my choices were to reject it, or Agreed. But if you rob me you shall feel my wrath."
-That doesn't make sense. I'm receiving the loan. Find the correct dialog here.
-
-Issues: Hurry is still showing a different number of turns remaining compared to the production panel. Make sure these are pulling
+Hurry is still showing a different number of turns remaining compared to the production panel. Make sure these are pulling
 from the same data.
 Even with a faction having a treaty with me, I can attack them with impunity. Killing their unit did not switch to Vendetta.
 If I suggest an attack on an entreatied faction's unit, a popup should show. Check #BREAKINGTREATY and #BREAKINGTRUCE for info.
@@ -142,8 +137,6 @@ Ensure that the amount offered with Pay All is truly the ENTIRE remaining cost. 
 New unit design on better unit tech is still not popping up, at least not consistently. Is the pattern that chassis and
  armor upgrade, but weapons don't?
 
-They MUST respond with something in #MAKETREATYx or #REJTREATYy. For example: "With respect, $TITLE1, it appears there is little future in
-'permanent' agreements with the $FACTION2."
 Character I have treaties with are still attacking me. Note: it is possible to betray someone (though this is rare behavior).
 But having TREATY status afterward is a bug. It should say VENDETTA.
 Right now, enemy bases say what they're working on. This should only be the case if I have a Pact with them, or Empath Guild,
@@ -151,7 +144,6 @@ or am Governor, or have Infiltrated their Datalinks.
 
 Got a diplomatic milestone popup when missing commlinks.
 Production times are off. Merchant Exchange takes 20 turns on Turn 1 for Morgan.
-Check save overwrites. If the exact same name exists, popup that says Are You Sure you want to overwrite?
 Get rid of weapon_mode and armor_mode. We store the ids only. Any data that we need, we can look in unit_data.
 FACTION_DATA contains single quotes and double quotes.
 
