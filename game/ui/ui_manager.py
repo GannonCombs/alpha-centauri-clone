@@ -3,7 +3,7 @@
 import pygame
 from game.data import constants
 from game.data.constants import (COLOR_UI_BACKGROUND, COLOR_UI_BORDER, COLOR_TEXT,
-                                 COLOR_BLACK, COLOR_BUTTON_BORDER, UNIT_SEA, UNIT_AIR)
+                                 COLOR_BLACK, COLOR_BUTTON_BORDER)
 from .components import Button
 from .dialogs import DialogManager
 from .battle_ui import BattleUIManager
@@ -456,7 +456,7 @@ class UIManager:
                     target_y = game.combat.pending_battle['target_y']
 
                     # Consume attacker's movement
-                    if attacker.unit_type in [UNIT_SEA, UNIT_AIR]:
+                    if attacker.type in ['sea', 'air']:
                         # Sea and air units: attack ends turn
                         attacker.moves_remaining = 0
                     else:
@@ -706,7 +706,7 @@ class UIManager:
             screen.blit(self.font.render(f"Unit: {unit.name}", True, COLOR_TEXT), (info_x, info_y))
 
             # Capitalize unit type
-            unit_type_display = unit.unit_type.capitalize()
+            unit_type_display = unit.type.capitalize()
             screen.blit(self.small_font.render(f"Type: {unit_type_display}", True, (200, 210, 220)), (info_x, info_y + 30))
 
             # Stats: weapon-armor-moves*health
@@ -1452,7 +1452,7 @@ class UIManager:
             pygame.draw.circle(screen, COLOR_BLACK, (icon_x + icon_size // 2, icon_y + icon_size // 2), icon_size // 2, 1)
 
             # Draw unit type indicator (first letter of unit type)
-            type_letter = unit.unit_type[0].upper()
+            type_letter = unit.type[0].upper()
             letter_font = pygame.font.Font(None, 16)
             letter_surf = letter_font.render(type_letter, True, COLOR_BLACK)
             letter_rect = letter_surf.get_rect(center=(icon_x + icon_size // 2, icon_y + icon_size // 2))

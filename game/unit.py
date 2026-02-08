@@ -5,7 +5,6 @@ This module defines the Unit class representing all mobile units in the game
 including military units, colony pods, and transports. Units can move across
 the map, garrison in bases, and respect terrain restrictions.
 """
-from game.data.constants import UNIT_LAND, UNIT_SEA, UNIT_AIR, UNIT_COLONY_POD_LAND, UNIT_COLONY_POD_SEA, UNIT_ARTIFACT, UNIT_PROBE_TEAM
 
 
 class Unit:
@@ -24,102 +23,77 @@ class Unit:
         has_moved (bool): Whether unit has moved this turn
     """
 
-    def __init__(self, x, y, unit_type, owner, name="Unit", chassis_speed=None, weapon=None, armor=None, reactor_level=None):
-        """Initialize a new unit.
+    def __init__(self, x, y, chassis, owner, name, weapon, armor, reactor,
+                 ability1='none', ability2='none'):
+        """Initialize unit with mandatory components.
 
         Args:
-            x (int): Starting X coordinate
-            y (int): Starting Y coordinate
-            unit_type (str): Unit type constant
-            owner (int): Player ID (0 = human, 1+ = AI)
-            name (str, optional): Display name. Defaults to "Unit".
-            chassis_speed (int, optional): Movement points from chassis. If None, uses default.
-            weapon (int, optional): Weapon strength. If None, uses default.
-            armor (int, optional): Armor strength. If None, uses default.
-            reactor_level (int, optional): Reactor level. If None, uses default.
+            x, y: Map coordinates
+            chassis: Chassis ID ('infantry', 'foil', 'needlejet', etc.) - REQUIRED
+            owner: Player ID - REQUIRED
+            name: Display name - REQUIRED
+            weapon: Weapon ID ('hand_weapons', 'probe', 'laser', etc.) - REQUIRED
+            armor: Armor ID ('no_armor', 'synthmetal', etc.) - REQUIRED
+            reactor: Reactor ID ('fission', 'fusion', 'quantum', 'singularity') - REQUIRED
+            ability1: First ability ID (default 'none')
+            ability2: Second ability ID (default 'none')
         """
+        # Validate required components
+        if chassis is None:
+            raise ValueError("chassis is required")
+        if weapon is None:
+            raise ValueError("weapon is required")
+        if armor is None:
+            raise ValueError("armor is required")
+        if reactor is None:
+            raise ValueError("reactor is required")
+
+        # Store core attributes
         self.x = x
         self.y = y
-        self.unit_type = unit_type  # UNIT_LAND, UNIT_SEA, or UNIT_AIR
-        self.owner = owner  # Player ID (0 = human, 1+ = AI)
+        self.chassis = chassis
+        self.owner = owner
         self.name = name
-        self.chassis_speed = chassis_speed  # Store chassis speed separately
+        self.weapon = weapon
+        self.armor = armor
+        self.reactor = reactor
+        self.ability1 = ability1
+        self.ability2 = ability2
         self.has_moved = False
         self.held = False  # If True, unit won't be auto-cycled for actions
 
-        # Set unit stats based on type (weapon-armor-moves*reactor_level)
-        if unit_type == UNIT_COLONY_POD_LAND:
-            self.weapon = weapon if weapon is not None else 0
-            self.armor = armor if armor is not None else 1
-            self.reactor_level = reactor_level if reactor_level is not None else 1
-            self.weapon_mode = 'noncombat'
-            self.armor_mode = 'projectile'
-        elif unit_type == UNIT_COLONY_POD_SEA:
-            self.weapon = weapon if weapon is not None else 0
-            self.armor = armor if armor is not None else 1
-            self.reactor_level = reactor_level if reactor_level is not None else 1
-            self.weapon_mode = 'noncombat'
-            self.armor_mode = 'projectile'
-        elif unit_type == UNIT_LAND:
-            self.weapon = weapon if weapon is not None else 1
-            self.armor = armor if armor is not None else 1
-            self.reactor_level = reactor_level if reactor_level is not None else 1
-            self.weapon_mode = 'projectile'  # Hand weapons (projectile)
-            self.armor_mode = 'projectile'   # No armor (projectile)
-        elif unit_type == UNIT_SEA:
-            self.weapon = weapon if weapon is not None else 1
-            self.armor = armor if armor is not None else 1
-            self.reactor_level = reactor_level if reactor_level is not None else 1
-            self.weapon_mode = 'projectile'
-            self.armor_mode = 'projectile'
-        elif unit_type == UNIT_AIR:
-            self.weapon = weapon if weapon is not None else 1
-            self.armor = armor if armor is not None else 1
-            self.reactor_level = reactor_level if reactor_level is not None else 1
-            self.weapon_mode = 'missile'     # Air units default to missile
-            self.armor_mode = 'projectile'
-        elif unit_type == UNIT_ARTIFACT:
-            self.weapon = weapon if weapon is not None else 0
-            self.armor = armor if armor is not None else 1
-            self.reactor_level = reactor_level if reactor_level is not None else 1
-            self.weapon_mode = 'noncombat'
-            self.armor_mode = 'projectile'
-        elif unit_type == UNIT_PROBE_TEAM:
-            self.weapon = weapon if weapon is not None else 0
-            self.armor = armor if armor is not None else 1
-            self.reactor_level = reactor_level if reactor_level is not None else 1
-            self.weapon_mode = 'noncombat'
-            self.armor_mode = 'projectile'
-        else:
-            # Default for unknown types
-            self.weapon = weapon if weapon is not None else 1
-            self.armor = armor if armor is not None else 1
-            self.reactor_level = reactor_level if reactor_level is not None else 1
-            self.weapon_mode = 'projectile'
-            self.armor_mode = 'projectile'
+        # Derive modes from component data
+        weapon_data = self.weapon_data
+        armor_data = self.armor_data
+        reactor_data = self.reactor_data
 
+        self.weapon_mode = weapon_data.get('mode', 'projectile')
+        self.armor_mode = armor_data.get('mode', 'projectile')
+        self.reactor_level = reactor_data['power']  # 1-4
+
+        # Movement
         self.moves_remaining = self.max_moves()
 
-        # Health system: max HP = 10 * reactor_level
+        # Health system: max HP = 10 * reactor power
         self.max_health = 10 * self.reactor_level
         self.current_health = self.max_health
 
-        # Morale/Experience system
+        # Morale/Experience
         self.experience = 0
-        self.morale_level = 2  # Start at Green (0=Very Very Green, 1=Very Green, 2=Green, 3=Disciplined, 4=Hardened, 5=Veteran, 6=Commando, 7=Elite)
-        self.kills = 0  # Track total kills for promotion logic
-        self.monolith_upgrade = False  # Has this unit received a monolith morale upgrade?
+        self.morale_level = 2  # Start at Green
+        self.kills = 0
+        self.monolith_upgrade = False
 
         # Artillery capability
-        self.has_artillery = False  # Set to True for artillery units
-        self.artillery_mode = False  # Toggle for artillery firing mode
+        self.has_artillery = False
+        self.artillery_mode = False
 
-        # Air unit fuel system (for UNIT_AIR only)
-        if self.unit_type == UNIT_AIR:
-            self.fuel = 10             # Remaining fuel
-            self.max_fuel = 10         # Maximum fuel capacity
-            self.operational_range = 2  # Turns from base/airbase
-            self.last_refuel_x = x     # Last refuel location
+        # Type-specific systems
+        if self.type == 'air':
+            self.fuel = 10
+            self.max_fuel = 10
+            self.operational_range = 2
+            self.last_refuel_x = x
             self.last_refuel_y = y
         else:
             self.fuel = None
@@ -128,52 +102,92 @@ class Unit:
             self.last_refuel_x = None
             self.last_refuel_y = None
 
-        # Unit support system
-        self.home_base = None       # Base that supports this unit
-        self.support_cost = 1       # Minerals per turn (default 1)
+        # Unit support
+        self.home_base = None
+        self.support_cost = 1
 
-        # Probe team system
-        self.is_probe = (unit_type == UNIT_PROBE_TEAM)
-
-        # Transport system (for sea units carrying land units)
-        if self.unit_type == UNIT_SEA:
-            self.transport_capacity = 4  # Can carry 4 land units
-            self.loaded_units = []       # Units currently loaded
+        # Transport system (for sea units)
+        if self.type == 'sea':
+            self.transport_capacity = 4
+            self.loaded_units = []
         else:
             self.transport_capacity = 0
             self.loaded_units = []
 
-        # Special abilities
-        self.has_cloaking = False           # Invisible to enemies until attacking
-        self.is_cloaked = False             # Current cloak status
-        self.has_drop_pods = False          # Can drop from orbit/air to any tile
-        self.has_amphibious_pods = False    # Can attack from sea
-        self.has_clean_reactor = False      # No support cost
-        self.has_aaa_tracking = False       # +100% vs air units
-        self.has_comm_jammer = False        # -50% enemy defense
-        self.has_blink_displacer = False    # Ignores base defenses
-        self.has_empath_song = False        # +50% vs psi
-        self.has_fungal_payload = False     # Creates fungus on impact
+        # Special weapon checks
+        self.is_probe = (weapon == 'probe')
+        self.is_cloaked = False  # Runtime cloak status
 
-    def max_moves(self):
-        """Return maximum movement points per turn.
+    @property
+    def chassis_data(self):
+        """Get full chassis data dictionary."""
+        from game.unit_components import get_chassis_by_id
+        return get_chassis_by_id(self.chassis)
+
+    @property
+    def weapon_data(self):
+        """Get full weapon data dictionary."""
+        from game.unit_components import get_weapon_by_id
+        return get_weapon_by_id(self.weapon)
+
+    @property
+    def armor_data(self):
+        """Get full armor data dictionary."""
+        from game.unit_components import get_armor_by_id
+        return get_armor_by_id(self.armor)
+
+    @property
+    def reactor_data(self):
+        """Get full reactor data dictionary."""
+        from game.unit_components import get_reactor_by_id
+        return get_reactor_by_id(self.reactor)
+
+    @property
+    def type(self):
+        """Get unit type from chassis ('land', 'sea', or 'air')."""
+        return self.chassis_data['type']
+
+    def has_ability(self, ability_id):
+        """Check if unit has a specific ability.
+
+        Args:
+            ability_id: Ability ID to check for
 
         Returns:
-            int: Movement points available each turn
+            bool: True if unit has this ability in either slot
         """
-        # Use chassis_speed if set, otherwise use default based on unit_type
-        if hasattr(self, 'chassis_speed') and self.chassis_speed is not None:
-            base_moves = self.chassis_speed
-        else:
-            # Fallback for units created without chassis_speed
-            base_moves = 1
-            if self.unit_type == UNIT_AIR:
-                base_moves = 10
-            elif self.unit_type in [UNIT_SEA, UNIT_COLONY_POD_SEA]:
-                base_moves = 4
+        return self.ability1 == ability_id or self.ability2 == ability_id
 
-        # Elite units get +1 move (backward compatibility check)
-        if hasattr(self, 'morale_level') and self.morale_level >= 7:  # Elite
+    # Legacy property accessors for abilities (for backwards compatibility with existing code)
+    def __getattr__(self, name):
+        """Dynamic attribute lookup for has_* ability checks."""
+        if name.startswith('has_'):
+            # Map common ability check patterns to ability IDs
+            ability_map = {
+                'has_cloaking': 'cloaking',
+                'has_drop_pods': 'drop_pods',
+                'has_amphibious_pods': 'amphibious',
+                'has_clean_reactor': 'clean_reactor',
+                'has_aaa_tracking': 'AAA',
+                'has_comm_jammer': 'comm_jammer',
+                'has_blink_displacer': 'blink',
+                'has_empath_song': 'empath',
+                'has_fungal_payload': 'fungal_payload'
+            }
+            if name in ability_map:
+                return self.has_ability(ability_map[name])
+        raise AttributeError(f"'{type(self).__name__}' object has no attribute '{name}'")
+
+    def max_moves(self):
+        """Return maximum movement points per turn."""
+        base_moves = self.chassis_data['speed']
+
+        # Elite units get +1 move
+        if hasattr(self, 'morale_level') and self.morale_level >= 7:
+            base_moves += 1
+
+        # Antigrav struts modifier
+        if self.has_ability('antigrav'):
             base_moves += 1
 
         return base_moves
@@ -192,12 +206,12 @@ class Unit:
         if self.moves_remaining <= 0:
             return False
 
-        # Land units, land colony pods, and artifacts can't enter ocean
-        if self.unit_type in [UNIT_LAND, UNIT_COLONY_POD_LAND, UNIT_ARTIFACT] and tile.is_ocean():
+        # Land units can't enter ocean
+        if self.type == 'land' and tile.is_ocean():
             return False
 
-        # Sea units and sea colony pods can't enter land
-        if self.unit_type in [UNIT_SEA, UNIT_COLONY_POD_SEA] and tile.is_land():
+        # Sea units can't enter land
+        if self.type == 'sea' and tile.is_land():
             return False
 
         # Air units can go anywhere (future: need bases/carriers to land)
@@ -211,7 +225,7 @@ class Unit:
         Returns:
             bool: True if unit is a land or sea colony pod
         """
-        return self.unit_type in [UNIT_COLONY_POD_LAND, UNIT_COLONY_POD_SEA]
+        return self.weapon == 'colony_pod'
 
     def can_artillery_fire_at(self, target_x, target_y):
         """Check if this unit can fire artillery at target coordinates.
@@ -240,7 +254,7 @@ class Unit:
         Returns:
             bool: True if unit is an air unit
         """
-        return self.unit_type == UNIT_AIR
+        return self.type == 'air'
 
     def consume_fuel(self, amount=1):
         """Consume fuel for movement (air units only).
@@ -348,7 +362,7 @@ class Unit:
             return False
 
         # Only land units can be loaded onto transports
-        if unit.unit_type not in [UNIT_LAND, UNIT_COLONY_POD_LAND]:
+        if unit.type != 'land':
             return False
 
         return True
@@ -598,43 +612,34 @@ class Unit:
         return {
             'x': self.x,
             'y': self.y,
-            'unit_type': self.unit_type,
+            'chassis': self.chassis,
+            'weapon': self.weapon,
+            'armor': self.armor,
+            'reactor': self.reactor,
+            'ability1': self.ability1,
+            'ability2': self.ability2,
             'owner': self.owner,
             'name': self.name,
             'moves_remaining': self.moves_remaining,
-            'chassis_speed': getattr(self, 'chassis_speed', None),
-            'weapon': self.weapon,
-            'armor': self.armor,
-            'reactor_level': self.reactor_level,
             'current_health': self.current_health,
             'max_health': self.max_health,
             'morale_level': self.morale_level,
             'experience': self.experience,
             'kills': self.kills,
-            'weapon_mode': self.weapon_mode,
-            'armor_mode': self.armor_mode,
             'monolith_upgrade': self.monolith_upgrade,
-            'has_artillery': getattr(self, 'has_artillery', False),
-            'artillery_mode': getattr(self, 'artillery_mode', False),
-            'fuel': getattr(self, 'fuel', None),
-            'max_fuel': getattr(self, 'max_fuel', None),
-            'operational_range': getattr(self, 'operational_range', None),
-            'last_refuel_x': getattr(self, 'last_refuel_x', None),
-            'last_refuel_y': getattr(self, 'last_refuel_y', None),
+            'has_artillery': self.has_artillery,
+            'artillery_mode': self.artillery_mode,
+            'fuel': self.fuel,
+            'max_fuel': self.max_fuel,
+            'operational_range': self.operational_range,
+            'last_refuel_x': self.last_refuel_x,
+            'last_refuel_y': self.last_refuel_y,
             'home_base_coords': (self.home_base.x, self.home_base.y) if self.home_base else None,
-            'support_cost': getattr(self, 'support_cost', 1),
-            'transport_capacity': getattr(self, 'transport_capacity', 0),
-            'loaded_unit_indices': [id(u) for u in getattr(self, 'loaded_units', [])],  # Will be resolved in game.py
-            'has_cloaking': getattr(self, 'has_cloaking', False),
-            'is_cloaked': getattr(self, 'is_cloaked', False),
-            'has_drop_pods': getattr(self, 'has_drop_pods', False),
-            'has_amphibious_pods': getattr(self, 'has_amphibious_pods', False),
-            'has_clean_reactor': getattr(self, 'has_clean_reactor', False),
-            'has_aaa_tracking': getattr(self, 'has_aaa_tracking', False),
-            'has_comm_jammer': getattr(self, 'has_comm_jammer', False),
-            'has_blink_displacer': getattr(self, 'has_blink_displacer', False),
-            'has_empath_song': getattr(self, 'has_empath_song', False),
-            'has_fungal_payload': getattr(self, 'has_fungal_payload', False)
+            'support_cost': self.support_cost,
+            'transport_capacity': self.transport_capacity,
+            'loaded_unit_indices': [id(u) for u in self.loaded_units],
+            'is_probe': self.is_probe,
+            'is_cloaked': self.is_cloaked
         }
 
     @classmethod
@@ -647,53 +652,41 @@ class Unit:
         Returns:
             Unit: Reconstructed unit instance
         """
-        unit = cls.__new__(cls)
+        # Create unit using new signature
+        unit = Unit(
+            x=data['x'],
+            y=data['y'],
+            chassis=data['chassis'],
+            owner=data['owner'],
+            name=data['name'],
+            weapon=data['weapon'],
+            armor=data['armor'],
+            reactor=data['reactor'],
+            ability1=data.get('ability1', 'none'),
+            ability2=data.get('ability2', 'none')
+        )
 
-        # Copy all attributes from data dict
-        unit.x = data['x']
-        unit.y = data['y']
-        unit.unit_type = data['unit_type']
-        unit.owner = data['owner']
-        unit.name = data['name']
+        # Restore runtime state
         unit.moves_remaining = data['moves_remaining']
-        unit.chassis_speed = data.get('chassis_speed', None)
-        unit.weapon = data['weapon']
-        unit.armor = data['armor']
-        unit.reactor_level = data['reactor_level']
         unit.current_health = data['current_health']
         unit.max_health = data['max_health']
         unit.morale_level = data['morale_level']
         unit.experience = data['experience']
         unit.kills = data['kills']
-        unit.weapon_mode = data['weapon_mode']
-        unit.armor_mode = data['armor_mode']
         unit.monolith_upgrade = data.get('monolith_upgrade', False)
         unit.has_artillery = data.get('has_artillery', False)
         unit.artillery_mode = data.get('artillery_mode', False)
-        unit.fuel = data.get('fuel', None)
-        unit.max_fuel = data.get('max_fuel', None)
-        unit.operational_range = data.get('operational_range', None)
-        unit.last_refuel_x = data.get('last_refuel_x', None)
-        unit.last_refuel_y = data.get('last_refuel_y', None)
-        unit.home_base = None  # Will be reconstructed from base.supported_units
+        unit.fuel = data.get('fuel')
+        unit.max_fuel = data.get('max_fuel')
+        unit.operational_range = data.get('operational_range')
+        unit.last_refuel_x = data.get('last_refuel_x')
+        unit.last_refuel_y = data.get('last_refuel_y')
+        unit.home_base = None  # Reconstructed from base.supported_units
         unit.support_cost = data.get('support_cost', 1)
         unit.transport_capacity = data.get('transport_capacity', 0)
-        unit.loaded_units = []  # Will be reconstructed in game.py from loaded_unit_indices
-        unit.is_probe = data.get('is_probe', unit.unit_type == UNIT_PROBE_TEAM)
-
-        # Special abilities
-        unit.has_cloaking = data.get('has_cloaking', False)
+        unit.loaded_units = []  # Reconstructed in game.py
+        unit.is_probe = data.get('is_probe', unit.weapon == 'probe')
         unit.is_cloaked = data.get('is_cloaked', False)
-        unit.has_drop_pods = data.get('has_drop_pods', False)
-        unit.has_amphibious_pods = data.get('has_amphibious_pods', False)
-        unit.has_clean_reactor = data.get('has_clean_reactor', False)
-        unit.has_aaa_tracking = data.get('has_aaa_tracking', False)
-        unit.has_comm_jammer = data.get('has_comm_jammer', False)
-        unit.has_blink_displacer = data.get('has_blink_displacer', False)
-        unit.has_empath_song = data.get('has_empath_song', False)
-        unit.has_fungal_payload = data.get('has_fungal_payload', False)
-
-        # Reset per-turn state
-        unit.has_moved = False
+        unit.has_moved = False  # Reset per-turn state
 
         return unit

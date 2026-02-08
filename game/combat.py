@@ -12,7 +12,6 @@ coordinates with the Game class to modify units and game state.
 """
 
 import random
-from game.data.constants import UNIT_LAND, UNIT_AIR
 
 
 class Combat:
@@ -86,7 +85,7 @@ class Combat:
                     })
 
                 # AAA vs air units (+100%)
-                if 'AAA' in unit.abilities and vs_unit.unit_type == UNIT_AIR:
+                if 'AAA' in unit.abilities and vs_unit.type == 'air':
                     modifiers.append({
                         'name': 'AAA vs Air',
                         'multiplier': 2.00,
@@ -94,7 +93,7 @@ class Combat:
                     })
 
             # AAA Tracking ability (+100% vs air)
-            if vs_unit and getattr(unit, 'has_aaa_tracking', False) and vs_unit.unit_type == UNIT_AIR:
+            if vs_unit and unit.has_aaa_tracking and vs_unit.type == 'air':
                 modifiers.append({
                     'name': 'AAA Tracking',
                     'multiplier': 2.00,
@@ -102,7 +101,7 @@ class Combat:
                 })
 
             # Blink Displacer ignores base defenses (cancel base defense if attacker has it)
-            if vs_unit and getattr(vs_unit, 'has_blink_displacer', False) and tile and tile.base:
+            if vs_unit and vs_unit.has_blink_displacer and tile and tile.base:
                 # We'll handle this by reducing the base defense bonus, but that needs to be done
                 # on the attacker side. For now, we'll add a note that defender loses base bonus.
                 pass
@@ -125,7 +124,7 @@ class Combat:
             defender_tile = self.game.game_map.get_tile(vs_unit.x, vs_unit.y) if vs_unit else None
 
             # Infantry attacking base bonus
-            if unit.unit_type == UNIT_LAND and defender_tile and defender_tile.base:
+            if unit.type == 'land' and defender_tile and defender_tile.base:
                 modifiers.append({
                     'name': 'Infantry vs Base',
                     'multiplier': 1.25,
@@ -239,8 +238,10 @@ class Combat:
             float: Probability of attacker winning (0.0 to 1.0)
         """
         # Base strength: weapon/armor * health
-        attacker_base_strength = attacker.weapon * attacker.current_health
-        defender_base_strength = defender.armor * defender.current_health
+        attacker_weapon_value = attacker.weapon_data['attack']
+        defender_armor_value = defender.armor_data['defense']
+        attacker_base_strength = attacker_weapon_value * attacker.current_health
+        defender_base_strength = defender_armor_value * defender.current_health
 
         # Apply modifiers (pass opponent for mode bonuses)
         attacker_modifiers = self.get_combat_modifiers(attacker, is_defender=False, vs_unit=defender)
@@ -329,14 +330,18 @@ class Combat:
         for mod in defender_modifiers:
             defender_modifier_total *= mod['multiplier']
 
+        # Get attack and defense values from component data
+        attacker_weapon_value = attacker.weapon_data['attack']
+        defender_armor_value = defender.armor_data['defense']
+
         # Simulate combat using temporary HP values (don't modify units yet)
         sim_attacker_hp = original_attacker_hp
         sim_defender_hp = original_defender_hp
 
         while sim_attacker_hp > 0 and sim_defender_hp > 0:
             # Calculate odds for this round based on current sim HP and modifiers
-            attacker_strength = attacker.weapon * sim_attacker_hp * attacker_modifier_total
-            defender_strength = defender.armor * sim_defender_hp * defender_modifier_total
+            attacker_strength = attacker_weapon_value * sim_attacker_hp * attacker_modifier_total
+            defender_strength = defender_armor_value * sim_defender_hp * defender_modifier_total
             total_strength = attacker_strength + defender_strength
 
             if total_strength == 0:

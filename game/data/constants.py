@@ -45,16 +45,5 @@ COLOR_COUNCIL_ACCENT = (60, 180, 120)
 COLOR_COUNCIL_BORDER = (80, 200, 140)
 COLOR_COUNCIL_BOX = (25, 35, 30)
 
-#TODO: This is all data contained in the unit itself. These should be deleted.
-# Unit types
-UNIT_LAND = "land"
-UNIT_SEA = "sea"
-UNIT_AIR = "air"
-UNIT_COLONY_POD_LAND = "colony_pod_land"
-UNIT_COLONY_POD_SEA = "colony_pod_sea"
-UNIT_ARTIFACT = "artifact"
-UNIT_PROBE_TEAM = "probe_team"
-
 ai_turn_delay = 300  # milliseconds between AI unit moves
 scroll_delay = 300  # milliseconds between scroll ticks
-

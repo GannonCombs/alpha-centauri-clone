@@ -6,7 +6,6 @@ distance calculations, and basic pathfinding. The AI can move units,
 found bases, and make strategic decisions without using modern ML techniques.
 """
 import random
-from game.data.constants import UNIT_COLONY_POD_LAND, UNIT_COLONY_POD_SEA
 
 
 class AIPlayer:
@@ -267,9 +266,9 @@ class AIPlayer:
                         continue
 
                     # Check if unit can exist on this terrain
-                    if unit.unit_type == UNIT_COLONY_POD_LAND and tile.is_ocean():
+                    if unit.weapon == 'colony_pod' and unit.weapon.chassis in ['foil', 'cruiser', 'gravship'] and tile.is_ocean():
                         continue
-                    if unit.unit_type == UNIT_COLONY_POD_SEA and tile.is_land():
+                    if unit.weapon == 'colony_pod' and unit.weapon.chassis in ['infantry', 'rover', 'hovertank', 'gravship'] and tile.is_land():
                         continue
 
                     if self._is_good_base_location(check_x, check_y, game):
@@ -361,8 +360,10 @@ class AIPlayer:
             float: Probability of attacker winning (0.0 to 1.0)
         """
         # Factor in both combat strength and current health
-        attacker_strength = attacker.weapon * attacker.current_health
-        defender_strength = defender.armor * defender.current_health
+        attacker_weapon_value = attacker.weapon_data['attack']
+        defender_armor_value = defender.armor_data['defense']
+        attacker_strength = attacker_weapon_value * attacker.current_health
+        defender_strength = defender_armor_value * defender.current_health
 
         total_strength = attacker_strength + defender_strength
         if total_strength == 0:

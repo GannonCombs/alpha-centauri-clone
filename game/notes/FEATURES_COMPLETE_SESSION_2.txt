@@ -135,7 +135,7 @@ KEY ADDITIONS:
 
 TRANSPORT MECHANICS:
 - Only sea units have transport capacity (default 4)
-- Only land units can be loaded (UNIT_LAND, UNIT_COLONY_POD_LAND)
+- Only land units can be loaded
 - Loaded units move with the transport automatically
 - Loaded units are removed from the map (hidden inside transport)
 - Unloading must be to adjacent land tiles

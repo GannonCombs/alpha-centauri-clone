@@ -82,28 +82,22 @@ class DesignWorkshopScreen:
 
     def _initialize_default_designs_in_slots(self):
         """Initialize default unit designs in first two slots."""
-        from game.unit_components import generate_unit_name
-
         # Basic starting designs (no tech required)
         self.design_slots[0] = {
-            "name": generate_unit_name('hand_weapons', 'infantry'),
-            "chassis": "Infantry",
-            "weapon": "Hand Weapons",
-            "armor": "No Armor",
-            "reactor": "Fission",
-            "weapon_power": 1,
-            "armor_defense": 1,
-            "chassis_speed": 1
+            "chassis": "infantry",
+            "weapon": "hand_weapons",
+            "armor": "no_armor",
+            "reactor": "fission",
+            "ability1": "none",
+            "ability2": "none"
         }
         self.design_slots[1] = {
-            "name": generate_unit_name('colony_pod', 'infantry'),
-            "chassis": "Infantry",
-            "weapon": "Colony Module",
-            "armor": "No Armor",
-            "reactor": "Fission",
-            "weapon_power": 0,
-            "armor_defense": 1,
-            "chassis_speed": 1
+            "chassis": "infantry",
+            "weapon": "colony_pod",
+            "armor": "no_armor",
+            "reactor": "fission",
+            "ability1": "none",
+            "ability2": "none"
         }
 
     def _find_first_empty_slot(self):
@@ -134,35 +128,14 @@ class DesignWorkshopScreen:
             self.dw_selected_ability1 = 'none'
             self.dw_selected_ability2 = 'none'
         else:
-            # Load existing design
+            # Load existing design (already stores IDs)
             design = self.design_slots[slot_index]
-            # Map display names back to IDs
-            from game.unit_components import CHASSIS, WEAPONS, ARMOR, REACTORS
-
-            # Find component IDs from names
-            for c in CHASSIS:
-                if c['name'] == design['chassis']:
-                    self.dw_selected_chassis = c['id']
-                    break
-
-            for w in WEAPONS:
-                if w['name'] == design['weapon']:
-                    self.dw_selected_weapon = w['id']
-                    break
-
-            for a in ARMOR:
-                if a['name'] == design['armor']:
-                    self.dw_selected_armor = a['id']
-                    break
-
-            for r in REACTORS:
-                if r['name'] == design['reactor']:
-                    self.dw_selected_reactor = r['id']
-                    break
-
-            # Abilities default to none if not in design
-            self.dw_selected_ability1 = design.get('ability1_id', 'none')
-            self.dw_selected_ability2 = design.get('ability2_id', 'none')
+            self.dw_selected_chassis = design['chassis']
+            self.dw_selected_weapon = design['weapon']
+            self.dw_selected_armor = design['armor']
+            self.dw_selected_reactor = design['reactor']
+            self.dw_selected_ability1 = design.get('ability1', 'none')
+            self.dw_selected_ability2 = design.get('ability2', 'none')
 
     def check_if_tech_unlocks_components(self, tech_id, tech_tree):
         """Check if a specific tech unlocks any new components.
@@ -226,7 +199,9 @@ class DesignWorkshopScreen:
             print(f"  Triggered by tech: {completed_tech_id}")
 
         # Keep existing designs (don't reset!)
-        existing_names = {d['name'] for d in self.unit_designs}
+        # Generate names from component IDs for duplicate checking
+        existing_names = {generate_unit_name(d['weapon'], d['chassis'], d['armor'], d['reactor'])
+                          for d in self.unit_designs}
 
         # Get available components
         available_chassis = [c for c in CHASSIS if c['prereq'] is None or tech_tree.has_tech(c['prereq'])]
@@ -274,14 +249,12 @@ class DesignWorkshopScreen:
                             design_name = generate_unit_name(weapon['id'], chassis['id'], min_armor_obj['id'])
                             if design_name not in existing_names:
                                 new_designs.append({
-                                    "name": design_name,
-                                    "chassis": chassis['name'],
-                                    "weapon": weapon['name'],
-                                    "armor": min_armor_obj['name'],
-                                    "reactor": best_reactor['name'],
-                                    "weapon_power": weapon['attack'],
-                                    "armor_defense": min_armor_obj['defense'],
-                                    "chassis_speed": chassis['speed']
+                                    "chassis": chassis['id'],
+                                    "weapon": weapon['id'],
+                                    "armor": min_armor_obj['id'],
+                                    "reactor": best_reactor['id'],
+                                    "ability1": "none",
+                                    "ability2": "none"
                                 })
 
                         # Max-armor variant (tank) - only for ground units
@@ -289,14 +262,12 @@ class DesignWorkshopScreen:
                             design_name = generate_unit_name(weapon['id'], chassis['id'], best_armor['id'])
                             if design_name not in existing_names:
                                 new_designs.append({
-                                    "name": design_name,
-                                    "chassis": chassis['name'],
-                                    "weapon": weapon['name'],
-                                    "armor": best_armor['name'],
-                                    "reactor": best_reactor['name'],
-                                    "weapon_power": weapon['attack'],
-                                    "armor_defense": best_armor['defense'],
-                                    "chassis_speed": chassis['speed']
+                                    "chassis": chassis['id'],
+                                    "weapon": weapon['id'],
+                                    "armor": best_armor['id'],
+                                    "reactor": best_reactor['id'],
+                                    "ability1": "none",
+                                    "ability2": "none"
                                 })
 
             # New armor unlocked: create units with best weapon
@@ -310,14 +281,12 @@ class DesignWorkshopScreen:
                                 design_name = generate_unit_name(best_weapon['id'], chassis['id'], armor['id'])
                                 if design_name not in existing_names:
                                     new_designs.append({
-                                        "name": design_name,
-                                        "chassis": chassis['name'],
-                                        "weapon": best_weapon['name'],
-                                        "armor": armor['name'],
-                                        "reactor": best_reactor['name'],
-                                        "weapon_power": best_weapon['attack'],
-                                        "armor_defense": armor['defense'],
-                                        "chassis_speed": chassis['speed']
+                                        "chassis": chassis['id'],
+                                        "weapon": best_weapon['id'],
+                                        "armor": armor['id'],
+                                        "reactor": best_reactor['id'],
+                                        "ability1": "none",
+                                        "ability2": "none"
                                     })
 
             # New chassis unlocked: create basic version
@@ -328,14 +297,12 @@ class DesignWorkshopScreen:
                     design_name = generate_unit_name(best_weapon['id'], chassis['id'], armor_to_use['id'])
                     if design_name not in existing_names:
                         new_designs.append({
-                            "name": design_name,
-                            "chassis": chassis['name'],
-                            "weapon": best_weapon['name'],
-                            "armor": armor_to_use['name'],
-                            "reactor": best_reactor['name'],
-                            "weapon_power": best_weapon['attack'],
-                            "armor_defense": armor_to_use['defense'],
-                            "chassis_speed": chassis['speed']
+                            "chassis": chassis['id'],
+                            "weapon": best_weapon['id'],
+                            "armor": armor_to_use['id'],
+                            "reactor": best_reactor['id'],
+                            "ability1": "none",
+                            "ability2": "none"
                         })
 
                 # Also create colony pod version if available
@@ -344,29 +311,31 @@ class DesignWorkshopScreen:
                     design_name = generate_unit_name('colony_pod', chassis['id'])
                     if design_name not in existing_names:
                         new_designs.append({
-                            "name": design_name,
-                            "chassis": chassis['name'],
-                            "weapon": colony_weapon['name'],
-                            "armor": "No Armor",
-                            "reactor": best_reactor['name']
+                            "chassis": chassis['id'],
+                            "weapon": colony_weapon['id'],
+                            "armor": "no_armor",
+                            "reactor": best_reactor['id'],
+                            "ability1": "none",
+                            "ability2": "none"
                         })
 
         # Add all new designs to first available empty slots
         added_count = 0
         for design in new_designs:
-            if design['name'] not in existing_names:
+            design_name = generate_unit_name(design['weapon'], design['chassis'], design['armor'], design['reactor'])
+            if design_name not in existing_names:
                 # Find first empty slot
                 for i in range(64):
                     if self.design_slots[i] is None:
                         self.design_slots[i] = design
-                        existing_names.add(design['name'])
+                        existing_names.add(design_name)
                         added_count += 1
                         break
 
         print(f"  Added {added_count} new designs")
         print(f"  Final design count: {len(self.unit_designs)}")
-        if new_designs:
-            print(f"  New designs: {[d['name'] for d in new_designs]}")
+        if added_count > 0:
+            print(f"  Added {added_count} new design variants")
 
     def _get_armor_for_chassis(self, chassis, best_armor, no_armor):
         """Determine appropriate armor for a chassis following SMAC rules.
@@ -568,16 +537,25 @@ class DesignWorkshopScreen:
                     pygame.draw.rect(screen, bg_color, design_rect, border_radius=6)
                     pygame.draw.rect(screen, border_color, design_rect, border_width, border_radius=6)
 
+                    # Generate design name from components
+                    from game.unit_components import generate_unit_name
+                    design_name = generate_unit_name(
+                        design['weapon'], design['chassis'], design['armor'], design['reactor']
+                    )
+
                     # Design name (wrapped)
-                    name_lines = self._wrap_text(design["name"], design_size - 10, self.small_font)
+                    name_lines = self._wrap_text(design_name, design_size - 10, self.small_font)
                     for j, line in enumerate(name_lines[:2]):  # Max 2 lines (leave room for stats)
                         line_surf = self.small_font.render(line, True, COLOR_TEXT)
                         screen.blit(line_surf, (design_rect.x + 5, design_rect.y + 10 + j * 18))
 
-                    # Unit stats (weapon-armor-speed) below name
-                    weapon_power = design.get('weapon_power', 0)
-                    armor_defense = design.get('armor_defense', 0)
-                    chassis_speed = design.get('chassis_speed', 1)
+                    # Unit stats (weapon-armor-speed) below name - look up from IDs
+                    weapon_data = unit_components.get_weapon_by_id(design['weapon'])
+                    armor_data = unit_components.get_armor_by_id(design['armor'])
+                    chassis_data = unit_components.get_chassis_by_id(design['chassis'])
+                    weapon_power = weapon_data['attack'] if weapon_data else 0
+                    armor_defense = armor_data['defense'] if armor_data else 0
+                    chassis_speed = chassis_data['speed'] if chassis_data else 1
                     stats_text = f"{weapon_power}-{armor_defense}-{chassis_speed}"
                     stats_surf = self.small_font.render(stats_text, True, (200, 220, 100))
                     screen.blit(stats_surf, (design_rect.centerx - stats_surf.get_width() // 2,
@@ -965,9 +943,7 @@ class DesignWorkshopScreen:
         if self.rename_popup_open:
             # Check OK button
             if hasattr(self, 'dw_rename_ok_rect') and self.dw_rename_ok_rect and self.dw_rename_ok_rect.collidepoint(pos):
-                # Apply the rename
-                if self.design_slots[self.selected_slot] is not None and self.rename_text_input.strip():
-                    self.design_slots[self.selected_slot]['name'] = self.rename_text_input.strip()
+                # Rename not supported - names are auto-generated from components
                 self.rename_popup_open = False
                 self.rename_text_selected = False
                 return None
@@ -1107,27 +1083,23 @@ class DesignWorkshopScreen:
                     reactor_obj = r
                     break
 
-            # Generate name for this design - pass armor and reactor for correct SMAC naming
+            # Create the design dict (store component IDs)
+            new_design = {
+                "chassis": self.dw_selected_chassis,
+                "weapon": self.dw_selected_weapon,
+                "armor": self.dw_selected_armor,
+                "reactor": self.dw_selected_reactor,
+                "ability1": self.dw_selected_ability1,
+                "ability2": self.dw_selected_ability2
+            }
+
+            # Generate name for logging
             design_name = generate_unit_name(
                 self.dw_selected_weapon,
                 self.dw_selected_chassis,
                 self.dw_selected_armor,
                 self.dw_selected_reactor
             )
-
-            # Create the design dict
-            new_design = {
-                "name": design_name,
-                "chassis": chassis_obj['name'] if chassis_obj else "Infantry",
-                "weapon": weapon_obj['name'] if weapon_obj else "Hand Weapons",
-                "armor": armor_obj['name'] if armor_obj else "No Armor",
-                "reactor": reactor_obj['name'] if reactor_obj else "Fission",
-                "ability1_id": self.dw_selected_ability1,
-                "ability2_id": self.dw_selected_ability2,
-                "weapon_power": weapon_obj['attack'] if weapon_obj else 1,
-                "armor_defense": armor_obj['defense'] if armor_obj else 1,
-                "chassis_speed": chassis_obj['speed'] if chassis_obj else 1
-            }
 
             # Save to the currently selected slot
             self.design_slots[self.selected_slot] = new_design
@@ -1184,9 +1156,7 @@ class DesignWorkshopScreen:
         """
         if self.rename_popup_open:
             if event.key == pygame.K_RETURN or event.key == pygame.K_KP_ENTER:
-                # Enter key - apply rename
-                if self.design_slots[self.selected_slot] is not None and self.rename_text_input.strip():
-                    self.design_slots[self.selected_slot]['name'] = self.rename_text_input.strip()
+                # Rename not supported - names are auto-generated
                 self.rename_popup_open = False
                 self.rename_text_selected = False
                 return True

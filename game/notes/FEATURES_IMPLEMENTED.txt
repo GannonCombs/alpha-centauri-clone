@@ -184,12 +184,10 @@ control enemy bases. Actions cost energy credits and have variable success
 rates based on unit morale vs. target defenses.
 
 FILES MODIFIED:
-- constants.py: Added UNIT_PROBE_TEAM
 - unit.py: Added probe team unit type and is_probe flag
 - game.py: Added probe action methods
 
 KEY ADDITIONS:
-- UNIT_PROBE_TEAM constant
 - Unit.is_probe - Flag for probe teams
 - Game.calculate_probe_success() - Success probability calculation
 - Game.execute_probe_action() - Execute probe actions
@@ -287,9 +285,6 @@ Core Game Files:
 - unit.py - Unit behavior (fuel, support, probe teams)
 - game.py - Game state (energy allocation, air fuel, probe actions)
 - tech.py - Research system (receives labs output)
-
-Constants:
-- constants.py - UNIT_PROBE_TEAM constant
 
 UI Files (for future work):
 - ui/base_screens.py - Base view (needs energy/happiness display)

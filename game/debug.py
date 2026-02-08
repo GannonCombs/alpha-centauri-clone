@@ -8,7 +8,6 @@ Usage: Press Ctrl+Shift+D to toggle debug mode, then use hotkeys.
 """
 
 import pygame
-from game.data.constants import UNIT_LAND, UNIT_SEA, UNIT_AIR, UNIT_COLONY_POD_LAND, UNIT_ARTIFACT
 from game.unit import Unit
 from game.base import Base
 
@@ -150,17 +149,16 @@ class DebugManager:
                 game.set_status_message("DEBUG: Select your unit first")
             return True
 
-        # Number keys 1-5 for quick unit spawning when in spawn mode
+        # Number keys 1-4 for quick unit spawning when in spawn mode
         if self.cursor_spawn_mode == 'unit':
-            unit_types = {
-                pygame.K_1: UNIT_LAND,
-                pygame.K_2: UNIT_COLONY_POD_LAND,
-                pygame.K_3: UNIT_SEA,
-                pygame.K_4: UNIT_AIR,
-                pygame.K_5: UNIT_ARTIFACT
+            chassis_map = {
+                pygame.K_1: 'infantry',
+                pygame.K_2: 'foil',
+                pygame.K_3: 'needlejet',
+                pygame.K_4: 'artifact'  # Special case - will use infantry chassis with artifact weapon
             }
-            if event.key in unit_types:
-                self._spawn_unit_at_location(game, unit_types[event.key])
+            if event.key in chassis_map:
+                self._spawn_unit_at_location(game, chassis_map[event.key])
                 self.cursor_spawn_mode = None
                 return True
 
@@ -182,33 +180,48 @@ class DebugManager:
     def _show_unit_spawn_menu(self, game):
         """Show quick spawn menu."""
         self.cursor_spawn_mode = 'unit'
-        game.set_status_message("DEBUG: Press 1=Land, 2=Colony, 3=Sea, 4=Air, 5=Artifact")
+        game.set_status_message("DEBUG: Press 1=Infantry, 2=Foil, 3=Needlejet, 4=Artifact")
         print("DEBUG: Unit spawn mode - press number key to spawn")
 
-    def _spawn_unit_at_location(self, game, unit_type):
-        """Spawn a unit at the selected unit's location."""
+    def _spawn_unit_at_location(self, game, chassis):
+        """Spawn unit at selected location.
+
+        Args:
+            chassis: Chassis ID ('infantry', 'foil', 'needlejet', 'artifact')
+        """
         if not game.selected_unit:
             return
 
         x, y = game.selected_unit.x, game.selected_unit.y
-        unit_names = {
-            UNIT_LAND: "Debug Scout",
-            UNIT_COLONY_POD_LAND: "Debug Colony Pod",
-            UNIT_SEA: "Debug Foil",
-            UNIT_AIR: "Debug Needlejet",
-            UNIT_ARTIFACT: "Debug Artifact"
+
+        # Map chassis to test weapons and names
+        test_configs = {
+            'infantry': ('hand_weapons', "Debug Scout"),
+            'foil': ('laser', "Debug Foil"),
+            'needlejet': ('missile_launcher', "Debug Needlejet"),
+            'artifact': ('artifact', "Debug Artifact"),  # Special case
         }
 
-        unit = Unit(x, y, unit_type, game.player_id, unit_names.get(unit_type, "Debug Unit"))
+        weapon, name = test_configs.get(chassis, ('hand_weapons', "Debug Unit"))
 
-        # Give land units artillery capability for testing
-        if unit_type == UNIT_LAND:
+        unit = Unit(
+            x=x, y=y,
+            chassis=chassis if chassis != 'artifact' else 'infantry',  # Artifacts use infantry chassis
+            owner=game.player_faction_id,
+            name=name,
+            weapon=weapon,
+            armor='no_armor',
+            reactor='fission'
+        )
+
+        # Give land units artillery for testing
+        if unit.type == 'land':
             unit.has_artillery = True
 
         game.units.append(unit)
         game.game_map.add_unit_at(x, y, unit)
         game.set_status_message(f"DEBUG: Spawned {unit.name} at ({x}, {y})")
-        print(f"DEBUG: Spawned {unit_names.get(unit_type, 'unit')} at ({x}, {y})")
+        print(f"DEBUG: Spawned {name} at ({x}, {y})")
 
     def _upgrade_morale(self, unit, game):
         """Upgrade unit morale by one level."""

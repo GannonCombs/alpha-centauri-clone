@@ -22,7 +22,6 @@ from game.ai import AIPlayer
 from game.tech import TechTree
 from game.territory import TerritoryManager
 from game.combat import Combat
-from game.data.constants import UNIT_LAND, UNIT_SEA, UNIT_AIR, UNIT_COLONY_POD_LAND, UNIT_COLONY_POD_SEA
 from game.debug import DebugManager  # DEBUG: Remove for release
 
 
@@ -224,16 +223,35 @@ class Game:
                 tile_idx += 1  # Move to next tile for next faction
 
                 # Scout Patrol (owner = faction_id)
-                unit = Unit(x, y, UNIT_LAND, faction_id, f"{faction_prefix} Scout Patrol")
-                self.units.append(unit)
-                self.game_map.set_unit_at(x, y, unit)
-                print(f"Spawned {faction_prefix} Scout Patrol at ({x}, {y})")
+                from game.unit_components import generate_unit_name
+                scout_name = generate_unit_name('hand_weapons', 'infantry', 'no_armor', 'fission')
+                scout = Unit(
+                    x=x, y=y,
+                    chassis='infantry',
+                    owner=faction_id,
+                    name=f"{faction_prefix} {scout_name}",
+                    weapon='hand_weapons',
+                    armor='no_armor',
+                    reactor='fission'
+                )
+                self.units.append(scout)
+                self.game_map.set_unit_at(x, y, scout)
+                print(f"Spawned {faction_prefix} {scout_name} at ({x}, {y})")
 
                 # Colony Pod (same tile, owner = faction_id)
-                unit = Unit(x, y, UNIT_COLONY_POD_LAND, faction_id, f"{faction_prefix} Colony Pod")
-                self.units.append(unit)
-                self.game_map.set_unit_at(x, y, unit)
-                print(f"Spawned {faction_prefix} Colony Pod at ({x}, {y})")
+                colony_name = generate_unit_name('colony_pod', 'infantry', 'no_armor', 'fission')
+                colony = Unit(
+                    x=x, y=y,
+                    chassis='infantry',
+                    owner=faction_id,
+                    name=f"{faction_prefix} {colony_name}",
+                    weapon='colony_pod',
+                    armor='no_armor',
+                    reactor='fission'
+                )
+                self.units.append(colony)
+                self.game_map.set_unit_at(x, y, colony)
+                print(f"Spawned {faction_prefix} {colony_name} at ({x}, {y})")
 
         print(f"Total units spawned: {len(self.units)}")
 
@@ -300,10 +318,8 @@ class Game:
         Returns:
             bool: True if move violates ZOC, False if allowed
         """
-        from game.data.constants import UNIT_LAND, UNIT_ARTIFACT
-
         # Only land units are affected by ZOC
-        if unit.unit_type not in [UNIT_LAND, UNIT_ARTIFACT]:
+        if unit.type != 'land':
             return False
 
         # Check if starting position has enemy ZOC
@@ -472,7 +488,7 @@ class Game:
             target_tile.displayed_unit_index = target_tile.units.index(unit)
 
         # Check for supply pod (air units cannot collect supply pods)
-        if target_tile.supply_pod and unit.unit_type != UNIT_AIR:
+        if target_tile.supply_pod and unit.type != 'air':
             self._collect_supply_pod(target_tile, unit)
 
         # Check for monolith
@@ -557,7 +573,6 @@ class Game:
             unit: The unit collecting the pod
         """
         import random
-        from game.data.constants import UNIT_ARTIFACT
 
         # Remove the pod from the tile
         tile.supply_pod = False
@@ -566,7 +581,15 @@ class Game:
         if random.random() < 0.25:
             # Create artifact unit at this location
             from game.unit import Unit
-            artifact = Unit(tile.x, tile.y, UNIT_ARTIFACT, unit.owner, "Alien Artifact")
+            artifact = Unit(
+                x=tile.x, y=tile.y,
+                chassis='infantry',
+                owner=unit.owner,
+                name="Alien Artifact",
+                weapon='artifact',  # Use new artifact weapon
+                armor='no_armor',
+                reactor='fission'
+            )
             artifact.moves_remaining = 0  # Can't move on turn discovered
             artifact.has_moved = True
             self.units.append(artifact)
@@ -678,7 +701,7 @@ class Game:
                     })
 
                 # AAA vs air units (+100%)
-                if 'AAA' in unit.abilities and vs_unit.unit_type == UNIT_AIR:
+                if 'AAA' in unit.abilities and vs_unit.type == 'air':
                     modifiers.append({
                         'name': 'AAA vs Air',
                         'multiplier': 2.00,
@@ -686,7 +709,7 @@ class Game:
                     })
 
             # AAA Tracking ability (+100% vs air)
-            if vs_unit and getattr(unit, 'has_aaa_tracking', False) and vs_unit.unit_type == UNIT_AIR:
+            if vs_unit and unit.has_aaa_tracking and vs_unit.type == 'air':
                 modifiers.append({
                     'name': 'AAA Tracking',
                     'multiplier': 2.00,
@@ -717,7 +740,7 @@ class Game:
             defender_tile = self.game_map.get_tile(vs_unit.x, vs_unit.y) if vs_unit else None
 
             # Infantry attacking base bonus
-            if unit.unit_type == UNIT_LAND and defender_tile and defender_tile.base:
+            if unit.type == 'land' and defender_tile and defender_tile.base:
                 modifiers.append({
                     'name': 'Infantry vs Base',
                     'multiplier': 1.25,
@@ -833,8 +856,10 @@ class Game:
             float: Probability of attacker winning (0.0 to 1.0)
         """
         # Base strength: weapon/armor * health
-        attacker_base_strength = attacker.weapon * attacker.current_health
-        defender_base_strength = defender.armor * defender.current_health
+        attacker_weapon_value = attacker.weapon_data['attack']
+        defender_armor_value = defender.armor_data['defense']
+        attacker_base_strength = attacker_weapon_value * attacker.current_health
+        defender_base_strength = defender_armor_value * defender.current_health
 
         # Apply modifiers (pass opponent for mode bonuses)
         attacker_modifiers = self.get_combat_modifiers(attacker, is_defender=False, vs_unit=defender)
@@ -926,14 +951,18 @@ class Game:
         for mod in defender_modifiers:
             defender_modifier_total *= mod['multiplier']
 
+        # Get attack and defense values from component data
+        attacker_weapon_value = attacker.weapon_data['attack']
+        defender_armor_value = defender.armor_data['defense']
+
         # Simulate combat using temporary HP values (don't modify units yet)
         sim_attacker_hp = original_attacker_hp
         sim_defender_hp = original_defender_hp
 
         while sim_attacker_hp > 0 and sim_defender_hp > 0:
             # Calculate odds for this round based on current sim HP and modifiers
-            attacker_strength = attacker.weapon * sim_attacker_hp * attacker_modifier_total
-            defender_strength = defender.armor * sim_defender_hp * defender_modifier_total
+            attacker_strength = attacker_weapon_value * sim_attacker_hp * attacker_modifier_total
+            defender_strength = defender_armor_value * sim_defender_hp * defender_modifier_total
             total_strength = attacker_strength + defender_strength
 
             if total_strength == 0:
@@ -1288,7 +1317,8 @@ class Game:
             return False
 
         # Artillery damage: weapon strength * random(1-3) * 0.5 (artillery penalty)
-        base_damage = unit.weapon * random.randint(1, 3)
+        weapon_attack = unit.weapon_data['attack']
+        base_damage = weapon_attack * random.randint(1, 3)
         artillery_damage = max(1, int(base_damage * 0.5))  # At least 1 damage
 
         target_unit.take_damage(artillery_damage)
@@ -1781,36 +1811,51 @@ class Game:
                 self.set_status_message(f"{base.name} built {item_name}")
             return
 
-        # Map unit names to unit types
-        unit_type_map = {
-            "Scout Patrol": UNIT_LAND,
-            "Gunship Foil": UNIT_SEA,
-            "Gunship Needlejet": UNIT_AIR,
-            "Colony Pod": UNIT_COLONY_POD_LAND,
-            "Sea Colony Pod": UNIT_COLONY_POD_SEA
-        }
+        # Find design for this unit
+        from game.unit_components import generate_unit_name
+        design = None
 
-        unit_type = unit_type_map.get(item_name, UNIT_LAND)
+        # Access design workshop through ui_manager
+        if not hasattr(self, 'ui_manager') or not hasattr(self.ui_manager, 'social_screens'):
+            print(f"WARNING: Design workshop not available, cannot spawn {item_name}")
+            return
 
-        # Determine chassis speed based on unit name (temporary until full design lookup)
-        chassis_speed = None
-        if "Speeder" in item_name or "Rover" in item_name:
-            chassis_speed = 2
-        elif "Hovertank" in item_name or "Tank" in item_name:
-            chassis_speed = 3
-        elif "Foil" in item_name:
-            chassis_speed = 4
-        elif "Cruiser" in item_name or "Destroyer" in item_name:
-            chassis_speed = 6
-        elif "Needlejet" in item_name or "Copter" in item_name or "Chopper" in item_name:
-            chassis_speed = 8
-        elif "Gravship" in item_name:
-            chassis_speed = 8
+        workshop = self.ui_manager.social_screens.design_workshop_screen
+        for d in workshop.unit_designs:
+            design_name = generate_unit_name(
+                d['weapon'], d['chassis'], d['armor'], d['reactor']
+            )
+            if design_name == item_name:
+                design = d
+                break
 
-        # Spawn at the base location (stacking is now allowed)
-        unit = Unit(base.x, base.y, unit_type, base.owner, item_name, chassis_speed=chassis_speed)
+        if not design:
+            print(f"WARNING: No design found for {item_name}")
+            return
 
-        # Assign home base for unit support
+        # Extract components from design
+        chassis = design['chassis']
+        weapon = design['weapon']
+        armor = design['armor']
+        reactor = design['reactor']
+        ability1 = design.get('ability1', 'none')
+        ability2 = design.get('ability2', 'none')
+
+        # Create unit
+        from game.unit import Unit
+        unit = Unit(
+            x=base.x, y=base.y,
+            chassis=chassis,
+            owner=base.owner,
+            name=item_name,
+            weapon=weapon,
+            armor=armor,
+            reactor=reactor,
+            ability1=ability1,
+            ability2=ability2
+        )
+
+        # Assign home base
         unit.home_base = base
         base.supported_units.append(unit)
 

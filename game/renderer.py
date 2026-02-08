@@ -15,8 +15,7 @@ import pygame
 from game.data import constants
 from game.data.constants import (TILE_SIZE, COLOR_OCEAN, COLOR_LAND, COLOR_GRID, COLOR_BLACK,
                                  COLOR_UNIT_SELECTED,
-                                 COLOR_BASE_BORDER,
-                                 UNIT_COLONY_POD_LAND, UNIT_COLONY_POD_SEA, UNIT_ARTIFACT)
+                                 COLOR_BASE_BORDER)
 from game.data.data import FACTIONS
 
 
@@ -211,12 +210,12 @@ class Renderer:
         # Draw unit type letter
         font = pygame.font.Font(None, 28)
         # Show 'C' for colony pods, 'A' for artifacts, otherwise first letter of type
-        if unit.unit_type in [UNIT_COLONY_POD_LAND, UNIT_COLONY_POD_SEA]:
+        if unit.weapon == 'colony_pod':
             type_char = 'C'
-        elif unit.unit_type == UNIT_ARTIFACT:
+        elif unit.weapon == 'artifact':
             type_char = 'A'
         else:
-            type_char = unit.unit_type[0].upper()
+            type_char = unit.type[0].upper()  # 'L', 'S', 'A'
         text_surf = font.render(type_char, True, COLOR_BLACK)
 
         # Explicitly get the rect and set the center attribute

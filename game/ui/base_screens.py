@@ -842,12 +842,18 @@ class BaseScreenManager:
 
         # Units from design workshop
         if hasattr(game, 'ui_manager') and hasattr(game.ui_manager, 'social_screens'):
+            from game.unit_components import generate_unit_name, get_chassis_by_id
             workshop = game.ui_manager.social_screens.design_workshop_screen
             for design in workshop.unit_designs:
-                unit_name = design['name']
+                # Generate unit name from component IDs
+                unit_name = generate_unit_name(
+                    design['weapon'], design['chassis'], design['armor'], design['reactor']
+                )
                 turns = get_turns(unit_name)
                 # Show basic stats in description
-                description = f"{design['chassis']}, {turns} turns"
+                chassis_data = get_chassis_by_id(design['chassis'])
+                chassis_display = chassis_data['name'] if chassis_data else design['chassis']
+                description = f"{chassis_display}, {turns} turns"
                 production_items.append({
                     "name": unit_name,
                     "type": "unit",
@@ -1010,10 +1016,15 @@ class BaseScreenManager:
 
             # Draw unit stats (weapon-armor-speed) for units
             if item["type"] == "unit" and "design" in item:
+                from game.unit_components import get_weapon_by_id, get_armor_by_id, get_chassis_by_id
                 design = item["design"]
-                weapon_power = design.get('weapon_power', 0)
-                armor_defense = design.get('armor_defense', 0)
-                chassis_speed = design.get('chassis_speed', 1)
+                # Look up stats from component IDs
+                weapon_data = get_weapon_by_id(design['weapon'])
+                armor_data = get_armor_by_id(design['armor'])
+                chassis_data = get_chassis_by_id(design['chassis'])
+                weapon_power = weapon_data['attack'] if weapon_data else 0
+                armor_defense = armor_data['defense'] if armor_data else 0
+                chassis_speed = chassis_data['speed'] if chassis_data else 1
                 stats_text = f"{weapon_power}-{armor_defense}-{chassis_speed}"
                 stats_surf = self.small_font.render(stats_text, True, (200, 220, 100))
                 stats_rect = stats_surf.get_rect(centerx=item_rect.centerx, bottom=item_rect.bottom - 5)

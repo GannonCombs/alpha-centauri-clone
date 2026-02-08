@@ -119,6 +119,7 @@ WEAPONS = [
     {'id': 'transport', 'name': 'Troop Transport', 'attack': 0, 'cost': 4, 'mode': 'noncombat', 'prereq': 'DocFlex'},
     {'id': 'supply', 'name': 'Supply Transport', 'attack': 0, 'cost': 8, 'mode': 'noncombat', 'prereq': 'IndAuto'},
     {'id': 'probe', 'name': 'Probe Team', 'attack': 0, 'cost': 4, 'mode': 'noncombat', 'prereq': 'PlaNets'},
+    {'id': 'artifact', 'name': 'Alien Artifact', 'attack': 0, 'cost': 0, 'mode': 'noncombat', 'prereq': None},
 
     # Combat - Projectile
     {'id': 'hand_weapons', 'name': 'Hand Weapons', 'attack': 1, 'cost': 1, 'mode': 'projectile', 'prereq': None},
@@ -168,3 +169,27 @@ REACTORS = [
     {'id': 'singularity', 'name': 'Singularity Engine', 'power': 4, 'cost': 0, 'prereq': 'SingMec'}
 ]
 
+SPECIAL_ABILITIES = [
+    {'id': 'none', 'name': 'None', 'cost': 0, 'prereq': None, 'description': 'No special ability'},
+    {'id': 'super_former', 'name': 'Super Former', 'cost': 10, 'prereq': 'EcoEng2', 'description': 'Terraform twice as fast'},
+    {'id': 'deep_radar', 'name': 'Deep Radar', 'cost': 20, 'prereq': 'MilAlg', 'description': 'See 2 squares farther'},
+    {'id': 'cloaking', 'name': 'Cloaking Device', 'cost': 25, 'prereq': 'Surface', 'description': 'Invisible to enemy units'},
+    {'id': 'amphibious', 'name': 'Amphibious Pods', 'cost': 15, 'prereq': 'DocInit', 'description': 'Move on land and sea'},
+    {'id': 'drop_pods', 'name': 'Drop Pods', 'cost': 30, 'prereq': 'MindMac', 'description': 'Make airdrops anywhere'},
+    {'id': 'air_superiority', 'name': 'Air Superiority', 'cost': 20, 'prereq': 'DocAir', 'description': '+100% vs air units'},
+    {'id': 'deep_pressure', 'name': 'Deep Pressure Hull', 'cost': 15, 'prereq': 'Metal', 'description': 'Operate in ocean trenches'},
+    {'id': 'carrier_deck', 'name': 'Carrier Deck', 'cost': 40, 'prereq': 'Metal', 'description': 'Carry up to 4 air units'},
+    {'id': 'AAA', 'name': 'AAA Tracking', 'cost': 25, 'prereq': 'MilAlg', 'description': '+100% vs air attacks'},
+    {'id': 'comm_jammer', 'name': 'Comm Jammer', 'cost': 20, 'prereq': 'Subat', 'description': 'Enemy -50% when attacking this'},
+    {'id': 'antigrav', 'name': 'Antigrav Struts', 'cost': 20, 'prereq': 'Gravity', 'description': '+1 movement, ignore terrain'},
+    {'id': 'empath', 'name': 'Empath Song', 'cost': 25, 'prereq': 'CentEmp', 'description': '+50% vs psi'},
+    {'id': 'polymorphic', 'name': 'Polymorphic Encryption', 'cost': 30, 'prereq': 'Algor', 'description': 'Immune to probe teams'},
+    {'id': 'fungal_payload', 'name': 'Fungal Payload', 'cost': 25, 'prereq': 'Fossil', 'description': 'Creates fungus on impact'},
+    {'id': 'blink', 'name': 'Blink Displacer', 'cost': 50, 'prereq': 'Matter', 'description': 'Teleport short distances'},
+    {'id': 'trance', 'name': 'Trance', 'cost': 10, 'prereq': 'Brain', 'description': '+50% vs psi attacks'},
+    {'id': 'heavy_artillery', 'name': 'Heavy Artillery', 'cost': 30, 'prereq': 'Poly', 'description': 'Bombard from 2 squares'},
+    {'id': 'clean_reactor', 'name': 'Clean Reactor', 'cost': 20, 'prereq': 'BioEng', 'description': 'No support costs'},
+    {'id': 'repair_bay', 'name': 'Repair Bay', 'cost': 35, 'prereq': 'Metal', 'description': 'Repair nearby units'},
+    {'id': 'slow', 'name': 'Slow', 'cost': -10, 'prereq': None, 'description': '-1 movement (prototype)'},
+    {'id': 'police', 'name': 'Police 2x', 'cost': 15, 'prereq': 'Integ', 'description': 'Counts as 2 police units'}
+]
