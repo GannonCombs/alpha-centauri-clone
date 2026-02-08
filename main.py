@@ -332,7 +332,7 @@ def main():
                         # Right-click - show context menu for artillery
                         if event.button == 3:  # Right mouse button
                             # Convert screen coordinates to map coordinates
-                            map_x, map_y = renderer.screen_to_map(mouse_x, mouse_y, game.game_map)
+                            map_x, map_y = renderer.screen_to_tile(mouse_x, mouse_y, game.game_map)
 
                             # Check if we have artillery unit selected
                             if (game.selected_unit and

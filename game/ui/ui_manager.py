@@ -1475,8 +1475,15 @@ class UIManager:
         pygame.draw.rect(screen, (40, 30, 30), (box_x, box_y, box_w, box_h), border_radius=12)
         pygame.draw.rect(screen, (220, 100, 100), (box_x, box_y, box_w, box_h), 3, border_radius=12)
 
-        # Title
-        title_text = "BREAK TREATY"
+        # Title - check if it's treaty or truce
+        relation = self.diplomacy.diplo_relations.get(self.break_treaty_target_faction, "Uncommitted")
+        if relation == "Truce":
+            title_text = "BREAK TRUCE"
+            relation_word = "truce"
+        else:
+            title_text = "BREAK TREATY"
+            relation_word = "treaty"
+
         title_surf = self.font.render(title_text, True, (255, 150, 150))
         screen.blit(title_surf, (box_x + box_w // 2 - title_surf.get_width() // 2, box_y + 40))
 
@@ -1486,7 +1493,7 @@ class UIManager:
         msg_surf = self.small_font.render(msg_text, True, COLOR_TEXT)
         screen.blit(msg_surf, (box_x + box_w // 2 - msg_surf.get_width() // 2, box_y + 100))
 
-        msg_text2 = "This will break your treaty and result in VENDETTA."
+        msg_text2 = f"This will break your {relation_word} and result in VENDETTA."
         msg_surf2 = self.small_font.render(msg_text2, True, (255, 200, 200))
         screen.blit(msg_surf2, (box_x + box_w // 2 - msg_surf2.get_width() // 2, box_y + 130))
 

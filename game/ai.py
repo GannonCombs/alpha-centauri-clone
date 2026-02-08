@@ -266,9 +266,9 @@ class AIPlayer:
                         continue
 
                     # Check if unit can exist on this terrain
-                    if unit.weapon == 'colony_pod' and unit.weapon.chassis in ['foil', 'cruiser', 'gravship'] and tile.is_ocean():
+                    if unit.weapon == 'colony_pod' and unit.chassis in ['foil', 'cruiser', 'gravship'] and tile.is_ocean():
                         continue
-                    if unit.weapon == 'colony_pod' and unit.weapon.chassis in ['infantry', 'rover', 'hovertank', 'gravship'] and tile.is_land():
+                    if unit.weapon == 'colony_pod' and unit.chassis in ['infantry', 'rover', 'hovertank', 'gravship'] and tile.is_land():
                         continue
 
                     if self._is_good_base_location(check_x, check_y, game):

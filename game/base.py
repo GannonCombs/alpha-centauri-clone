@@ -60,6 +60,10 @@ class Base:
         self.production_turns_remaining = self._calculate_production_turns()
         self.production_queue = []  # Queue of items to build after current
 
+        # Governor (automated production)
+        self.governor_enabled = False  # Whether governor is active for this base
+        self.governor_mode = None  # 'build', 'conquer', 'discover', 'explore', or None
+
         # Growth
         self.nutrients_accumulated = 0
         self.nutrients_needed = self._calculate_nutrients_needed()
@@ -270,7 +274,7 @@ class Base:
 
         return penalty
 
-    def process_turn(self, energy_allocation=None):
+    def process_turn(self, energy_allocation=None, faction=None, game=None):
         """Process end of turn for this base.
 
         Adds nutrients, checks for population growth, handles production,
@@ -279,6 +283,8 @@ class Base:
         Args:
             energy_allocation (dict): Dict with 'economy', 'labs', 'psych' percentages
                                      If None, defaults to 50% economy, 50% labs
+            faction: Faction object that owns this base (for governor)
+            game: Game object (for governor)
 
         Returns:
             str: Name of completed production item, or None if nothing completed
@@ -352,8 +358,13 @@ class Base:
                     self.production_cost = self._get_production_cost(next_item)
                     print(f"{self.name} starting queued item: {next_item}")
                 else:
-                    # No queue - reset to default
-                    self.current_production = "Scout Patrol"
+                    # No queue - use governor if enabled, otherwise reset to default
+                    if self.governor_enabled and faction and game:
+                        from game.governor import select_production
+                        governor_choice = select_production(self, faction, game)
+                        self.current_production = governor_choice if governor_choice else "Scout Patrol"
+                    else:
+                        self.current_production = "Scout Patrol"
                     self.production_progress = 0
                     self.production_cost = self._get_production_cost(self.current_production)
 
@@ -532,7 +543,9 @@ class Base:
             'turns_since_capture': self.turns_since_capture,
             'disloyal_drones': self.disloyal_drones,
             'production_queue': list(self.production_queue),
-            'hurried_this_turn': self.hurried_this_turn
+            'hurried_this_turn': self.hurried_this_turn,
+            'governor_enabled': self.governor_enabled,
+            'governor_mode': self.governor_mode
         }
 
     @classmethod
@@ -578,6 +591,8 @@ class Base:
         base.disloyal_drones = data.get('disloyal_drones', 0)
         base.hurried_this_turn = data.get('hurried_this_turn', False)
         base.production_queue = data.get('production_queue', [])
+        base.governor_enabled = data.get('governor_enabled', False)
+        base.governor_mode = data.get('governor_mode', None)
 
         # Initialize derived/calculated values
         base.supported_units = []

@@ -41,6 +41,8 @@ class BaseScreenManager:
         self.hurry_ok_rect = None
         self.hurry_cancel_rect = None
         self.hurry_all_rect = None
+        self.governor_button_rect = None
+        self.mode_button_rects = []  # List of (rect, mode_name) tuples
         self.hurry_error_message = ""
         self.hurry_error_time = 0
         self.prod_select_ok_rect = None
@@ -272,7 +274,9 @@ class BaseScreenManager:
 
         start_x = (screen_w - total_w) // 2
 
-        # Draw automation buttons
+        # Draw automation mode buttons
+        mode_names = ["explore", "discover", "build", "conquer"]
+        self.mode_button_rects = []
         for i, label in enumerate(automation_buttons):
             if i < 2:
                 btn_x = start_x + i * (button_w + button_spacing)
@@ -280,18 +284,36 @@ class BaseScreenManager:
                 btn_x = start_x + i * (button_w + button_spacing) + governor_w + button_spacing * 2
 
             btn_rect = pygame.Rect(btn_x, top_bar_y, button_w, top_bar_h)
-            pygame.draw.rect(screen, COLOR_BUTTON, btn_rect, border_radius=6)
-            pygame.draw.rect(screen, COLOR_BUTTON_BORDER, btn_rect, 2, border_radius=6)
+            mode_name = mode_names[i]
+
+            # Highlight if this mode is active
+            is_active = base.governor_enabled and base.governor_mode == mode_name
+            if is_active:
+                pygame.draw.rect(screen, (100, 140, 100), btn_rect, border_radius=6)
+                pygame.draw.rect(screen, (140, 180, 140), btn_rect, 3, border_radius=6)
+            else:
+                pygame.draw.rect(screen, COLOR_BUTTON, btn_rect, border_radius=6)
+                pygame.draw.rect(screen, COLOR_BUTTON_BORDER, btn_rect, 2, border_radius=6)
+
             btn_text = self.small_font.render(label, True, COLOR_TEXT)
             screen.blit(btn_text, (btn_rect.centerx - btn_text.get_width() // 2, btn_rect.centery - 8))
+            self.mode_button_rects.append((btn_rect, mode_name))
 
         # Governor button in middle
         gov_x = start_x + 2 * (button_w + button_spacing)
-        gov_rect = pygame.Rect(gov_x, top_bar_y, governor_w, top_bar_h)
-        pygame.draw.rect(screen, (60, 80, 60), gov_rect, border_radius=6)
-        pygame.draw.rect(screen, (100, 140, 100), gov_rect, 2, border_radius=6)
-        gov_text = self.small_font.render("Governor", True, COLOR_TEXT)
-        screen.blit(gov_text, (gov_rect.centerx - gov_text.get_width() // 2, gov_rect.centery - 8))
+        self.governor_button_rect = pygame.Rect(gov_x, top_bar_y, governor_w, top_bar_h)
+
+        # Governor button appearance based on state
+        if base.governor_enabled:
+            pygame.draw.rect(screen, (80, 120, 80), self.governor_button_rect, border_radius=6)
+            pygame.draw.rect(screen, (120, 180, 120), self.governor_button_rect, 3, border_radius=6)
+            gov_text = self.small_font.render("Governor", True, (220, 255, 220))
+        else:
+            pygame.draw.rect(screen, (60, 60, 70), self.governor_button_rect, border_radius=6)
+            pygame.draw.rect(screen, (100, 100, 120), self.governor_button_rect, 2, border_radius=6)
+            gov_text = self.small_font.render("Governor", True, (160, 160, 180))
+
+        screen.blit(gov_text, (self.governor_button_rect.centerx - gov_text.get_width() // 2, self.governor_button_rect.centery - 8))
 
         # TOP CENTER: Zoomed map view (below automation buttons)
         map_view_w = 200
@@ -1376,5 +1398,58 @@ class BaseScreenManager:
             if base:
                 self.queue_management_open = True
             return None
+
+        # Check Governor button - toggle governor
+        if hasattr(self, 'governor_button_rect') and self.governor_button_rect and self.governor_button_rect.collidepoint(pos):
+            if base:
+                base.governor_enabled = not base.governor_enabled
+                if base.governor_enabled:
+                    # Set default mode if none set (generalist mode uses 'build')
+                    if not base.governor_mode:
+                        base.governor_mode = 'build'
+
+                    # Immediately change production based on governor
+                    from game.governor import select_production
+                    faction = game.factions[base.owner]
+                    new_production = select_production(base, faction, game)
+                    if new_production:
+                        base.current_production = new_production
+                        base.production_progress = 0
+                        base.production_cost = base._get_production_cost(new_production)
+                        base.production_turns_remaining = base._calculate_production_turns()
+                        game.set_status_message(f"Governor activated: Now producing {new_production}")
+                    else:
+                        game.set_status_message(f"Governor activated for {base.name}")
+                else:
+                    game.set_status_message(f"Governor deactivated for {base.name}")
+            return None
+
+        # Check mode buttons - set governor mode
+        if hasattr(self, 'mode_button_rects') and self.mode_button_rects:
+            for btn_rect, mode_name in self.mode_button_rects:
+                if btn_rect.collidepoint(pos):
+                    if base:
+                        if base.governor_enabled and base.governor_mode == mode_name:
+                            # Clicking active mode switches to generalist (no specific mode)
+                            base.governor_mode = None
+                            game.set_status_message(f"Governor mode cleared (generalist)")
+                        else:
+                            # Activate governor with this mode
+                            base.governor_enabled = True
+                            base.governor_mode = mode_name
+
+                            # Immediately change production based on new mode
+                            from game.governor import select_production
+                            faction = game.factions[base.owner]
+                            new_production = select_production(base, faction, game)
+                            if new_production:
+                                base.current_production = new_production
+                                base.production_progress = 0
+                                base.production_cost = base._get_production_cost(new_production)
+                                base.production_turns_remaining = base._calculate_production_turns()
+                                game.set_status_message(f"Governor: {mode_name.upper()} mode - Now producing {new_production}")
+                            else:
+                                game.set_status_message(f"Governor set to {mode_name.upper()} mode")
+                    return None
 
         return None

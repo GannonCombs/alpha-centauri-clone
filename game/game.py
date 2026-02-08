@@ -703,6 +703,9 @@ class Game:
                           "Hardened", "Veteran", "Commando", "Elite"]
             morale_name = morale_names[unit.morale_level] if unit.morale_level < len(morale_names) else "Elite"
 
+            # Upgrading at monolith ends the unit's turn
+            unit.moves_remaining = 0
+
             if unit.owner == self.player_faction_id:
                 self.set_status_message(f"{unit.name} upgraded to {morale_name} at Monolith!")
                 print(f"Unit upgraded at monolith: ({unit.x}, {unit.y}) -> {morale_name}")
@@ -1607,10 +1610,11 @@ class Game:
                             })
 
                             # Check if we have all living factions now
+                            # Check if contacted all NON-ELIMINATED factions (excluding player)
                             living_factions = set()
-                            for base in self.bases:
-                                if base.owner != self.player_faction_id:
-                                    living_factions.add(base.owner)
+                            for faction_id in range(7):
+                                if faction_id != self.player_faction_id and faction_id not in self.eliminated_factions:
+                                    living_factions.add(faction_id)
 
                             if living_factions.issubset(self.faction_contacts):
                                 self.all_contacts_obtained = True
@@ -1631,10 +1635,11 @@ class Game:
                             })
 
                             # Check if we have all living factions now
+                            # Check if contacted all NON-ELIMINATED factions (excluding player)
                             living_factions = set()
-                            for base in self.bases:
-                                if base.owner != self.player_faction_id:
-                                    living_factions.add(base.owner)
+                            for faction_id in range(7):
+                                if faction_id != self.player_faction_id and faction_id not in self.eliminated_factions:
+                                    living_factions.add(faction_id)
 
                             if living_factions.issubset(self.faction_contacts):
                                 self.all_contacts_obtained = True
@@ -1813,6 +1818,26 @@ class Game:
         if len(player_bases) == 0:
             base.facilities.append('Headquarters')
             print(f"First base founded - Headquarters added automatically")
+            # First base starts with governor OFF
+            base.governor_enabled = False
+            base.governor_mode = None
+        else:
+            # Not first base - check governor settings
+            if unit.owner == self.player_faction_id:
+                # Player faction: enable governor if any other base has it enabled
+                any_governor_enabled = any(b.governor_enabled for b in player_bases)
+                if any_governor_enabled:
+                    # Copy mode from first enabled governor base
+                    for other_base in player_bases:
+                        if other_base.governor_enabled:
+                            base.governor_enabled = True
+                            base.governor_mode = other_base.governor_mode
+                            break
+            else:
+                # AI faction: always enable governor with faction's default mode
+                from game.governor import get_ai_governor_mode
+                base.governor_enabled = True
+                base.governor_mode = get_ai_governor_mode(unit.owner)
 
         self.bases.append(base)
 
@@ -2096,7 +2121,8 @@ class Game:
             if base.owner == self.player_faction_id:
                 # Reset hurry flag at start of turn
                 base.hurried_this_turn = False
-                completed_item = base.process_turn(self.global_energy_allocation)
+                player_faction = self.factions[self.player_faction_id]
+                completed_item = base.process_turn(self.global_energy_allocation, player_faction, self)
                 if completed_item:
                     # Store for spawning at start of next turn (after upkeep)
                     self.pending_production.append((base, completed_item))
@@ -2161,8 +2187,17 @@ class Game:
 
         # If we don't have a unit queue, set up the next AI player
         if not self.ai_unit_queue:
-            if self.current_ai_index < len(self.ai_players):
+            # Skip eliminated AI factions
+            while self.current_ai_index < len(self.ai_players):
                 ai_player = self.ai_players[self.current_ai_index]
+
+                # Check if this faction has been eliminated
+                if ai_player.player_id in self.eliminated_factions:
+                    print(f"Skipping eliminated AI Player {ai_player.player_id}")
+                    self.current_ai_index += 1
+                    continue
+
+                # Process this AI player
                 print(f"\n=== AI Player {ai_player.player_id} Turn ===")
 
                 # Reset AI units for their turn
@@ -2175,6 +2210,8 @@ class Game:
                                      if u.owner == ai_player.player_id and u.moves_remaining > 0]
                 self.ai_current_unit_index = 0
                 return True
+
+            # If we get here, all AI players are done (or eliminated)
             else:
                 # All AIs done, collect upkeep events and start upkeep phase
                 self.processing_ai = False
@@ -2213,6 +2250,13 @@ class Game:
             # Done with this AI's units - process their bases and tech
             ai_player = self.ai_players[self.current_ai_index]
 
+            # Skip if this faction was eliminated during their turn
+            if ai_player.player_id in self.eliminated_factions:
+                print(f"AI Player {ai_player.player_id} was eliminated - skipping base processing")
+                self.ai_unit_queue = []
+                self.current_ai_index += 1
+                return True
+
             # Process air unit fuel for this AI
             self._process_air_unit_fuel(ai_player.player_id)
 
@@ -2224,7 +2268,8 @@ class Game:
                 if base.owner == ai_player.player_id:
                     # Reset hurry flag at start of AI turn
                     base.hurried_this_turn = False
-                    completed_item = base.process_turn(ai_energy_allocation)
+                    ai_faction = self.factions[ai_player.player_id]
+                    completed_item = base.process_turn(ai_energy_allocation, ai_faction, self)
                     if completed_item:
                         # Store for spawning at start of next turn (after upkeep)
                         self.pending_production.append((base, completed_item))
@@ -2366,12 +2411,11 @@ class Game:
 
         self.faction_contacts.add(faction_id)
 
-        # Check if we have all living factions
-        # Count living factions (those with at least one base)
+        # Check if we have all NON-ELIMINATED factions (excluding player)
         living_factions = set()
-        for base in self.bases:
-            if base.owner != self.player_faction_id:
-                living_factions.add(base.owner)  # owner IS faction_id
+        for faction_id in range(7):
+            if faction_id != self.player_faction_id and faction_id not in self.eliminated_factions:
+                living_factions.add(faction_id)
 
         # If we've contacted all living factions, set flag
         if living_factions.issubset(self.faction_contacts):
