@@ -142,6 +142,11 @@ class DiplomacyManager:
         )
         self.current_responses = self.current_dialog.get('responses', [])
 
+        # Override responses for player proposals - AI should decide, not give player options
+        if self.diplo_stage == 'propose_pact':
+            # When player proposes pact, only response is to trigger AI decision
+            self.current_responses = [{'text': 'Continue', 'action': 'ai_decide_pact'}]
+
     def _get_dialog_id_for_stage(self, relation):
         """Map conversation stage to dialog ID.
 
@@ -163,8 +168,6 @@ class DiplomacyManager:
             return 'MAKEPACT'
         elif self.diplo_stage == "reject_pact":
             return 'REJPACT'
-        elif self.diplo_stage == "propose_treaty":
-            return 'OFFERTREATY'
         elif self.diplo_stage == "accept_treaty":
             return 'MAKETREATY0'  # Use MAKETREATY0 from script.txt
         elif self.diplo_stage == "reject_treaty":
@@ -274,8 +277,11 @@ class DiplomacyManager:
             # After showing AI's rejection, return to diplo
             self.diplo_stage = 'diplo'
         elif action == 'propose_treaty':
-            # Player proposes treaty - show player's speech
-            self.diplo_stage = 'propose_treaty'
+            # Player proposes treaty - AI decides immediately (no intermediate dialog)
+            faction_id = next((i for i, f in enumerate(FACTION_DATA) if f['name'] == self.target_faction['name']), None)
+            if faction_id is not None:
+                self.diplo_relations[faction_id] = 'Treaty'
+            self.diplo_stage = 'accept_treaty'  # AI accepts (for now, always accept)
         elif action == 'ai_decide_treaty':
             # AI decides whether to accept player's treaty proposal
             # For now, always accept (later: base on relationship)

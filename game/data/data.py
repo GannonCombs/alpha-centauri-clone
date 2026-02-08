@@ -456,8 +456,6 @@ FACTION_DATA = [
         "base_names": ["New Jerusalem", "Great Conclave", "Great Zion", "Far Jericho", "Redemption Base", "Children of God", "Noah's Rainbow", "The Voice of God", "Judgement Seat", "Valley of the Faithful", "Blessed Redeemer", "The Glory of God", "New Eden", "Terrible Swift Sword", "Time of Salvation", "Eternal Reward", "The Lord's Mercy", "Righteous Sentence", "Throne of God", "The Rapture", "The Lord's Wrath", "The Lord's Grace", "The Hand of God", "The Coming of the Lord", "Sanctity Base", "The Lord's Chosen", "Hallowed Ground", "The Lord's Gift", "Divinity Base", "The Word of God", "Revelation Base", "The Holy Fire", "The Lord's Truth", "Blessed Saviour", "From On High", "Godwinson's Hope", "House of Martyrs"],
         # --- IDENTITY & TITLES ---
         '$FACTION': "The Lord's Believers",
-        '$FACTION3': "Believers",  # Plural noun for faction members
-        '$FACTION4': "The Lord's Believers",  # Full name for formal intros
         '$NAME': "Miriam",  # Short name
         '$TITLE': "Sister",  # The leader's specific title
         '$SPECIAL5': "The Fundamentalist",  # From the first line of stats

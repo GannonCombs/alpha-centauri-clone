@@ -115,8 +115,6 @@ that they like. Examples: remove atrocity prohibitions if their faction is warli
 4 In the tech screen, there is a little text box inside the tech that is colored the correct category of the tech (it's 4x color).
 This is great. However, the outline for the tech box itself is always yellow. It should be the same 4x color.
 
-More notes:
-The keyword "hand" for a 1-1-x should be "Scout" instead.
 When I offer a treaty to Zakharov, his response is to pitch a treaty to me. That makes no sense. Look at the script notes for
 #MAKETREATY and #REJTREATY. Those should be the responses.
 When I asked for a loan, I was offered one, but my choices were to reject it, or Agreed. But if you rob me you shall feel my wrath."
@@ -132,8 +130,6 @@ Your credits: 500" (I got a supply pod.) I click Pay All, and it fills with 30. 
 to get off the hardcoded costs we set a while back. That would be fine. But consistency is most important now. But at least OK works.
 Under every base is current research. Fine for now, but enemy research is only visible in certain scenarios.
 
-You have not fixed the dialog where we propose the treaty. They should respond with one of the #MAKETREATY or #REJTREATY scripts.
-They should not prompt US to sign a treaty. If they accept, the treaty is done; no decision is needed on our end if we proposed it.
 Also, when I ask a faction for a loan, they respond by asking ME for a loan. You have your prompts all messed up.
 Really try to reason through prompts that I should initiate versus NPC-initiated. Focus on implementing player-initiated for now.
 I also just finished a conversation with a player without signing a treaty. This should put us in FORMAL truce and show "TRUCE"
@@ -146,7 +142,6 @@ Ensure that the amount offered with Pay All is truly the ENTIRE remaining cost. 
 New unit design on better unit tech is still not popping up, at least not consistently. Is the pattern that chassis and
  armor upgrade, but weapons don't?
 
-When I asked for a treaty, the faction responded with 2 messages instead of 1. Neither was in the messages I told you.
 They MUST respond with something in #MAKETREATYx or #REJTREATYy. For example: "With respect, $TITLE1, it appears there is little future in
 'permanent' agreements with the $FACTION2."
 Character I have treaties with are still attacking me. Note: it is possible to betray someone (though this is rare behavior).
@@ -156,10 +151,9 @@ or am Governor, or have Infiltrated their Datalinks.
 
 Got a diplomatic milestone popup when missing commlinks.
 Production times are off. Merchant Exchange takes 20 turns on Turn 1 for Morgan.
-Made a treaty with someone. It still showed truce in commlinks.
 Check save overwrites. If the exact same name exists, popup that says Are You Sure you want to overwrite?
 Get rid of weapon_mode and armor_mode. We store the ids only. Any data that we need, we can look in unit_data.
-FACTIONS contains single quotes and double quotes.
+FACTION_DATA contains single quotes and double quotes.
 
 
 
@@ -175,7 +169,6 @@ Art
 Sounds
 Terraforming
 Resources
-Enemy tech tree/units
 Enemy moods
 Fog of war
 Advanced unit movement (G command, J command, drag path)

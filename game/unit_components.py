@@ -79,13 +79,17 @@ def generate_unit_name(weapon_id, chassis_id, armor_id=None, reactor_id='fission
     if weapon_id == 'supply':
         return "Supply Crawler"
 
-    # Standard military units with hand weapons use "Scout" prefix
-    # if weapon_id == 'hand_weapons' and (armor_id is None or armor_id == 'no_armor'):
-    #     if chassis_id == 'infantry':
-    #         return "Scout Patrol"
-    #     elif chassis_id == 'speeder' or chassis_id == 'rover':
-    #         return "Scout Speeder"
-        # For other chassis, fall through to standard naming
+    # SMAC naming convention for hand weapons:
+    # - Land units with hand weapons: "Scout [chassis]"
+    # - All other units: "[Weapon] [chassis]"
+    if weapon_id == 'hand_weapons':
+        chassis_type = chassis.get('type', 'land')
+        if chassis_type == 'land':
+            # Land units with hand weapons use "Scout" prefix
+            chassis_names = chassis.get('offensive_names', [chassis['name']])
+            chassis_name = chassis_names[0]
+            return f"Scout {chassis_name}"
+        # Sea/air units with hand weapons fall through to standard naming
 
     # For combat units, use <component> <chassis name> format
     armor = get_armor_by_id(armor_id) if armor_id else ARMOR[0]

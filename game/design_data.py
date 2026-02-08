@@ -58,11 +58,11 @@ class DesignData:
         }
 
         # Slot 2: Faction-specific starting designs (SMAC-style)
-        if faction_id == 4:  # Santiago - starts with Doctrine: Mobility (speeder chassis)
-            # Rover (1-1-2)
+        if faction_id == 0:  # Gaians - starts with Centauri Ecology (terraforming)
+            # Former
             self.design_slots[2] = {
-                "chassis": "speeder",
-                "weapon": "hand_weapons",
+                "chassis": "infantry",
+                "weapon": "terraforming",
                 "armor": "no_armor",
                 "reactor": "fission",
                 "ability1": "none",
@@ -74,6 +74,16 @@ class DesignData:
                 "chassis": "infantry",
                 "weapon": "hand_weapons",
                 "armor": "synthmetal",
+                "reactor": "fission",
+                "ability1": "none",
+                "ability2": "none"
+            }
+        elif faction_id == 4:  # Santiago - starts with Doctrine: Mobility (speeder chassis)
+            # Rover (1-1-2)
+            self.design_slots[2] = {
+                "chassis": "speeder",
+                "weapon": "hand_weapons",
+                "armor": "no_armor",
                 "reactor": "fission",
                 "ability1": "none",
                 "ability2": "none"
