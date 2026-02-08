@@ -204,9 +204,7 @@ def main():
                     game.ui_manager = ui_panel  # Restore UI reference
                 elif not ui_handled:
                     # UI didn't handle it - process game keys
-                    if event.key == pygame.K_n:
-                        game.new_game()
-                    elif event.key == pygame.K_w:
+                    if event.key == pygame.K_w:
                         game.cycle_units()
                     elif event.key == pygame.K_b:
                         # Found a base if colony pod is selected

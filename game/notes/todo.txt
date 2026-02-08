@@ -114,7 +114,6 @@ Notes:
 that they like. Examples: remove atrocity prohibitions if their faction is warlike, elect governor if they are a candidate, etc.
 4 In the tech screen, there is a little text box inside the tech that is colored the correct category of the tech (it's 4x color).
 This is great. However, the outline for the tech box itself is always yellow. It should be the same 4x color.
-5 There's something odd where the 7 starting techs are all white in the tech view, but we don't have access to their perks.
 6 Hold unit isn't working. Still in W cycle, and End Turn still doesn't activate correctly after.
 
 More notes:
@@ -158,13 +157,8 @@ or am Governor, or have Infiltrated their Datalinks.
 
 Got a diplomatic milestone popup when missing commlinks.
 Production times are off. Merchant Exchange takes 20 turns on Turn 1 for Morgan.
-Clean up constants. Many of the values inside are not...constants.
-I've removed votes from data.FACTIONS. This will cause an error once I vote.
 Made a treaty with someone. It still showed truce in commlinks.
 Check save overwrites. If the exact same name exists, popup that says Are You Sure you want to overwrite?
-One time I landed on a supply pod simultaneously with meeting a faction. Faction pop up happened first, then
-supply pod popup happened over diplomacy screen. Let's flip those.
-I once met two factions in the same turn. As soon as I answered the first, the popup for the second obscured the second.
 Get rid of weapon_mode and armor_mode. We store the ids only. Any data that we need, we can look in unit_data.
 FACTIONS contains single quotes and double quotes.
 

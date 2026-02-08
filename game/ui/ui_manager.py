@@ -107,8 +107,8 @@ class UIManager:
         # Commlink button to the RIGHT of the minimap
         self.commlink_button = Button(self.minimap_rect.right + 10, display.UI_PANEL_Y + 10, 180, 35, "Commlink")
 
-        # Commlink Drop-up dimensions
-        menu_w, menu_h = 320, 300
+        # Commlink Drop-up dimensions (increased height for votes summary)
+        menu_w, menu_h = 320, 330
         self.commlink_menu_rect = pygame.Rect(self.commlink_button.rect.x - (menu_w - self.commlink_button.rect.width),
                                               self.commlink_button.rect.top - menu_h - 5, menu_w, menu_h)
 
@@ -479,8 +479,8 @@ class UIManager:
                 # Block all other clicks when prediction is showing
                 return True
 
-            # Supply pod message takes priority
-            if game.supply_pod_message:
+            # Supply pod message takes priority (but only if not in diplomacy/commlink)
+            if game.supply_pod_message and not self.commlink_request_active and self.active_screen != "DIPLOMACY":
                 if self.dialogs.handle_supply_pod_click(event.pos):
                     game.supply_pod_message = None
                     return True
@@ -838,6 +838,16 @@ class UIManager:
                     status_x = btn.rect.right - status_surf.get_width() - 5
                     screen.blit(status_surf, (status_x, btn.rect.y + 8))
 
+            # Draw player's votes above council button
+            player_faction = game.factions.get(game.player_faction_id)
+            player_votes = player_faction.get_voting_power() if player_faction else 0
+
+            votes_y = self.council_btn.rect.y - 25
+            votes_text = f"Votes: {player_votes}"
+            votes_surf = self.small_font.render(votes_text, True, (180, 200, 220))
+            votes_x = self.commlink_menu_rect.x + (self.commlink_menu_rect.width - votes_surf.get_width()) // 2
+            screen.blit(votes_surf, (votes_x, votes_y))
+
             # Draw council button (disabled if not all contacts obtained)
             if game.all_contacts_obtained:
                 self.council_btn.draw(screen, self.small_font)
@@ -870,8 +880,9 @@ class UIManager:
             self.battle_ui.draw_battle_animation(screen, game)
             self._draw_unit_stack_panel(screen, game)
 
-        # Supply pod message overlay (top priority)
-        if game.supply_pod_message:
+        # Supply pod message overlay (top priority, but not during diplomacy/commlink)
+        # Don't show supply pod if we're in diplomacy or have a commlink request active
+        if game.supply_pod_message and not self.commlink_request_active and self.active_screen != "DIPLOMACY":
             self.dialogs.draw_supply_pod_message(screen, game.supply_pod_message)
 
         # Battle prediction overlay (highest priority)
@@ -883,7 +894,8 @@ class UIManager:
             self._draw_upkeep_event(screen, game)
 
         # Check for pending commlink requests and show popup
-        if not self.commlink_request_active and game.pending_commlink_requests:
+        # Only activate next request if we're not in diplomacy (wait for screen to fully close)
+        if not self.commlink_request_active and game.pending_commlink_requests and self.active_screen != "DIPLOMACY":
             # Activate the first pending request
             request = game.pending_commlink_requests[0]
             self.commlink_request_active = True

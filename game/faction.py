@@ -116,3 +116,20 @@ class Faction:
             status (str): Relation status ('Vendetta', 'Treaty', 'Pact', etc.)
         """
         self.relations[other_faction_id] = status
+
+    def get_voting_power(self):
+        """Calculate voting power based on total population across all bases.
+
+        In SMAC, voting power equals total population. For now, we'll use a hardcoded
+        value but the infrastructure is in place for when we implement proper calculation.
+
+        Returns:
+            int: Number of votes this faction has
+        """
+        # TODO: Calculate from actual base populations when that system is implemented
+        # For now, return a hardcoded value based on number of bases
+        if len(self.bases) == 0:
+            return 0
+        # Placeholder: each base contributes votes based on its population
+        total_votes = sum(base.population for base in self.bases)
+        return total_votes

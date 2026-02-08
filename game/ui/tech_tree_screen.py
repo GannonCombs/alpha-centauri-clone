@@ -147,40 +147,28 @@ class TechTreeScreen:
             display_index = i - self.tech_tree_scroll_offset
             tech_y = tech_list_y + display_index * tech_line_h
 
-            # Tech status
-            status = tech_tree.get_tech_status(tech_id)
-
-            # Color based on status
-            if status == "Completed":
-                tech_color = (100, 220, 100)
-                prefix = "✓ "
-            elif status == "Researching":
-                tech_color = (200, 220, 100)
-                prefix = "→ "
-            elif status == "Available":
-                tech_color = (180, 200, 220)
-                prefix = "  "
-            else:  # Locked
-                tech_color = (100, 110, 120)
-                prefix = "  "
-
             # Clickable rect
             tech_rect = pygame.Rect(left_panel_x + 10, tech_y, left_panel_w - 50, tech_line_h)
 
-            # Highlight if focused or hovered
+            # Check if focused or hovered
             is_focused = (tech_id == self.tech_tree_focused_tech)
             is_hovered = tech_rect.collidepoint(pygame.mouse.get_pos())
 
+            # Simple color scheme: white if selected, gray otherwise
             if is_focused:
+                tech_color = (255, 255, 255)  # White for selected
                 pygame.draw.rect(screen, (50, 70, 90), tech_rect, border_radius=4)
-            elif is_hovered:
+            else:
+                tech_color = (140, 150, 160)  # Gray for not selected
+
+            if is_hovered and not is_focused:
                 pygame.draw.rect(screen, (40, 50, 60), tech_rect, border_radius=4)
 
             # Store for click detection
             self.tech_tree_selection_rects.append((tech_rect, tech_id))
 
             # Tech name
-            tech_text = self.small_font.render(f"{prefix}{tech_data['name']}", True, tech_color)
+            tech_text = self.small_font.render(tech_data['name'], True, tech_color)
             screen.blit(tech_text, (left_panel_x + 15, tech_y + 3))
 
         # MAIN VIEW: Tech visualization

@@ -19,17 +19,25 @@ class DesignData:
         Each design is a dict with: chassis, weapon, armor, reactor, ability1, ability2
     """
 
-    def __init__(self):
-        """Initialize empty design storage."""
+    def __init__(self, faction_id=None):
+        """Initialize empty design storage.
+
+        Args:
+            faction_id (int): Faction ID for faction-specific starting designs
+        """
         # SMAC-style design slots (64 total, each can hold a design or be None)
         self.design_slots = [None] * 64
 
         # Initialize default designs (Scout Patrol and Colony Pod)
-        self._initialize_default_designs()
+        self._initialize_default_designs(faction_id)
 
-    def _initialize_default_designs(self):
-        """Initialize default unit designs in first two slots."""
-        # Scout Patrol - basic infantry unit
+    def _initialize_default_designs(self, faction_id=None):
+        """Initialize default unit designs based on faction.
+
+        Args:
+            faction_id (int): Faction ID for faction-specific designs
+        """
+        # Slot 0: Scout Patrol - basic infantry unit (everyone gets this)
         self.design_slots[0] = {
             "chassis": "infantry",
             "weapon": "hand_weapons",
@@ -39,7 +47,7 @@ class DesignData:
             "ability2": "none"
         }
 
-        # Colony Pod - for founding new bases
+        # Slot 1: Colony Pod - for founding new bases (everyone gets this)
         self.design_slots[1] = {
             "chassis": "infantry",
             "weapon": "colony_pod",
@@ -48,6 +56,28 @@ class DesignData:
             "ability1": "none",
             "ability2": "none"
         }
+
+        # Slot 2: Faction-specific starting designs (SMAC-style)
+        if faction_id == 4:  # Santiago - starts with Doctrine: Mobility (speeder chassis)
+            # Rover (1-1-2)
+            self.design_slots[2] = {
+                "chassis": "speeder",
+                "weapon": "hand_weapons",
+                "armor": "no_armor",
+                "reactor": "fission",
+                "ability1": "none",
+                "ability2": "none"
+            }
+        elif faction_id == 1:  # Morgan - starts with Biogenetics (synthmetal armor)
+            # Upgraded infantry (1-2-1)
+            self.design_slots[2] = {
+                "chassis": "infantry",
+                "weapon": "hand_weapons",
+                "armor": "synthmetal",
+                "reactor": "fission",
+                "ability1": "none",
+                "ability2": "none"
+            }
 
     def get_designs(self):
         """Get list of all non-None designs.

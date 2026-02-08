@@ -100,7 +100,7 @@ class Game:
         # Initialize unit designs for all factions
         from game.design_data import DesignData
         for faction_id in range(7):
-            self.factions[faction_id].designs = DesignData()
+            self.factions[faction_id].designs = DesignData(faction_id)
 
         # Facilities and Projects
         self.built_projects = set()  # Global set of secret projects built (one per game)
@@ -233,39 +233,54 @@ class Game:
                 x, y = land_tiles[tile_idx]
                 tile_idx += 1  # Move to next tile for next faction
 
-                # Starting military unit (faction-specific)
+                # Starting military unit - Santiago/Morgan get advanced unit, others get Scout Patrol
                 from game.unit_components import generate_unit_name
-                # Santiago (faction 4) starts with a Rover, others get Scout Patrol
-                if faction_id == 4:  # Santiago/Spartans
-                    chassis = 'speeder'
-                    unit_name = generate_unit_name('hand_weapons', 'speeder', 'no_armor', 'fission')
+                # Santiago and Morgan start with their faction-specific design (slot 2)
+                if faction_id in [1, 4]:  # Morgan or Santiago
+                    military_design = self.factions[faction_id].designs.get_design(2)
                 else:
-                    chassis = 'infantry'
-                    unit_name = generate_unit_name('hand_weapons', 'infantry', 'no_armor', 'fission')
+                    military_design = self.factions[faction_id].designs.get_design(0)
+
+                military_name = generate_unit_name(
+                    military_design['weapon'],
+                    military_design['chassis'],
+                    military_design['armor'],
+                    military_design['reactor']
+                )
 
                 scout = Unit(
                     x=x, y=y,
-                    chassis=chassis,
+                    chassis=military_design['chassis'],
                     owner=faction_id,
-                    name=f"{faction_prefix} {unit_name}",
-                    weapon='hand_weapons',
-                    armor='no_armor',
-                    reactor='fission'
+                    name=f"{faction_prefix} {military_name}",
+                    weapon=military_design['weapon'],
+                    armor=military_design['armor'],
+                    reactor=military_design['reactor'],
+                    ability1=military_design.get('ability1', 'none'),
+                    ability2=military_design.get('ability2', 'none')
                 )
                 self.units.append(scout)
                 self.game_map.set_unit_at(x, y, scout)
-                print(f"Spawned {faction_prefix} {unit_name} at ({x}, {y})")
+                print(f"Spawned {faction_prefix} {military_name} at ({x}, {y})")
 
-                # Colony Pod (same tile, owner = faction_id)
-                colony_name = generate_unit_name('colony_pod', 'infantry', 'no_armor', 'fission')
+                # Colony Pod - use design from slot 1
+                colony_design = self.factions[faction_id].designs.get_design(1)
+                colony_name = generate_unit_name(
+                    colony_design['weapon'],
+                    colony_design['chassis'],
+                    colony_design['armor'],
+                    colony_design['reactor']
+                )
                 colony = Unit(
                     x=x, y=y,
-                    chassis='infantry',
+                    chassis=colony_design['chassis'],
                     owner=faction_id,
                     name=f"{faction_prefix} {colony_name}",
-                    weapon='colony_pod',
-                    armor='no_armor',
-                    reactor='fission'
+                    weapon=colony_design['weapon'],
+                    armor=colony_design['armor'],
+                    reactor=colony_design['reactor'],
+                    ability1=colony_design.get('ability1', 'none'),
+                    ability2=colony_design.get('ability2', 'none')
                 )
                 self.units.append(colony)
                 self.game_map.set_unit_at(x, y, colony)
@@ -2581,7 +2596,7 @@ class Game:
             self.factions[faction_id].tech_tree = TechTree()
             self._grant_starting_tech(faction_id)
             self.factions[faction_id].tech_tree.auto_select_research()
-            self.factions[faction_id].designs = DesignData()
+            self.factions[faction_id].designs = DesignData(faction_id)
         self.territory = TerritoryManager(self.game_map)
         self.built_projects = set()
         self.se_selections = {
@@ -2715,7 +2730,7 @@ class Game:
                     faction.designs = DesignData.from_dict(faction_data['designs'])
                 else:
                     # Initialize default designs if not in save
-                    faction.designs = DesignData()
+                    faction.designs = DesignData(faction_id)
                 game.factions[faction_id] = faction
         else:
             # Old save format - migrate from tech_tree and ai_tech_trees
@@ -2735,7 +2750,7 @@ class Game:
                         # Very old save - initialize new tech tree
                         faction.tech_tree = TechTree()
                 # Initialize default designs for old saves
-                faction.designs = DesignData()
+                faction.designs = DesignData(faction_id)
                 game.factions[faction_id] = faction
 
         # Restore AI players
