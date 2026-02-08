@@ -245,7 +245,9 @@ class Game:
                     military_design['weapon'],
                     military_design['chassis'],
                     military_design['armor'],
-                    military_design['reactor']
+                    military_design['reactor'],
+                    military_design.get('ability1', 'none'),
+                    military_design.get('ability2', 'none')
                 )
 
                 scout = Unit(
@@ -269,7 +271,9 @@ class Game:
                     colony_design['weapon'],
                     colony_design['chassis'],
                     colony_design['armor'],
-                    colony_design['reactor']
+                    colony_design['reactor'],
+                    colony_design.get('ability1', 'none'),
+                    colony_design.get('ability2', 'none')
                 )
                 colony = Unit(
                     x=x, y=y,
@@ -1919,7 +1923,8 @@ class Game:
         faction_designs = self.factions[base.owner].designs
         for d in faction_designs.get_designs():
             design_name = generate_unit_name(
-                d['weapon'], d['chassis'], d['armor'], d['reactor']
+                d['weapon'], d['chassis'], d['armor'], d['reactor'],
+                d.get('ability1', 'none'), d.get('ability2', 'none')
             )
             if design_name == item_name:
                 design = d

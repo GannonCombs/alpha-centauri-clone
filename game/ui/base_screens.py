@@ -846,7 +846,8 @@ class BaseScreenManager:
         for design in faction_designs.get_designs():
             # Generate unit name from component IDs
             unit_name = generate_unit_name(
-                design['weapon'], design['chassis'], design['armor'], design['reactor']
+                design['weapon'], design['chassis'], design['armor'], design['reactor'],
+                design.get('ability1', 'none'), design.get('ability2', 'none')
             )
             turns = get_turns(unit_name)
             # Show basic stats in description

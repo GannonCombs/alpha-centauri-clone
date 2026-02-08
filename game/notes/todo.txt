@@ -166,3 +166,4 @@ Fog of war
 Advanced unit movement (G command, J command, drag path)
 Automatic end turn vs button
 V to hover
+Isometric

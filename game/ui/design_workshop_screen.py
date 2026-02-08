@@ -175,7 +175,8 @@ class DesignWorkshopScreen:
 
         # Keep existing designs (don't reset!)
         # Generate names from component IDs for duplicate checking
-        existing_names = {generate_unit_name(d['weapon'], d['chassis'], d['armor'], d['reactor'])
+        existing_names = {generate_unit_name(d['weapon'], d['chassis'], d['armor'], d['reactor'],
+                                               d.get('ability1', 'none'), d.get('ability2', 'none'))
                           for d in current_designs}
 
         # Get available components
@@ -293,7 +294,8 @@ class DesignWorkshopScreen:
         # Add all new designs to first available empty slots
         added_count = 0
         for design in new_designs:
-            design_name = generate_unit_name(design['weapon'], design['chassis'], design['armor'], design['reactor'])
+            design_name = generate_unit_name(design['weapon'], design['chassis'], design['armor'], design['reactor'],
+                                              design.get('ability1', 'none'), design.get('ability2', 'none'))
             if design_name not in existing_names:
                 # Add to first empty slot
                 slot_index = faction_designs.add_design(design)
@@ -403,12 +405,14 @@ class DesignWorkshopScreen:
         pygame.draw.rect(screen, (25, 30, 35), center_panel_rect, border_radius=10)
         pygame.draw.rect(screen, (100, 140, 160), center_panel_rect, 3, border_radius=10)
 
-        # Unit name - pass armor and reactor for correct SMAC naming
+        # Unit name - pass armor, reactor, and abilities for correct SMAC naming
         unit_name = unit_components.generate_unit_name(
             self.dw_selected_weapon,
             self.dw_selected_chassis,
             self.dw_selected_armor,
-            self.dw_selected_reactor
+            self.dw_selected_reactor,
+            self.dw_selected_ability1,
+            self.dw_selected_ability2
         )
         name_surf = self.font.render(unit_name, True, (200, 220, 240))
         screen.blit(name_surf, (center_panel_rect.centerx - name_surf.get_width() // 2, center_panel_y + 20))
@@ -510,7 +514,8 @@ class DesignWorkshopScreen:
                     # Generate design name from components
                     from game.unit_components import generate_unit_name
                     design_name = generate_unit_name(
-                        design['weapon'], design['chassis'], design['armor'], design['reactor']
+                        design['weapon'], design['chassis'], design['armor'], design['reactor'],
+                        design.get('ability1', 'none'), design.get('ability2', 'none')
                     )
 
                     # Design name (wrapped)
@@ -999,7 +1004,9 @@ class DesignWorkshopScreen:
                     current_design['weapon'],
                     current_design['chassis'],
                     current_design['armor'],
-                    current_design['reactor']
+                    current_design['reactor'],
+                    current_design.get('ability1', 'none'),
+                    current_design.get('ability2', 'none')
                 )
                 self.rename_text_selected = True  # Text starts selected
                 self.rename_popup_open = True
@@ -1080,7 +1087,9 @@ class DesignWorkshopScreen:
                 self.dw_selected_weapon,
                 self.dw_selected_chassis,
                 self.dw_selected_armor,
-                self.dw_selected_reactor
+                self.dw_selected_reactor,
+                self.dw_selected_ability1,
+                self.dw_selected_ability2
             )
 
             # Save to the currently selected slot
