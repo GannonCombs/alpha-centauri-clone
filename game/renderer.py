@@ -314,12 +314,12 @@ class Renderer:
 
                 pygame.draw.rect(self.screen, seg_color, seg_rect)
 
-    def draw_bases(self, bases, player_faction_id, game_map):
+    def draw_bases(self, bases, player_faction_id, game_map, game):
         """Draw all bases on the map."""
         for base in bases:
-            self.draw_base(base, player_faction_id, game_map)
+            self.draw_base(base, player_faction_id, game_map, game)
 
-    def draw_base(self, base, player_faction_id, game_map):
+    def draw_base(self, base, player_faction_id, game_map, game):
         """Draw a single base."""
         wrapped_x = (base.x - self.camera_offset_x) % game_map.width
         screen_x = (wrapped_x * TILE_SIZE) + self.base_offset_x
@@ -370,8 +370,8 @@ class Renderer:
         pygame.draw.rect(self.screen, COLOR_BLACK, bg_rect)
         self.screen.blit(name_surf, name_rect)
 
-        # Draw current production below name
-        if hasattr(base, 'current_production') and base.current_production:
+        # Draw current production below name (only if visible to player)
+        if hasattr(base, 'current_production') and base.current_production and game.can_see_production(base):
             prod_text = base.current_production
             # Check if governor is enabled
             if hasattr(base, 'governor_enabled') and base.governor_enabled:

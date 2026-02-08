@@ -80,7 +80,7 @@ class AIPlayer:
                     target_unit = check_tile.units[0]
                     if target_unit.owner == 0:  # Player unit
                         # Found adjacent enemy - consider attacking
-                        if self._should_attack(unit, target_unit):
+                        if self._should_attack(unit, target_unit, game):
                             # Attack by moving onto their tile
                             target_x = check_x
                             target_y = check_y
@@ -177,7 +177,7 @@ class AIPlayer:
             target_unit = target_tile.units[0]
             if target_unit.owner != unit.owner:
                 # Enemy unit - only attack if odds are favorable
-                if self._should_attack(unit, target_unit):
+                if self._should_attack(unit, target_unit, game):
                     return self._try_move(unit, dx, dy, game)
                 else:
                     # Don't attack - bad odds
@@ -371,16 +371,21 @@ class AIPlayer:
 
         return attacker_strength / total_strength
 
-    def _should_attack(self, unit, target_unit):
+    def _should_attack(self, unit, target_unit, game):
         """Decide if unit should attack target based on odds and health.
 
         Args:
             unit (Unit): AI unit considering attack
             target_unit (Unit): Potential target
+            game (Game): Current game state
 
         Returns:
             bool: True if AI should attack
         """
+        # Never attack pact partners
+        if game.has_pact_with(unit.owner, target_unit.owner):
+            return False
+
         # Colony pods should never attack
         if unit.is_colony_pod():
             return False

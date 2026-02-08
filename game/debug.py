@@ -23,6 +23,7 @@ class DebugManager:
         self.pending_unit_type = None  # Unit type to spawn at cursor
         self.tech_selection_active = False
         self.unit_selection_active = False
+        self.show_all_production = False  # See all faction production
 
     def toggle(self):
         """Toggle debug mode on/off."""
@@ -120,6 +121,14 @@ class DebugManager:
             game.end_turn()
             game.set_status_message("DEBUG: Turn skipped")
             print("DEBUG: Skipped to next turn")
+            return True
+
+        # Ctrl+P - Toggle show all production
+        if ctrl and event.key == pygame.K_p:
+            self.show_all_production = not self.show_all_production
+            status = "ON" if self.show_all_production else "OFF"
+            game.set_status_message(f"DEBUG: Show all production {status}")
+            print(f"DEBUG: Show all production {status}")
             return True
 
         # Ctrl+X - Add experience/kills to selected unit
@@ -311,6 +320,7 @@ class DebugManager:
             "Ctrl+K - Kill selected unit",
             "Ctrl+B - Create base at location",
             "Ctrl+N - Skip to next turn",
+            "Ctrl+P - Toggle show all production",
             "Ctrl+X - Add kills/XP to unit",
             "Ctrl+I - Toggle unit invincibility",
             "",

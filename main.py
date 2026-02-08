@@ -176,6 +176,10 @@ def main():
                     if ui_panel.active_screen != "GAME":
                         ui_panel.handle_event(event, game)
                         continue
+                    # Check if save/load dialog is open
+                    if ui_panel.save_load_dialog.mode is not None:
+                        ui_panel.handle_event(event, game)
+                        continue
                     # No overlay active - show exit dialog
                     exit_dialog.show()
                     continue
@@ -202,6 +206,10 @@ def main():
                     game = ui_handled[1]  # Replace game instance
                     renderer = Renderer(screen)  # Recreate renderer with new game
                     game.ui_manager = ui_panel  # Restore UI reference
+                    # Restore diplomatic relations from saved data
+                    if hasattr(game, '_saved_diplo_relations'):
+                        ui_panel.diplomacy.diplo_relations = game._saved_diplo_relations.copy()
+                        delattr(game, '_saved_diplo_relations')  # Clean up temporary storage
                 elif not ui_handled:
                     # UI didn't handle it - process game keys
                     if event.key == pygame.K_w:
@@ -326,6 +334,10 @@ def main():
                     game = ui_handled[1]  # Replace game instance
                     renderer = Renderer(screen)  # Recreate renderer with new game
                     game.ui_manager = ui_panel  # Restore UI reference
+                    # Restore diplomatic relations from saved data
+                    if hasattr(game, '_saved_diplo_relations'):
+                        ui_panel.diplomacy.diplo_relations = game._saved_diplo_relations.copy()
+                        delattr(game, '_saved_diplo_relations')  # Clean up temporary storage
                 elif not ui_handled:
                     # UI didn't handle it - pass to game if in map area
                     if mouse_y < display.MAP_AREA_HEIGHT:
@@ -396,6 +408,9 @@ def main():
                              ui_panel.commlink_open or
                              ui_panel.elimination_popup_active or
                              ui_panel.new_designs_popup_active or
+                             ui_panel.surprise_attack_popup_active or
+                             ui_panel.break_treaty_popup_active or
+                             ui_panel.pact_evacuation_popup_active or
                              game.upkeep_phase_active or
                              game.combat.pending_battle is not None or
                              game.combat.active_battle is not None)
@@ -450,7 +465,7 @@ def main():
         # Render (ORDER MATTERS!)
         screen.fill((0, 0, 0))  # Clear screen first
         renderer.draw_map(game.game_map, game.territory)  # Draw map tiles and territory
-        renderer.draw_bases(game.bases, game.player_faction_id, game.game_map)  # Draw bases
+        renderer.draw_bases(game.bases, game.player_faction_id, game.game_map, game)  # Draw bases
         renderer.draw_units(game.units, game.selected_unit, game.player_faction_id, game.game_map)  # Draw units on top
         renderer.draw_status_message(game)  # Draw status message
         ui_panel.draw(screen, game, renderer)  # Draw UI last

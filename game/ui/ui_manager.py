@@ -86,6 +86,12 @@ class UIManager:
         self.surprise_attack_faction = None
         self.surprise_attack_ok_rect = None
 
+        # Pact evacuation popup
+        self.pact_evacuation_popup_active = False
+        self.pact_evacuation_count = 0
+        self.pact_evacuation_ok_rect = None
+        self.pact_evacuation_pending_battle = None  # Store battle to proceed after dismissing popup
+
         # Unit stack panel
         self.unit_stack_scroll_offset = 0
         self.unit_stack_left_arrow_rect = None
@@ -275,7 +281,15 @@ class UIManager:
                     return True
 
             if event.key == pygame.K_ESCAPE:
-                if self.active_screen == "TECH_TREE":
+                # Battle prediction popup - Esc = Cancel
+                if game.combat.pending_battle:
+                    game.combat.pending_battle = None
+                    return True
+                # Save/load dialog - Esc closes dialog
+                elif self.save_load_dialog.mode is not None:
+                    self.save_load_dialog.close()
+                    return True
+                elif self.active_screen == "TECH_TREE":
                     self.active_screen = "GAME"
                     self.social_screens.tech_tree_open = False
                     return True
@@ -444,21 +458,61 @@ class UIManager:
                 pos = pygame.mouse.get_pos()
 
                 if self.break_treaty_ok_rect and self.break_treaty_ok_rect.collidepoint(pos):
-                    # Player confirmed breaking treaty - set both to Vendetta and proceed with combat
+                    # Player confirmed breaking treaty
+                    # Check if there was a Pact (requires evacuation)
+                    had_pact = self.diplomacy.diplo_relations.get(self.break_treaty_target_faction, "Uncommitted") == "Pact"
+
+                    # Set relation to Vendetta
                     self.diplomacy.diplo_relations[self.break_treaty_target_faction] = "Vendetta"
                     self.break_treaty_popup_active = False
 
-                    # Proceed with the pending battle
-                    if self.break_treaty_pending_battle:
-                        game.combat.pending_battle = self.break_treaty_pending_battle
-                        self.break_treaty_pending_battle = None
-                    self.break_treaty_target_faction = None
+                    # If there was a pact, evacuate units and show popup
+                    if had_pact:
+                        # Evacuate both player's and AI's units
+                        player_evacuated = game.evacuate_units_from_former_pact(game.player_faction_id, self.break_treaty_target_faction)
+                        ai_evacuated = game.evacuate_units_from_former_pact(self.break_treaty_target_faction, game.player_faction_id)
+
+                        # Show evacuation popup if any units were moved
+                        if player_evacuated > 0:
+                            self.pact_evacuation_popup_active = True
+                            self.pact_evacuation_count = player_evacuated
+                            self.pact_evacuation_pending_battle = self.break_treaty_pending_battle
+                            self.break_treaty_pending_battle = None
+                            self.break_treaty_target_faction = None
+                        else:
+                            # No evacuation needed, proceed with battle
+                            if self.break_treaty_pending_battle:
+                                game.combat.pending_battle = self.break_treaty_pending_battle
+                                self.break_treaty_pending_battle = None
+                            self.break_treaty_target_faction = None
+                    else:
+                        # No pact, just proceed with battle
+                        if self.break_treaty_pending_battle:
+                            game.combat.pending_battle = self.break_treaty_pending_battle
+                            self.break_treaty_pending_battle = None
+                        self.break_treaty_target_faction = None
                     return True
                 elif self.break_treaty_cancel_rect and self.break_treaty_cancel_rect.collidepoint(pos):
                     # Cancel - no attack
                     self.break_treaty_popup_active = False
                     self.break_treaty_pending_battle = None
                     self.break_treaty_target_faction = None
+                    return True
+                # Don't allow clicks through popup
+                return True
+
+            # Pact evacuation popup button
+            if self.pact_evacuation_popup_active:
+                pos = pygame.mouse.get_pos()
+
+                if self.pact_evacuation_ok_rect and self.pact_evacuation_ok_rect.collidepoint(pos):
+                    # Dismiss popup and proceed with pending battle
+                    self.pact_evacuation_popup_active = False
+
+                    if self.pact_evacuation_pending_battle:
+                        game.combat.pending_battle = self.pact_evacuation_pending_battle
+                        self.pact_evacuation_pending_battle = None
+                    self.pact_evacuation_count = 0
                     return True
                 # Don't allow clicks through popup
                 return True
@@ -1049,6 +1103,9 @@ class UIManager:
         if self.surprise_attack_popup_active:
             self._draw_surprise_attack_popup(screen, game)
 
+        if self.pact_evacuation_popup_active:
+            self._draw_pact_evacuation_popup(screen, game)
+
         # Game over screen (highest priority)
         if game.game_over:
             self._draw_game_over(screen, game)
@@ -1557,6 +1614,50 @@ class UIManager:
         ok_text = self.font.render("OK", True, COLOR_TEXT)
         screen.blit(ok_text, (self.surprise_attack_ok_rect.centerx - ok_text.get_width() // 2,
                              self.surprise_attack_ok_rect.centery - 10))
+
+    def _draw_pact_evacuation_popup(self, screen, game):
+        """Draw popup notifying player of unit evacuation after pact ended."""
+        # Semi-transparent overlay
+        overlay = pygame.Surface((display.SCREEN_WIDTH, display.SCREEN_HEIGHT))
+        overlay.set_alpha(180)
+        overlay.fill((0, 0, 0))
+        screen.blit(overlay, (0, 0))
+
+        # Dialog box
+        box_w, box_h = 700, 250
+        box_x = display.SCREEN_WIDTH // 2 - box_w // 2
+        box_y = display.SCREEN_HEIGHT // 2 - box_h // 2
+
+        pygame.draw.rect(screen, (30, 40, 50), (box_x, box_y, box_w, box_h), border_radius=12)
+        pygame.draw.rect(screen, (100, 140, 180), (box_x, box_y, box_w, box_h), 3, border_radius=12)
+
+        # Title
+        title_text = "PACT DISSOLVED"
+        title_surf = self.font.render(title_text, True, (200, 220, 255))
+        screen.blit(title_surf, (box_x + box_w // 2 - title_surf.get_width() // 2, box_y + 30))
+
+        # Message
+        unit_word = "unit" if self.pact_evacuation_count == 1 else "units"
+        msg_text = f"With the pact dissolved, {self.pact_evacuation_count} {unit_word}"
+        msg_surf = self.small_font.render(msg_text, True, (180, 200, 220))
+        screen.blit(msg_surf, (box_x + box_w // 2 - msg_surf.get_width() // 2, box_y + 85))
+
+        msg_text2 = "returned to your nearest base."
+        msg_surf2 = self.small_font.render(msg_text2, True, (180, 200, 220))
+        screen.blit(msg_surf2, (box_x + box_w // 2 - msg_surf2.get_width() // 2, box_y + 115))
+
+        # OK button
+        btn_w, btn_h = 140, 50
+        btn_y = box_y + box_h - 80
+        ok_x = box_x + box_w // 2 - btn_w // 2
+        self.pact_evacuation_ok_rect = pygame.Rect(ok_x, btn_y, btn_w, btn_h)
+        is_hover = self.pact_evacuation_ok_rect.collidepoint(pygame.mouse.get_pos())
+        pygame.draw.rect(screen, (70, 90, 110) if is_hover else (50, 70, 90),
+                       self.pact_evacuation_ok_rect, border_radius=8)
+        pygame.draw.rect(screen, (100, 140, 180), self.pact_evacuation_ok_rect, 3, border_radius=8)
+        ok_text = self.font.render("OK", True, COLOR_TEXT)
+        screen.blit(ok_text, (self.pact_evacuation_ok_rect.centerx - ok_text.get_width() // 2,
+                             self.pact_evacuation_ok_rect.centery - 10))
 
     def _draw_game_over(self, screen, game):
         """Draw the game over screen with victory/defeat message and buttons."""

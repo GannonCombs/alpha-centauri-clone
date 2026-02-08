@@ -27,6 +27,7 @@ class IntroScreenManager:
         self.cursor_visible = True
         self.cursor_timer = 0
         self.show_exit_confirm = False  # Exit confirmation dialog
+        self.flow = None  # Track which flow: 'quick' (Make Random Map) or 'custom' (Customize Map)
 
         # Map customization settings
         self.selected_map_size = 'standard'  # Only standard for now
@@ -708,10 +709,42 @@ class IntroScreenManager:
                     return 'exit'
             return None  # Consume all events when dialog is showing
 
-        # Check for Escape key to show exit confirmation
+        # Check for Escape key - go back in customize screens, or show exit confirmation
         if event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
-            self.show_exit_confirm = True
-            return None
+            # In customize screens, Esc goes back one level
+            if self.mode == 'map_select':
+                self.mode = 'intro'
+                self.flow = None  # Reset flow when going back to intro
+                return None
+            elif self.mode == 'map_size':
+                self.mode = 'map_select'
+                return None
+            elif self.mode == 'land_composition':
+                self.mode = 'map_size'
+                return None
+            elif self.mode == 'erosive_forces':
+                self.mode = 'land_composition'
+                return None
+            elif self.mode == 'alien_life':
+                self.mode = 'erosive_forces'
+                return None
+            elif self.mode == 'skill_level':
+                self.mode = 'alien_life'
+                return None
+            elif self.mode == 'faction_select':
+                # Go back based on which flow we came from
+                if self.flow == 'quick':
+                    self.mode = 'map_select'
+                else:  # 'custom' or None
+                    self.mode = 'skill_level'
+                return None
+            elif self.mode == 'name_input':
+                self.mode = 'faction_select'
+                return None
+            else:
+                # In intro mode, show exit confirmation
+                self.show_exit_confirm = True
+                return None
 
         # Normal event handling
         if self.mode == 'intro':
@@ -754,12 +787,14 @@ class IntroScreenManager:
         if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
             if self.random_map_button_rect and self.random_map_button_rect.collidepoint(event.pos):
                 # Proceed to faction selection with random/default map settings
+                self.flow = 'quick'
                 self.mode = 'faction_select'
                 self.selected_faction_id = None
                 self.selected_ocean_percentage = None  # Use default (70%)
                 return None
             elif self.custom_map_button_rect and self.custom_map_button_rect.collidepoint(event.pos):
                 # Go to map size selection
+                self.flow = 'custom'
                 self.mode = 'map_size'
                 return None
 

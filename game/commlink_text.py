@@ -33,6 +33,11 @@ class DialogSubstitution:
             """Get a flavor key from the faction data with fallback."""
             return flavor.get(key, default)
 
+        # Determine gender-based pact terms
+        ai_gender = flavor.get('gender', 'M')
+        pact_brother_sister = 'Pact Sister' if ai_gender == 'F' else 'Pact Brother'
+        pact_of_bors = 'Pact of Sisterhood' if ai_gender == 'F' else 'Pact of Brotherhood'
+
         self.variables = {
             'NAME0': player_faction.get('$NAME', 'I am'),
             'NAME1': player_faction.get('leader', 'Commander'),
@@ -53,6 +58,10 @@ class DialogSubstitution:
             'FEE8': get_f('$FEE', 'payment'),
             'THOUGHT_POLICE4': get_f('$POLICE_NAME', 'security forces'),
             'THE_ENVIRONMENTAL_CODE9': get_f('$LAW_NAME', 'laws'),
+            'PACTBROTHERORSISTER3': pact_brother_sister,
+            'PACTOFBORS1': pact_of_bors,
+            'YOURGOAL4': player_faction.get('$PET_PROJECTS', 'achieve your goals'),
+            'MYGOAL5': get_f('$PET_PROJECTS', 'achieve my goals'),
         }
 
     def substitute(self, text, ai_gender_index=1, numbers=None):

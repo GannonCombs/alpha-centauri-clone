@@ -167,12 +167,10 @@ class DiplomacyManager:
             return 'DIPLO'
         elif self.diplo_stage == "proposal":
             return 'PROPOSAL'
-        elif self.diplo_stage == "propose_pact":
-            return 'SWEARAPACT'
         elif self.diplo_stage == "accept_pact":
-            return 'MAKEPACT'
+            return 'MAKEPACT'  # AI accepts the pact
         elif self.diplo_stage == "reject_pact":
-            return 'REJPACT'
+            return 'REJPACT'  # AI rejects the pact
         elif self.diplo_stage == "accept_treaty":
             return 'MAKETREATY0'  # Use MAKETREATY0 from script.txt
         elif self.diplo_stage == "reject_treaty":
@@ -266,15 +264,12 @@ class DiplomacyManager:
         elif action == 'proposal':
             self.diplo_stage = 'proposal'
         elif action == 'propose_pact':
-            # Player proposes pact - show player's speech
-            self.diplo_stage = 'propose_pact'
-        elif action == 'ai_decide_pact':
-            # AI decides whether to accept player's pact proposal
+            # Player proposes pact - AI decides immediately
             # For now, always accept (later: base on relationship)
             faction_id = next((i for i, f in enumerate(FACTION_DATA) if f['name'] == self.target_faction['name']), None)
             if faction_id is not None:
                 self.diplo_relations[faction_id] = 'Pact'
-            self.diplo_stage = 'accept_pact'  # AI accepts
+            self.diplo_stage = 'accept_pact'  # AI accepts (show MAKEPACT)
         elif action == 'accept_pact':
             # After showing AI's acceptance, return to diplo
             self.diplo_stage = 'diplo'

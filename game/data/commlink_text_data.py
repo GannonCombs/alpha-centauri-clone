@@ -1954,5 +1954,5 @@ COMMLINK_TEXT = {
     'TIMESUP': {
         'text': '"My apologies, $TITLE0, but I simply haven\'t all day to talk. $NAME2 out."',
         'responses': [{'text': 'Continue', 'action': 'diplo'}]
-    }
+    },
 }

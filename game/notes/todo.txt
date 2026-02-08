@@ -111,16 +111,15 @@ Notes:
 1 Once we get the commlink of every living faction, give a popup that we now have them all, and thus can now call council.
 2 If another unit gets all contacts first, they may call council. Add to the AI behavior that encourages them to call things
 that they like. Examples: remove atrocity prohibitions if their faction is warlike, elect governor if they are a candidate, etc.
-4 New unit design on better unit tech is still not popping up, at least not consistently. Is the pattern that chassis and
+3 New unit design on better unit tech is still not popping up, at least not consistently. Is the pattern that chassis and
  armor upgrade, but weapons don't?
-5 Right now, enemy bases say what they're working on. This should only be the case if I have a Pact with them, or Empath Guild,
-or am Governor, or have Infiltrated their Datalinks.
-6 Got a diplomatic milestone popup when missing commlinks.
-7 Production times are off. Merchant Exchange takes 20 turns on Turn 1 for Morgan.
-8 Get rid of weapon_mode and armor_mode. We store the ids only. Any data that we need, we can look in unit_data.
-9 FACTION_DATA contains single quotes and double quotes.
-10 Not all faction bonuses are applied.
-
+4 Got a diplomatic milestone popup when missing commlinks.
+5 Production times are off. Merchant Exchange takes 20 turns on Turn 1 for Morgan.
+6 Get rid of weapon_mode and armor_mode. We store the ids only. Any data that we need, we can look in unit_data.
+7 FACTION_DATA contains single quotes and double quotes.
+8 Not all faction bonuses are applied.
+9 When hitting Esc on Make Random Map at the character selection stage, it goes back to views that are only seen during
+Customize Map. This shouldn't be. It should return to the screen it came from in both flows.
 
 
 ***************************************************************************

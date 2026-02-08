@@ -166,6 +166,7 @@ class Game:
         self.pending_commlink_requests = []  # List of {faction_id, player_id} dicts for AI contact popups
         self.eliminated_factions = set()  # Set of faction IDs that have been eliminated
         self.pending_faction_eliminations = []  # List of faction_ids for elimination popups
+        self.infiltrated_datalinks = set()  # Set of faction IDs whose datalinks player has infiltrated
 
         # Camera control
         self.center_camera_on_selected = False  # Flag to center camera on selected unit
@@ -395,7 +396,7 @@ class Game:
                 tile = self.game_map.get_tile(check_x, check_y)
                 if tile and tile.units:
                     for other_unit in tile.units:
-                        if other_unit.owner != unit.owner:
+                        if other_unit.owner != unit.owner and not self.has_pact_with(unit.owner, other_unit.owner):
                             start_has_enemy_zoc = True
                             break
 
@@ -430,7 +431,7 @@ class Game:
                 tile = self.game_map.get_tile(check_x, check_y)
                 if tile and tile.units:
                     for other_unit in tile.units:
-                        if other_unit.owner != unit.owner:
+                        if other_unit.owner != unit.owner and not self.has_pact_with(unit.owner, other_unit.owner):
                             target_has_enemy_zoc = True
                             break
 
@@ -499,8 +500,8 @@ class Game:
             # Get first unit in stack (defender in combat, or check if friendly)
             first_unit = target_tile.units[0]
 
-            # Check if it's an enemy unit
-            if first_unit.owner != unit.owner:
+            # Check if it's an enemy unit (not friendly, not pact partner)
+            if first_unit.owner != unit.owner and not self.has_pact_with(unit.owner, first_unit.owner):
                 # Enemy stack - initiate combat with first unit
                 if unit.owner == self.player_faction_id:
                     # Player attacking - check if this would break a treaty
@@ -567,7 +568,8 @@ class Game:
         # Check for base capture (enemy base with no garrison)
         if target_tile.base:
             base = target_tile.base
-            if base.owner != unit.owner and len(base.garrison) == 0:
+            # Can't capture pact partner bases
+            if base.owner != unit.owner and not self.has_pact_with(unit.owner, base.owner) and len(base.garrison) == 0:
                 # Capture the base!
                 old_owner = base.owner
 
@@ -1888,6 +1890,148 @@ class Game:
                 return True
         return False
 
+    def has_pact_with(self, faction_id1, faction_id2):
+        """Check if two factions have a pact.
+
+        Args:
+            faction_id1: First faction ID
+            faction_id2: Second faction ID
+
+        Returns:
+            bool: True if factions have a pact, False otherwise
+        """
+        if not hasattr(self, 'ui_manager') or not hasattr(self.ui_manager, 'diplomacy'):
+            return False
+
+        # diplo_relations only stores player's perspective, so check both directions
+        # If player is faction_id1, check diplo_relations[faction_id2]
+        # If player is faction_id2, check diplo_relations[faction_id1]
+        if faction_id1 == self.player_faction_id:
+            relation = self.ui_manager.diplomacy.diplo_relations.get(faction_id2, "Uncommitted")
+            return relation == 'Pact'
+        elif faction_id2 == self.player_faction_id:
+            relation = self.ui_manager.diplomacy.diplo_relations.get(faction_id1, "Uncommitted")
+            return relation == 'Pact'
+        else:
+            # Neither is the player - AI factions don't have pacts with each other
+            return False
+
+    def can_see_production(self, base):
+        """Check if player can see a base's production.
+
+        Production is visible if any of these conditions are met:
+        1. Base is owned by player
+        2. Player has a pact with base owner
+        3. Player owns Empath Guild
+        4. Player is planetary governor
+        5. Player has infiltrated the faction's datalinks
+        6. Debug mode is enabled
+
+        Args:
+            base: Base to check
+
+        Returns:
+            bool: True if production should be visible
+        """
+        # Always see own bases
+        if base.owner == self.player_faction_id:
+            return True
+
+        # Debug mode shows all
+        if hasattr(self, 'debug') and self.debug.show_all_production:
+            return True
+
+        # Check for pact
+        if self.has_pact_with(self.player_faction_id, base.owner):
+            return True
+
+        # Check for infiltrated datalinks
+        if base.owner in self.infiltrated_datalinks:
+            return True
+
+        # Check for Empath Guild
+        for player_base in self.bases:
+            if player_base.owner == self.player_faction_id:
+                if 'Empath Guild' in player_base.facilities:
+                    return True
+
+        # TODO: Check for planetary governor status
+        # (requires governor voting system to be implemented)
+
+        return False
+
+    def evacuate_units_from_former_pact(self, faction_id1, faction_id2):
+        """Evacuate units from former pact partner's territory.
+
+        When a pact ends, all units on former pact partner's tiles or bases
+        are automatically moved to their nearest friendly base.
+
+        Args:
+            faction_id1: First faction ID
+            faction_id2: Second faction ID (former pact partner)
+
+        Returns:
+            int: Number of units evacuated
+        """
+        evacuated_count = 0
+
+        # Find all units that need to be evacuated
+        units_to_evacuate = []
+
+        for unit in self.units:
+            # Check if unit belongs to faction_id1 and is on faction_id2's territory
+            if unit.owner == faction_id1:
+                tile = self.game_map.get_tile(unit.x, unit.y)
+
+                # Check if on a base owned by former pact partner
+                if tile.base and tile.base.owner == faction_id2:
+                    units_to_evacuate.append(unit)
+                    continue
+
+                # Check if sharing tile with former pact partner's units
+                if tile.units:
+                    for other_unit in tile.units:
+                        if other_unit != unit and other_unit.owner == faction_id2:
+                            units_to_evacuate.append(unit)
+                            break
+
+        # Evacuate each unit to nearest friendly base
+        for unit in units_to_evacuate:
+            # Find nearest friendly base
+            nearest_base = None
+            min_distance = float('inf')
+
+            for base in self.bases:
+                if base.owner == faction_id1:
+                    # Calculate distance (Manhattan distance with wrapping)
+                    dx = abs(base.x - unit.x)
+                    if dx > self.game_map.width // 2:
+                        dx = self.game_map.width - dx
+                    dy = abs(base.y - unit.y)
+                    distance = dx + dy
+
+                    if distance < min_distance:
+                        min_distance = distance
+                        nearest_base = base
+
+            # Teleport unit to nearest base
+            if nearest_base:
+                # Remove from old position
+                old_tile = self.game_map.get_tile(unit.x, unit.y)
+                if old_tile and unit in old_tile.units:
+                    old_tile.units.remove(unit)
+
+                # Add to new position
+                unit.x = nearest_base.x
+                unit.y = nearest_base.y
+                new_tile = self.game_map.get_tile(unit.x, unit.y)
+                if new_tile and unit not in new_tile.units:
+                    new_tile.units.append(unit)
+
+                evacuated_count += 1
+
+        return evacuated_count
+
     def check_faction_elimination(self):
         """Check if any faction has been eliminated and trigger popup.
 
@@ -2720,7 +2864,9 @@ class Game:
                 'enemy_ever_had_base': self.enemy_ever_had_base,
                 'ai_faction_ids': self.ai_faction_ids,
                 'faction_contacts': list(self.faction_contacts),
-                'eliminated_factions': list(self.eliminated_factions)
+                'eliminated_factions': list(self.eliminated_factions),
+                'infiltrated_datalinks': list(self.infiltrated_datalinks),
+                'diplo_relations': self.ui_manager.diplomacy.diplo_relations.copy() if hasattr(self, 'ui_manager') and hasattr(self.ui_manager, 'diplomacy') else {}
             },
             'map': self.game_map.to_dict(),
             'units': [u.to_dict() for u in self.units],
@@ -2770,6 +2916,9 @@ class Game:
         game.ai_faction_ids = gs.get('ai_faction_ids', [fid for fid in range(7) if fid != game.player_faction_id])
         game.faction_contacts = set(gs.get('faction_contacts', []))
         game.eliminated_factions = set(gs.get('eliminated_factions', []))
+        game.infiltrated_datalinks = set(gs.get('infiltrated_datalinks', []))
+        # Store diplo_relations for later restoration (after ui_manager is created)
+        saved_diplo_relations = gs.get('diplo_relations', {})
 
         # Rebuild complex objects
         game.game_map = GameMap.from_dict(data['map'])
@@ -2880,6 +3029,7 @@ class Game:
             'psych': 0
         }
         game.ui_manager = None  # Will be set by main.py after loading
+        game._saved_diplo_relations = saved_diplo_relations  # Temporary storage until ui_manager is created
 
         # Initialize combat system
         game.combat = Combat(game)
