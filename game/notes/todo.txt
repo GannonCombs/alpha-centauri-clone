@@ -153,3 +153,4 @@ Automatic end turn vs button
 V to hover
 Isometric
 Aliens/Fungus
+Governor

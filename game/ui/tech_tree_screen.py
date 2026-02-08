@@ -244,11 +244,11 @@ class TechTreeScreen:
         self.tech_tree_prereq_rects = []  # List of (rect, tech_id) tuples
         self.tech_tree_unlock_rects = []  # List of (rect, tech_id) tuples
 
-        # Center tech box
+        # Center tech box (made taller to fit benefits)
         center_x = main_rect.centerx
         center_y = main_rect.centery
-        tech_box_w = 240
-        tech_box_h = 180
+        tech_box_w = 280
+        tech_box_h = 320
 
         # Draw center tech (focused)
         center_rect = pygame.Rect(center_x - tech_box_w // 2, center_y - tech_box_h // 2, tech_box_w, tech_box_h)
@@ -295,6 +295,32 @@ class TechTreeScreen:
         for i, line in enumerate(name_lines[:2]):
             line_surf = self.font.render(line, True, text_color)
             screen.blit(line_surf, (center_rect.centerx - line_surf.get_width() // 2, name_y + i * 24))
+
+        # Benefits/Unlocks section
+        benefits_y = name_y + len(name_lines[:2]) * 24 + 15
+        unlocks = self._get_tech_unlocks(focused_id)
+        benefit_color = (200, 200, 210)  # Light gray-blue for benefit text
+
+        # Display each category of unlocks
+        categories = [
+            ('abilities', 'Abilities'),
+            ('facilities', 'Base Facilities'),
+            ('unit_types', 'Unit Type'),
+            ('social', 'Socioeconomic Model')
+        ]
+
+        for key, label in categories:
+            if unlocks[key]:
+                # Create comma-separated list
+                items_text = ', '.join(unlocks[key])
+                full_text = f"{label}: {items_text}"
+
+                # Wrap the text to fit in the box
+                wrapped_lines = self._wrap_text(full_text, tech_box_w - 20, self.small_font)
+                for line in wrapped_lines:
+                    benefit_surf = self.small_font.render(line, True, benefit_color)
+                    screen.blit(benefit_surf, (center_rect.left + 10, benefits_y))
+                    benefits_y += 16
 
         # Category badge (centered at bottom of tech box)
         category_names = {'explore': 'EXPLORE', 'discover': 'DISCOVER', 'build': 'BUILD', 'conquer': 'CONQUER'}
@@ -681,6 +707,64 @@ class TechTreeScreen:
             self.tech_tree_open = False
             return 'close'
         return None
+
+    def _get_tech_unlocks(self, tech_id):
+        """Get all items unlocked by a technology.
+
+        Args:
+            tech_id: Technology ID string
+
+        Returns:
+            dict: Categories of unlocks {'abilities': [...], 'facilities': [...], 'unit_types': [...], 'social': [...]}
+        """
+        from game.data.unit_data import CHASSIS, WEAPONS, ARMOR, REACTORS, SPECIAL_ABILITIES
+        from game.data.facility_data import FACILITIES, SECRET_PROJECTS
+
+        unlocks = {
+            'abilities': [],
+            'facilities': [],
+            'unit_types': [],
+            'social': []
+        }
+
+        # Check chassis
+        for chassis in CHASSIS:
+            if chassis.get('prereq') == tech_id:
+                unlocks['unit_types'].append(chassis['name'])
+
+        # Check weapons
+        for weapon in WEAPONS:
+            if weapon.get('prereq') == tech_id:
+                unlocks['unit_types'].append(weapon['name'])
+
+        # Check armor
+        for armor in ARMOR:
+            if armor.get('prereq') == tech_id:
+                unlocks['unit_types'].append(armor['name'])
+
+        # Check reactors
+        for reactor in REACTORS:
+            if reactor.get('prereq') == tech_id:
+                unlocks['unit_types'].append(reactor['name'])
+
+        # Check abilities
+        for ability in SPECIAL_ABILITIES:
+            if ability.get('prereq') == tech_id and ability['id'] != 'none':
+                unlocks['abilities'].append(ability['name'])
+
+        # Check facilities (includes both regular facilities and secret projects)
+        for facility in FACILITIES:
+            if facility.get('prereq') == tech_id:
+                unlocks['facilities'].append(facility['name'])
+
+        for project in SECRET_PROJECTS:
+            if project.get('prereq') == tech_id:
+                unlocks['facilities'].append(project['name'])
+
+        # TODO: Add social engineering unlocks when implemented
+        # For now, social remains empty
+
+        return unlocks
 
     def _wrap_text(self, text, max_width, font):
         """Wrap text to fit within max_width.
