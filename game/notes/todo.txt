@@ -115,11 +115,9 @@ that they like. Examples: remove atrocity prohibitions if their faction is warli
  armor upgrade, but weapons don't?
 4 Got a diplomatic milestone popup when missing commlinks.
 5 Production times are off. Merchant Exchange takes 20 turns on Turn 1 for Morgan.
-6 Get rid of weapon_mode and armor_mode. We store the ids only. Any data that we need, we can look in unit_data.
-7 FACTION_DATA contains single quotes and double quotes.
-8 Not all faction bonuses are applied.
-9 When hitting Esc on Make Random Map at the character selection stage, it goes back to views that are only seen during
-Customize Map. This shouldn't be. It should return to the screen it came from in both flows.
+6 FACTION_DATA contains single quotes and double quotes.
+7 Not all faction bonuses are applied.
+
 
 
 ***************************************************************************

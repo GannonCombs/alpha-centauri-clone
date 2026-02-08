@@ -62,13 +62,8 @@ class Unit:
         self.has_moved = False
         self.held = False  # If True, unit won't be auto-cycled for actions
 
-        # Derive modes from component data
-        weapon_data = self.weapon_data
-        armor_data = self.armor_data
+        # Derive reactor level from component data
         reactor_data = self.reactor_data
-
-        self.weapon_mode = weapon_data.get('mode', 'projectile')
-        self.armor_mode = armor_data.get('mode', 'projectile')
         self.reactor_level = reactor_data['power']  # 1-4
 
         # Movement

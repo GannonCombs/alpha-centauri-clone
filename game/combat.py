@@ -77,7 +77,7 @@ class Combat:
 
             # Trance defending vs Psi (+50%)
             if vs_unit and hasattr(unit, 'abilities'):
-                if 'trance' in unit.abilities and hasattr(vs_unit, 'weapon_mode') and vs_unit.weapon_mode == 'psi':
+                if 'trance' in unit.abilities and vs_unit.weapon_data.get('mode', 'projectile') == 'psi':
                     modifiers.append({
                         'name': 'Trance vs Psi',
                         'multiplier': 1.50,
@@ -157,7 +157,7 @@ class Combat:
 
             # Empath Song attacking Psi (+50% vs psi)
             if vs_unit and hasattr(unit, 'abilities'):
-                if 'empath' in unit.abilities and hasattr(vs_unit, 'armor_mode') and vs_unit.armor_mode == 'psi':
+                if 'empath' in unit.abilities and vs_unit.armor_data.get('mode', 'projectile') == 'psi':
                     modifiers.append({
                         'name': 'Empath vs Psi',
                         'multiplier': 1.50,
@@ -166,7 +166,7 @@ class Combat:
 
             # Empath Song (new ability system)
             if vs_unit and getattr(unit, 'has_empath_song', False):
-                if hasattr(vs_unit, 'armor_mode') and vs_unit.armor_mode == 'psi':
+                if vs_unit.armor_data.get('mode', 'projectile') == 'psi':
                     modifiers.append({
                         'name': 'Empath Song',
                         'multiplier': 1.50,
@@ -174,16 +174,16 @@ class Combat:
                     })
 
         # Combat mode bonuses (both attacker and defender)
-        if vs_unit and hasattr(unit, 'weapon_mode') and hasattr(vs_unit, 'armor_mode'):
+        if vs_unit:
             # Projectile weapon vs Energy armor = +25%
-            if unit.weapon_mode == 'projectile' and vs_unit.armor_mode == 'energy':
+            if unit.weapon_data.get('mode', 'projectile') == 'projectile' and vs_unit.armor_data.get('mode', 'projectile') == 'energy':
                 modifiers.append({
                     'name': 'Mode: Proj vs Energy',
                     'multiplier': 1.25,
                     'display': '+25%'
                 })
             # Energy weapon vs Projectile armor = +25%
-            elif unit.weapon_mode == 'energy' and vs_unit.armor_mode == 'projectile':
+            elif unit.weapon_data.get('mode', 'projectile') == 'energy' and vs_unit.armor_data.get('mode', 'projectile') == 'projectile':
                 modifiers.append({
                     'name': 'Mode: Energy vs Proj',
                     'multiplier': 1.25,
