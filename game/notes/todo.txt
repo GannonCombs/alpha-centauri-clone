@@ -217,3 +217,15 @@ Fog of war
 Advanced unit movement (G command, J command, drag path)
 Automatic end turn vs button
 V to hover
+
+
+Honestly, your fallback code is lousy. # Determine if this is a basic unit we can create
+      if "Scout" in item_name or "Patrol" in item_name:
+ This is pretty gross identification. We want to keep this simple. We need plan A to be something that won't work for the
+ AI, but also won't crash the game. And plan B is to make a scout patrol. Everyone starts with the ability to make a
+ scout patrol.
+ I think your architecture looks pretty good. Random note: I dislike "AI player" terminology. An AI is assumed to be a
+  player of sorts. We need the keyword 'player' to clearly refer to me.
+  Another concern: We already use 'faction' as a general collection of static data. I think it may be confusing to have
+  that contained within a broader Faction class. I could be convinced otherwise, but weigh this.
+  Let's try to solve one thing at a time. I want scout patrols spawning so I can push my code.

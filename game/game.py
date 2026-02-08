@@ -1813,6 +1813,7 @@ class Game:
 
         # Find design for this unit
         from game.unit_components import generate_unit_name
+        from game.unit import Unit
         design = None
 
         # Access design workshop through ui_manager
@@ -1830,7 +1831,22 @@ class Game:
                 break
 
         if not design:
-            print(f"WARNING: No design found for {item_name}")
+            # Fallback: Create Scout Patrol (all factions start with this capability)
+            print(f"WARNING: No design found for {item_name}, spawning Scout Patrol as fallback")
+            unit = Unit(
+                x=base.x, y=base.y,
+                chassis='infantry',
+                owner=base.owner,
+                name="Scout Patrol",
+                weapon='hand_weapons',
+                armor='no_armor',
+                reactor='fission'
+            )
+            unit.home_base = base
+            base.supported_units.append(unit)
+            self.units.append(unit)
+            self.game_map.add_unit_at(base.x, base.y, unit)
+            self.set_status_message(f"{base.name} completed Scout Patrol (fallback)")
             return
 
         # Extract components from design
@@ -1842,7 +1858,6 @@ class Game:
         ability2 = design.get('ability2', 'none')
 
         # Create unit
-        from game.unit import Unit
         unit = Unit(
             x=base.x, y=base.y,
             chassis=chassis,
