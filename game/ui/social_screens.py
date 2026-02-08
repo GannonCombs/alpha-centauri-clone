@@ -135,16 +135,17 @@ class SocialScreensManager:
         """
         return self.tech_tree_screen.handle_tech_tree_click(pos, game)
 
-    def handle_design_workshop_click(self, pos):
+    def handle_design_workshop_click(self, pos, game):
         """Handle clicks in the Design Workshop screen.
 
         Args:
             pos: Mouse click position tuple (x, y)
+            game: Game instance to access faction designs
 
         Returns:
             'close' if should exit the screen, None otherwise
         """
-        return self.design_workshop_screen.handle_design_workshop_click(pos)
+        return self.design_workshop_screen.handle_design_workshop_click(pos, game)
 
     # Design Workshop specific methods
     def rebuild_available_designs(self, tech_tree):

@@ -1,10 +1,11 @@
 """UI data structures and constants."""
 
-# SMAC Factions
+# SMAC Faction Static Data
 # Each faction starts with one specific technology
 # base_names: First name is always the HQ, rest are used randomly, then fallback to "Sector N"
-FACTIONS = [
+FACTION_DATA = [
     {
+        "id": 0,
         "name": "Gaians",
         "leader": "Lady Deirdre Skye",
         "full_name": "Lady Deirdre Skye (Gaians)",
@@ -92,6 +93,7 @@ FACTIONS = [
         },
     },
     {
+        "id": 1,
         "name": "The Hive",
         "leader": "Chairman Yang",
         "full_name": "Chairman Yang (The Hive)",
@@ -176,6 +178,7 @@ FACTIONS = [
         },
     },
     {
+        "id": 2,
         "name": "University",
         "leader": "Provost Zakharov",
         "full_name": "Provost Zakharov (University)",
@@ -262,6 +265,7 @@ FACTIONS = [
         },
     },
     {
+        "id": 3,
         "name": "Morganites",
         "leader": "CEO Morgan",
         "full_name": "CEO Morgan (Morganites)",
@@ -349,6 +353,7 @@ FACTIONS = [
         },
     },
     {
+        "id": 4,
         "name": "Spartans",
         "leader": "Colonel Santiago",
         "full_name": "Colonel Santiago (Spartans)",
@@ -434,6 +439,7 @@ FACTIONS = [
         },
     },
     {
+        "id": 5,
         "name": "Believers",
         "leader": "Sister Miriam",
         "full_name": "Sister Miriam (Believers)",
@@ -453,10 +459,7 @@ FACTIONS = [
         '$FACTION3': "Believers",  # Plural noun for faction members
         '$FACTION4': "The Lord's Believers",  # Full name for formal intros
         '$NAME': "Miriam",  # Short name
-        '$NAME1': "Miriam",  # Short name used in intros
-        '$NAME2': "Miriam",  # Name used in reports
-        '$NAME3': "Miriam",  # Speaker's name
-        '$TITLE2': "Sister",  # The leader's specific title
+        '$TITLE': "Sister",  # The leader's specific title
         '$SPECIAL5': "The Fundamentalist",  # From the first line of stats
 
         # --- ADJECTIVES & PEJORATIVES ---
@@ -518,6 +521,7 @@ FACTIONS = [
         },
     },
     {
+        "id": 6,
         "name": "Peacekeepers",
         "leader": "Commissioner Lal",
         "full_name": "Commissioner Lal (Peacekeepers)",

@@ -188,7 +188,10 @@ class Unit:
 
         # Antigrav struts modifier
         if self.has_ability('antigrav'):
-            base_moves += 1
+            if self.type == 'air':
+                base_moves += (2*self.reactor_level)
+            else:
+                base_moves += 1
 
         return base_moves
 

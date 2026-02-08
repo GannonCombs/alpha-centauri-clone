@@ -16,7 +16,7 @@ from game.data import constants
 from game.data.constants import (TILE_SIZE, COLOR_OCEAN, COLOR_LAND, COLOR_GRID, COLOR_BLACK,
                                  COLOR_UNIT_SELECTED,
                                  COLOR_BASE_BORDER)
-from game.data.data import FACTIONS
+from game.data.data import FACTION_DATA
 
 
 class Camera:
@@ -197,7 +197,7 @@ class Renderer:
             return
 
         # Determine unit color based on faction (unit.owner IS faction_id)
-        color = FACTIONS[unit.owner]['color']
+        color = FACTION_DATA[unit.owner]['color']
 
         center_x = screen_x + TILE_SIZE // 2
         center_y = screen_y + TILE_SIZE // 2
@@ -348,7 +348,7 @@ class Renderer:
             return
 
         # Determine color based on faction (base.owner IS faction_id)
-        color = FACTIONS[base.owner]['color']
+        color = FACTION_DATA[base.owner]['color']
 
         # Draw base as a square with rounded corners
         base_size = int(TILE_SIZE * 0.7)
@@ -397,7 +397,7 @@ class Renderer:
         # Only draw background fill if there are garrisoned units
         if len(base.garrison) > 0:
             # Use faction color for garrison indicator (base.owner IS faction_id)
-            pop_color = FACTIONS[base.owner]['color']
+            pop_color = FACTION_DATA[base.owner]['color']
             pygame.draw.rect(self.screen, pop_color, pop_rect)
 
         # Always draw black outline (thicker for visibility)
@@ -434,12 +434,12 @@ class Renderer:
             territory (TerritoryManager): Territory management system
             game_map: The game map for wrapping calculations
         """
-        from game.data.data import FACTIONS
+        from game.data.data import FACTION_DATA
 
         # Get faction colors (faction_id passed in directly)
         def get_player_color(faction_id):
-            if 0 <= faction_id < len(FACTIONS):
-                return FACTIONS[faction_id]['color']
+            if 0 <= faction_id < len(FACTION_DATA):
+                return FACTION_DATA[faction_id]['color']
             # Fallback color if out of range
             return (150, 150, 150)
 

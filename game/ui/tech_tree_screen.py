@@ -4,7 +4,7 @@ import pygame
 from game.data import constants
 from game.data.constants import (COLOR_TEXT, COLOR_BUTTON, COLOR_BUTTON_HOVER,
                                  COLOR_BUTTON_BORDER, COLOR_BUTTON_HIGHLIGHT)
-from game.data.data import FACTIONS
+from game.data.data import FACTION_DATA
 
 
 class TechTreeScreen:
@@ -24,6 +24,7 @@ class TechTreeScreen:
         self.tech_tree_open = False
         self.tech_tree_scroll_offset = 0
         self.tech_tree_focused_tech = None  # Will be set to player's faction starting tech on first draw
+        self.viewed_faction_id = None  # Which faction's tech tree to view (None = player's faction)
 
         # UI elements
         self.tech_tree_selection_rects = []
@@ -32,6 +33,7 @@ class TechTreeScreen:
         self.tech_tree_ok_rect = None
         self.tech_tree_prereq_rects = []  # List of (rect, tech_id) tuples for clickable prerequisites
         self.tech_tree_unlock_rects = []  # List of (rect, tech_id) tuples for clickable unlocks
+        self.faction_icon_rects = []  # List of (rect, faction_id) tuples for faction selector
 
     def draw_tech_tree(self, screen, game):
         """Draw the Technology Tree screen with visualization.
@@ -40,10 +42,17 @@ class TechTreeScreen:
             screen: Pygame screen surface to draw on
             game: Game instance for accessing tech tree and other game state
         """
-        # Initialize focused tech to player's faction starting tech on first draw
+        # Default to viewing player's faction
+        if self.viewed_faction_id is None:
+            self.viewed_faction_id = game.player_faction_id
+
+        # Get the tech tree for the faction being viewed
+        tech_tree = game.factions[self.viewed_faction_id].tech_tree
+
+        # Initialize focused tech to viewed faction's starting tech on first draw
         if self.tech_tree_focused_tech is None:
-            player_faction = FACTIONS[game.player_faction_id]
-            self.tech_tree_focused_tech = player_faction.get('starting_tech', 'Ecology')
+            viewed_faction = FACTION_DATA[self.viewed_faction_id]
+            self.tech_tree_focused_tech = viewed_faction.get('starting_tech', 'Ecology')
 
         # Fill background
         screen.fill((15, 20, 25))
@@ -61,20 +70,20 @@ class TechTreeScreen:
         prog_bg_rect = pygame.Rect(progress_bar_x, progress_bar_y, progress_bar_w, progress_bar_h)
         pygame.draw.rect(screen, (30, 35, 40), prog_bg_rect, border_radius=8)
 
-        current_tech_name = game.tech_tree.get_current_tech()
-        if current_tech_name and game.tech_tree.current_research:
+        current_tech_name = tech_tree.get_current_tech()
+        if current_tech_name and tech_tree.current_research:
             # Get category color for progress bar
-            category = game.tech_tree.get_current_category()
-            fill_color = game.tech_tree.get_category_color(category) if category else (80, 150, 200)
+            category = tech_tree.get_current_category()
+            fill_color = tech_tree.get_category_color(category) if category else (80, 150, 200)
 
             # Fill progress
-            progress_pct = game.tech_tree.get_progress_percentage()
+            progress_pct = tech_tree.get_progress_percentage()
             fill_w = int(progress_bar_w * progress_pct)
             fill_rect = pygame.Rect(progress_bar_x, progress_bar_y, fill_w, progress_bar_h)
             pygame.draw.rect(screen, fill_color, fill_rect, border_radius=8)
 
             # Progress text (hide tech name - keep it mysterious!)
-            turns_left = game.tech_tree.get_turns_remaining()
+            turns_left = tech_tree.get_turns_remaining()
             prog_text = self.font.render(f"Research: {turns_left} turns remaining", True, COLOR_TEXT)
             screen.blit(prog_text, (prog_bg_rect.centerx - prog_text.get_width() // 2, prog_bg_rect.centery - 10))
         else:
@@ -100,7 +109,7 @@ class TechTreeScreen:
         screen.blit(list_title, (left_panel_x + 10, left_panel_y + 10))
 
         # Get all techs alphabetically
-        all_techs = [(tech_id, tech_data) for tech_id, tech_data in game.tech_tree.technologies.items()]
+        all_techs = [(tech_id, tech_data) for tech_id, tech_data in tech_tree.technologies.items()]
         all_techs.sort(key=lambda x: x[1]['name'])
 
         # Scrollable list
@@ -139,7 +148,7 @@ class TechTreeScreen:
             tech_y = tech_list_y + display_index * tech_line_h
 
             # Tech status
-            status = game.tech_tree.get_tech_status(tech_id)
+            status = tech_tree.get_tech_status(tech_id)
 
             # Color based on status
             if status == "Completed":
@@ -186,8 +195,11 @@ class TechTreeScreen:
         pygame.draw.rect(screen, (80, 100, 120), main_panel_rect, 2, border_radius=8)
 
         # Draw focused tech
-        if self.tech_tree_focused_tech and self.tech_tree_focused_tech in game.tech_tree.technologies:
-            self._draw_tech_visualization(screen, game, main_panel_rect)
+        if self.tech_tree_focused_tech and self.tech_tree_focused_tech in tech_tree.technologies:
+            self._draw_tech_visualization(screen, game, main_panel_rect, tech_tree)
+
+        # Faction selector icons - draw at bottom above OK button
+        self._draw_faction_selector(screen, game, main_panel_rect)
 
         # OK button - centered at bottom of main panel
         ok_button_w = 150
@@ -203,16 +215,17 @@ class TechTreeScreen:
         ok_text = self.font.render("OK", True, COLOR_TEXT)
         screen.blit(ok_text, (self.tech_tree_ok_rect.centerx - ok_text.get_width() // 2, self.tech_tree_ok_rect.centery - 10))
 
-    def _draw_tech_visualization(self, screen, game, main_rect):
+    def _draw_tech_visualization(self, screen, game, main_rect, tech_tree):
         """Draw the main tech visualization showing focused tech and connections.
 
         Args:
             screen: Pygame screen surface to draw on
             game: Game instance for accessing tech tree
             main_rect: Rectangle defining the main visualization area
+            tech_tree: The tech tree to visualize
         """
         focused_id = self.tech_tree_focused_tech
-        focused_data = game.tech_tree.technologies[focused_id]
+        focused_data = tech_tree.technologies[focused_id]
 
         # Storage for clickable prerequisite/unlock rectangles
         self.tech_tree_prereq_rects = []  # List of (rect, tech_id) tuples
@@ -229,10 +242,10 @@ class TechTreeScreen:
 
         # Get category color for border
         category = focused_data.get('category', 'unknown')
-        category_color = game.tech_tree.get_category_color(category)
+        category_color = tech_tree.get_category_color(category)
 
         # Color based on status
-        status = game.tech_tree.get_tech_status(focused_id)
+        status = tech_tree.get_tech_status(focused_id)
         if status == "Completed":
             bg_color = (40, 60, 40)
             text_color = (255, 255, 255)  # White for completed
@@ -287,8 +300,8 @@ class TechTreeScreen:
         prereq_start_y = center_y - (len(prereqs) - 1) * arrow_spacing // 2
 
         for i, prereq_id in enumerate(prereqs):
-            if prereq_id in game.tech_tree.technologies:
-                prereq_data = game.tech_tree.technologies[prereq_id]
+            if prereq_id in tech_tree.technologies:
+                prereq_data = tech_tree.technologies[prereq_id]
                 prereq_y = prereq_start_y + i * arrow_spacing
 
                 # Small prereq box
@@ -299,7 +312,7 @@ class TechTreeScreen:
                 self.tech_tree_prereq_rects.append((prereq_rect, prereq_id))
 
                 # Color based on status
-                prereq_status = game.tech_tree.get_tech_status(prereq_id)
+                prereq_status = tech_tree.get_tech_status(prereq_id)
                 if prereq_status == "Completed":
                     prereq_bg = (30, 50, 30)
                     prereq_border = (80, 180, 80)
@@ -336,7 +349,7 @@ class TechTreeScreen:
 
         # UNLOCKS (arrows to right - techs that require this one)
         unlocks = []
-        for tech_id, tech_data in game.tech_tree.technologies.items():
+        for tech_id, tech_data in tech_tree.technologies.items():
             if focused_id in tech_data.get('prereqs', []):
                 unlocks.append((tech_id, tech_data))
 
@@ -354,7 +367,7 @@ class TechTreeScreen:
             self.tech_tree_unlock_rects.append((unlock_rect, unlock_id))
 
             # Color based on status
-            unlock_status = game.tech_tree.get_tech_status(unlock_id)
+            unlock_status = tech_tree.get_tech_status(unlock_id)
             if unlock_status == "Completed":
                 unlock_bg = (30, 50, 30)
                 unlock_border = (80, 180, 80)
@@ -398,6 +411,68 @@ class TechTreeScreen:
             more_text = self.small_font.render(f"+{len(unlocks) - 3} more", True, (150, 150, 150))
             screen.blit(more_text, (unlock_x - more_text.get_width() // 2, unlock_start_y + 3 * arrow_spacing - 20))
 
+    def _draw_faction_selector(self, screen, game, main_rect):
+        """Draw faction selector icons at bottom of screen.
+
+        Args:
+            screen: Pygame screen surface to draw on
+            game: Game instance for accessing faction data
+            main_rect: Main panel rectangle for positioning
+        """
+        self.faction_icon_rects = []
+
+        # Position icons at bottom of main panel, above OK button
+        icon_size = 40
+        icon_spacing = 10
+        total_width = 7 * icon_size + 6 * icon_spacing
+        start_x = main_rect.centerx - total_width // 2
+        y = main_rect.bottom - 80  # Above OK button
+
+        # Draw each faction icon
+        for faction_id in range(7):
+            faction_data = FACTION_DATA[faction_id]
+            color = faction_data['color']
+
+            icon_x = start_x + faction_id * (icon_size + icon_spacing)
+            icon_rect = pygame.Rect(icon_x, y, icon_size, icon_size)
+            self.faction_icon_rects.append((icon_rect, faction_id))
+
+            # Determine if this faction is currently viewed
+            is_selected = (faction_id == self.viewed_faction_id)
+            is_hovered = icon_rect.collidepoint(pygame.mouse.get_pos())
+
+            # Draw icon background
+            if is_selected:
+                # Bright border for selected faction
+                pygame.draw.rect(screen, (255, 255, 255), icon_rect, border_radius=6)
+                inner_rect = icon_rect.inflate(-4, -4)
+                pygame.draw.rect(screen, color, inner_rect, border_radius=4)
+            else:
+                # Normal faction color
+                pygame.draw.rect(screen, color, icon_rect, border_radius=6)
+                if is_hovered:
+                    # White overlay on hover
+                    overlay_rect = icon_rect.inflate(-2, -2)
+                    pygame.draw.rect(screen, (255, 255, 255), overlay_rect, 2, border_radius=5)
+
+            # Draw faction initial in icon
+            faction_initial = faction_data['name'][0]
+            initial_text = self.font.render(faction_initial, True, (255, 255, 255) if is_selected else (0, 0, 0))
+            text_x = icon_rect.centerx - initial_text.get_width() // 2
+            text_y = icon_rect.centery - initial_text.get_height() // 2
+            screen.blit(initial_text, (text_x, text_y))
+
+        # Draw faction name label for currently viewed faction
+        viewed_faction_data = FACTION_DATA[self.viewed_faction_id]
+        faction_name = viewed_faction_data['name']
+        is_player = (self.viewed_faction_id == game.player_faction_id)
+        label_text = f"{faction_name}" + (" (You)" if is_player else " (AI)")
+
+        label_surf = self.small_font.render(label_text, True, COLOR_TEXT)
+        label_x = main_rect.centerx - label_surf.get_width() // 2
+        label_y = y - 25
+        screen.blit(label_surf, (label_x, label_y))
+
     def handle_tech_tree_click(self, pos, game):
         """Handle clicks in the Tech Tree screen.
 
@@ -408,6 +483,22 @@ class TechTreeScreen:
         Returns:
             'close' if should exit the screen, None otherwise
         """
+        # Get the tech tree for the faction being viewed
+        if self.viewed_faction_id is None:
+            self.viewed_faction_id = game.player_faction_id
+        tech_tree = game.factions[self.viewed_faction_id].tech_tree
+
+        # Check faction selector icons
+        if hasattr(self, 'faction_icon_rects'):
+            for rect, faction_id in self.faction_icon_rects:
+                if rect.collidepoint(pos):
+                    # Switch to viewing this faction's tech tree
+                    self.viewed_faction_id = faction_id
+                    # Reset focused tech to this faction's starting tech
+                    viewed_faction = FACTION_DATA[faction_id]
+                    self.tech_tree_focused_tech = viewed_faction.get('starting_tech', 'Ecology')
+                    return None
+
         # Check scroll arrows
         if hasattr(self, 'tech_tree_up_arrow') and self.tech_tree_up_arrow and self.tech_tree_up_arrow.collidepoint(pos):
             if self.tech_tree_scroll_offset > 0:
@@ -415,7 +506,7 @@ class TechTreeScreen:
             return None
 
         if hasattr(self, 'tech_tree_down_arrow') and self.tech_tree_down_arrow and self.tech_tree_down_arrow.collidepoint(pos):
-            all_techs_count = len(game.tech_tree.technologies)
+            all_techs_count = len(tech_tree.technologies)
             visible_lines = 25  # Approximate
             if self.tech_tree_scroll_offset < all_techs_count - visible_lines:
                 self.tech_tree_scroll_offset += 1
@@ -427,7 +518,7 @@ class TechTreeScreen:
                 if rect.collidepoint(pos):
                     # Focus this tech in the main view
                     self.tech_tree_focused_tech = tech_id
-                    game.set_status_message(f"Viewing: {game.tech_tree.technologies[tech_id]['name']}")
+                    game.set_status_message(f"Viewing: {tech_tree.technologies[tech_id]['name']}")
                     return None
 
         # Check unlock boxes (right side of visualization)
@@ -436,15 +527,15 @@ class TechTreeScreen:
                 if rect.collidepoint(pos):
                     # Focus this tech in the main view
                     self.tech_tree_focused_tech = tech_id
-                    # If it's available, also set it as current research
-                    status = game.tech_tree.get_tech_status(tech_id)
-                    if status == "Available":
-                        game.tech_tree.set_current_research(tech_id)
-                        category = game.tech_tree.technologies[tech_id].get('category', 'unknown')
+                    # If it's available and viewing player's faction, set it as current research
+                    status = tech_tree.get_tech_status(tech_id)
+                    if status == "Available" and self.viewed_faction_id == game.player_faction_id:
+                        tech_tree.set_current_research(tech_id)
+                        category = tech_tree.technologies[tech_id].get('category', 'unknown')
                         category_name = {'explore': 'Explore', 'discover': 'Discover', 'build': 'Build', 'conquer': 'Conquer'}.get(category, 'Unknown')
                         game.set_status_message(f"Now researching a {category_name} technology")
                     else:
-                        game.set_status_message(f"Viewing: {game.tech_tree.technologies[tech_id]['name']}")
+                        game.set_status_message(f"Viewing: {tech_tree.technologies[tech_id]['name']}")
                     return None
 
         # Check tech selection (clicking focuses the tech)
@@ -454,11 +545,11 @@ class TechTreeScreen:
                     # Focus this tech in the main view
                     self.tech_tree_focused_tech = tech_id
 
-                    # If it's available, also set it as current research
-                    status = game.tech_tree.get_tech_status(tech_id)
-                    if status == "Available":
-                        game.tech_tree.set_current_research(tech_id)
-                        category = game.tech_tree.technologies[tech_id].get('category', 'unknown')
+                    # If it's available and viewing player's faction, set it as current research
+                    status = tech_tree.get_tech_status(tech_id)
+                    if status == "Available" and self.viewed_faction_id == game.player_faction_id:
+                        tech_tree.set_current_research(tech_id)
+                        category = tech_tree.technologies[tech_id].get('category', 'unknown')
                         category_name = {'explore': 'Explore', 'discover': 'Discover', 'build': 'Build', 'conquer': 'Conquer'}.get(category, 'Unknown')
                         game.set_status_message(f"Now researching a {category_name} technology")
                     return None

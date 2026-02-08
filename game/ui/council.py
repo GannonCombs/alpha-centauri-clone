@@ -5,7 +5,7 @@ import random
 from game.data import constants
 from game.data.constants import (COLOR_TEXT, COLOR_COUNCIL_BG, COLOR_COUNCIL_ACCENT,
                                  COLOR_COUNCIL_BORDER, COLOR_COUNCIL_BOX)
-from game.data.data import FACTIONS, PROPOSALS
+from game.data.data import FACTION_DATA, PROPOSALS
 
 
 class CouncilManager:
@@ -77,8 +77,8 @@ class CouncilManager:
             for rect, val in self.vote_option_rects:
                 if rect.collidepoint(pos):
                     self.player_vote = val
-                    self.council_votes.insert(0, {"name": "You", "color": FACTIONS[0]['color'], "vote": val,
-                                                  "votes": FACTIONS[0]['votes']})
+                    self.council_votes.insert(0, {"name": "You", "color": FACTION_DATA[0]['color'], "vote": val,
+                                                  "votes": FACTION_DATA[0]['votes']})
                     pygame.time.wait(300)
                     self.council_stage = "results"
                     return None
@@ -96,7 +96,8 @@ class CouncilManager:
         available_proposals = []
         for prop in PROPOSALS:
             required_tech = prop.get('required_tech')
-            if required_tech is None or (game and game.tech_tree.has_tech(required_tech)):
+            player_tech_tree = game.factions[game.player_faction_id].tech_tree if game else None
+            if required_tech is None or (player_tech_tree and player_tech_tree.has_tech(required_tech)):
                 available_proposals.append(prop)
 
         if not available_proposals:
@@ -159,7 +160,7 @@ class CouncilManager:
 
         box_w, box_h = 180, 100
         start_x = constants.SCREEN_WIDTH // 2 - (4 * box_w + 3 * 20) // 2
-        for i, f in enumerate(FACTIONS):
+        for i, f in enumerate(FACTION_DATA):
             x = start_x + (i % 4) * (box_w + 20)
             y = 120 + (i // 4) * (box_h + 25)
             rect = pygame.Rect(x, y, box_w, box_h)
@@ -211,7 +212,7 @@ class CouncilManager:
         is_yesno = self.selected_proposal['type'] == 'yesno'
         opts = ["YES", "NO", "ABSTAIN"] if is_yesno else self._get_top_candidates()
 
-        for f in FACTIONS[1:]:
+        for f in FACTION_DATA[1:]:
             if is_yesno:
                 # Get faction preference for this proposal
                 preference = self._get_faction_preference(f['name'], self.selected_proposal['id'])
@@ -235,7 +236,7 @@ class CouncilManager:
 
     def _get_top_candidates(self):
         """Get top two faction candidates for leader elections."""
-        sorted_f = sorted(FACTIONS, key=lambda x: x['votes'], reverse=True)
+        sorted_f = sorted(FACTION_DATA, key=lambda x: x['votes'], reverse=True)
         return [sorted_f[0]['leader'], sorted_f[1]['leader']]
 
     def check_ai_council_call(self, ai_player_id, game):
@@ -259,10 +260,10 @@ class CouncilManager:
 
         # Get faction for this AI
         faction_id = ai_player_id  # ai_player_id IS faction_id
-        if faction_id is None or faction_id >= len(FACTIONS):
+        if faction_id is None or faction_id >= len(FACTION_DATA):
             return None
 
-        faction = FACTIONS[faction_id]
+        faction = FACTION_DATA[faction_id]
         faction_name = faction['name']
 
         # Get available proposals
@@ -270,8 +271,9 @@ class CouncilManager:
         for prop in PROPOSALS:
             # Check tech requirement
             required_tech = prop.get('required_tech')
-            if required_tech and ai_player_id in game.ai_tech_trees:
-                if not game.ai_tech_trees[ai_player_id].has_tech(required_tech):
+            if required_tech and ai_player_id in game.factions:
+                ai_tech_tree = game.factions[ai_player_id].tech_tree
+                if ai_tech_tree and not ai_tech_tree.has_tech(required_tech):
                     continue
 
             # Check cooldown
@@ -340,9 +342,9 @@ class CouncilManager:
         # Add player vote to results
         self.council_votes.insert(0, {
             "name": "You",
-            "color": FACTIONS[0]['color'],
+            "color": FACTION_DATA[0]['color'],
             "vote": self.player_vote,
-            "votes": FACTIONS[0]['votes']
+            "votes": FACTION_DATA[0]['votes']
         })
 
         # Mark proposal as voted

@@ -107,7 +107,6 @@ Use it to test the following issues, but also test debug mode along the way.
 
 
 Notes:
-(several of these are POSSIBLY fixed)
 1 The amount of time units/facilities take to produce is hardcoded. Need to make dynamic. Check game files for details.
 2 Once we get the commlink of every living faction, give a popup that we now have them all, and thus can now call council.
 3 If another unit gets all contacts first, they may call council. Add to the AI behavior that encourages them to call things
@@ -115,7 +114,6 @@ that they like. Examples: remove atrocity prohibitions if their faction is warli
 4 In the tech screen, there is a little text box inside the tech that is colored the correct category of the tech (it's 4x color).
 This is great. However, the outline for the tech box itself is always yellow. It should be the same 4x color.
 5 There's something odd where the 7 starting techs are all white in the tech view, but we don't have access to their perks.
-We should NOT be starting with the 7 starting techs. Each 1 is the starting tech for a particular faction. Check game files for details.
 6 Hold unit isn't working. Still in W cycle, and End Turn still doesn't activate correctly after.
 
 More notes:
@@ -128,21 +126,11 @@ When I rejected the treaty, Zakharov said something about opportunities not pres
 allowed to invent your own dialog under any circumstances!
 When I asked for a loan, I was offered one, but my choices were to reject it, or Agreed. But if you rob me you shall feel my wrath."
 That doesn't make sense. I'm receiving the loan. Find the correct dialog here.
-When I said "Deirdre out" Zakharov ended with "My apologies, $TITLE0, but I simply haven't all day to talk. $NAME2 out."
-This is not correct either. This is a dialog to interrupt you when you are taking too long in the dialog view in the harder
-game modes. There should be no response when we exit.
-
 
 Issues: Hurry is still showing a different number of turns remaining compared to the production panel. Make sure these are pulling
 from the same data.
-I met Morgan, and it started us off with a treaty, without asking for one. This is wrong. The default status is Truce.
-Esc exited in the middle of a dialog. This is one view where Esc should NOT work.
 Even with a faction having a treaty with me, I can attack them with impunity. Killing their unit did not switch to Vendetta.
 If I suggest an attack on an entreatied faction's unit, a popup should show. Check #BREAKINGTREATY and #BREAKINGTRUCE for info.
-When entering a faction name, I'm still not seeing the placeholder text being entirely selected. It should be, so that backspace
-gets rid of all of it with one press.
-
-
 
 There is new odd behavior in the Hurry screen. On the first turn, I tried to hurry a scout patrol. It says "Remaining: 3 turns (6 credits)
 Your credits: 500" (I got a supply pod.) I click Pay All, and it fills with 30. It can't be 6 AND 30. My guess is, you've started
@@ -151,7 +139,6 @@ The speeder creation is still not fixed. I created another speeder and it can on
 show at the bottom of its square in the Select Production view. Ditto in the Saved Design squares. This will help debug where the issue is.
 Under every base is current research. Fine for now, but enemy research is only visible in certain scenarios.
 
-Even more notes:
 You have not fixed the dialog where we propose the treaty. They should respond with one of the #MAKETREATY or #REJTREATY scripts.
 They should not prompt US to sign a treaty. If they accept, the treaty is done; no decision is needed on our end if we proposed it.
 Also, when I ask a faction for a loan, they respond by asking ME for a loan. You have your prompts all messed up.
@@ -161,13 +148,9 @@ I also just finished a conversation with a player without signing a treaty. This
 in the commlinks. Instead, it shows nothing (informal truce). Zakharov then attacked me, and yet the commlink didn't convert to
 VENDETTA. Fix.
 
-Latest notes:
-A 1-1-2 is STILL called Hand Speeder. It should be called Scout Speeder, for the last time.
-You've also recently introduced a large bug in hurry. I think it was when you tried to match credits to pay all. But hitting Pay All
+You've recently introduced a large bug in hurry. I think it was when you tried to match credits to pay all. But hitting Pay All
 does not, in fact, Pay All. It seems to be paying one turn. I can then click hurry again, which is a bug. You can only hurry once per turn.
 Ensure that the amount offered with Pay All is truly the ENTIRE remaining cost. Then make sure the other displayed cost matches.
-The new design finally worked. The only issue was, the new design pop up should happen AFTER the new tech discovered popup.
-Otherwise, it seems strange that we can build these new units that we don't have the tech for.
 New unit design on better unit tech is still not popping up, at least not consistently. Is the pattern that chassis and
  armor upgrade, but weapons don't?
 
@@ -179,14 +162,12 @@ But having TREATY status afterward is a bug. It should say VENDETTA.
 Right now, enemy bases say what they're working on. This should only be the case if I have a Pact with them, or Empath Guild,
 or am Governor, or have Infiltrated their Datalinks.
 
-Scout patrol is hardcoded in too many places - check base.py, among others.
-Council is still not restricted if I am missing commlinks.
 Got a diplomatic milestone popup when missing commlinks.
 Production times are off. Merchant Exchange takes 20 turns on Turn 1 for Morgan.
 Clean up constants. Many of the values inside are not...constants.
 My unit "met" the opponent's empty base. It did not trigger a call.
 I've removed votes from data.FACTIONS. This will cause an error once I vote.
-Santiago needs to start with a rover. (Does Morgan start with a Synthmetal Garrison, too?)
+Santiago needs to start with a rover.
 Made a treaty with someone. It still showed truce in commlinks.
 Check save overwrites. If the exact same name exists, popup that says Are You Sure you want to overwrite?
 One time I landed on a supply pod simultaneously with meeting a faction. Faction pop up happened first, then
@@ -195,7 +176,8 @@ When a faction is eliminated, all their units should disappear. They don't.
 I once met two factions in the same turn. As soon as I answered the first, the popup for the second obscured the second.
 Get rid of weapon_mode and armor_mode. We store the ids only. Any data that we need, we can look in unit_data.
 FACTIONS contains single quotes and double quotes.
-Max_moves is outdated, because it's basing movement on land, sea, or air, as if those are only 3 values. Func may need to go.
+There's still something broken in diplomacy with ids. It got reverted to Deirdre for me again.
+The design workshop used to open with the first empty window selected. Now it starts on the scout patrol (first) cell.
 
 
 
@@ -217,15 +199,3 @@ Fog of war
 Advanced unit movement (G command, J command, drag path)
 Automatic end turn vs button
 V to hover
-
-
-Honestly, your fallback code is lousy. # Determine if this is a basic unit we can create
-      if "Scout" in item_name or "Patrol" in item_name:
- This is pretty gross identification. We want to keep this simple. We need plan A to be something that won't work for the
- AI, but also won't crash the game. And plan B is to make a scout patrol. Everyone starts with the ability to make a
- scout patrol.
- I think your architecture looks pretty good. Random note: I dislike "AI player" terminology. An AI is assumed to be a
-  player of sorts. We need the keyword 'player' to clearly refer to me.
-  Another concern: We already use 'faction' as a general collection of static data. I think it may be confusing to have
-  that contained within a broader Faction class. I could be convinced otherwise, but weigh this.
-  Let's try to solve one thing at a time. I want scout patrols spawning so I can push my code.

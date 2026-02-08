@@ -13,7 +13,7 @@ from .social_screens import SocialScreensManager
 from .base_screens import BaseScreenManager
 from .save_load_dialog import SaveLoadDialogManager
 from .context_menu import ContextMenu
-from game.data.data import FACTIONS
+from game.data.data import FACTION_DATA
 
 
 class UIManager:
@@ -134,8 +134,8 @@ class UIManager:
 
         for faction_id in contacted_factions:
             # faction_id IS player_id in the new system
-            if faction_id < len(FACTIONS):
-                faction = FACTIONS[faction_id]
+            if faction_id < len(FACTION_DATA):
+                faction = FACTION_DATA[faction_id]
                 btn = Button(self.commlink_menu_rect.x + 5,
                            self.commlink_menu_rect.y + 5 + (button_index * 38),
                            menu_w - 10, 32,
@@ -236,7 +236,8 @@ class UIManager:
                     self.social_screens.design_workshop_screen.dw_editing_panel = None
                     # Rebuild designs if new tech was discovered (manual call, no specific tech)
                     if game.designs_need_rebuild:
-                        self.social_screens.design_workshop_screen.rebuild_available_designs(game.tech_tree, None)
+                        player_tech_tree = game.factions[game.player_faction_id].tech_tree
+                        self.social_screens.design_workshop_screen.rebuild_available_designs(player_tech_tree, game, None)
                         game.designs_need_rebuild = False
                     return True
 
@@ -368,9 +369,9 @@ class UIManager:
                         game.pending_commlink_requests.pop(0)
                     self.active_screen = "DIPLOMACY"
                     # Use the other_faction_id we already have from the commlink request
-                    if self.commlink_request_other_faction_id is not None and self.commlink_request_other_faction_id < len(FACTIONS):
+                    if self.commlink_request_other_faction_id is not None and self.commlink_request_other_faction_id < len(FACTION_DATA):
                         # Player is always index 0
-                        self.diplomacy.open_diplomacy(FACTIONS[self.commlink_request_other_faction_id], self.commlink_request_player_id)
+                        self.diplomacy.open_diplomacy(FACTION_DATA[self.commlink_request_other_faction_id], self.commlink_request_player_id)
                     self.diplomacy.diplo_stage = "greeting"
                     return True
                 elif self.commlink_request_ignore_rect and self.commlink_request_ignore_rect.collidepoint(pos):
@@ -492,7 +493,7 @@ class UIManager:
                     self.active_screen = "GAME"
                 return True
             elif self.active_screen == "DESIGN_WORKSHOP":
-                result = self.social_screens.handle_design_workshop_click(event.pos)
+                result = self.social_screens.handle_design_workshop_click(event.pos, game)
                 if result == 'close':
                     self.active_screen = "GAME"
                 return True
@@ -552,9 +553,9 @@ class UIManager:
                         if btn.handle_event(event):
                             # Get the faction for this player_id
                             faction_id = btn.player_id  # player_id IS faction_id
-                            if faction_id is not None and faction_id < len(FACTIONS):
+                            if faction_id is not None and faction_id < len(FACTION_DATA):
                                 # Player is always index 0
-                                self.diplomacy.open_diplomacy(FACTIONS[faction_id], player_faction_index=0)
+                                self.diplomacy.open_diplomacy(FACTION_DATA[faction_id], player_faction_index=0)
                                 self.active_screen = "DIPLOMACY"
                                 self.commlink_open = False
                                 return True
@@ -798,7 +799,7 @@ class UIManager:
             y_offset = 5
 
             for i, btn in enumerate(self.faction_buttons):
-                faction = FACTIONS[btn.faction_id]
+                faction = FACTION_DATA[btn.faction_id]
 
                 # Get diplomatic status
                 status_text = ""
@@ -1172,8 +1173,8 @@ class UIManager:
         pygame.draw.rect(screen, (100, 140, 160), (box_x, box_y, box_w, box_h), 3, border_radius=12)
 
         # Get faction info
-        if self.commlink_request_other_faction_id < len(FACTIONS):
-            faction = FACTIONS[self.commlink_request_other_faction_id]
+        if self.commlink_request_other_faction_id < len(FACTION_DATA):
+            faction = FACTION_DATA[self.commlink_request_other_faction_id]
             faction_name = faction["leader"]
 
             # Title
@@ -1229,8 +1230,8 @@ class UIManager:
         pygame.draw.rect(screen, (180, 100, 100), (box_x, box_y, box_w, box_h), 3, border_radius=12)
 
         # Get faction info
-        if self.elimination_faction_id < len(FACTIONS):
-            faction = FACTIONS[self.elimination_faction_id]
+        if self.elimination_faction_id < len(FACTION_DATA):
+            faction = FACTION_DATA[self.elimination_faction_id]
             faction_name = faction["name"]
             leader_name = faction["leader"]
 

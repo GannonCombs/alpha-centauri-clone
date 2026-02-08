@@ -23,14 +23,10 @@ class DesignWorkshopScreen:
         # State
         self.design_workshop_open = False
 
-        # SMAC-style design slots (64 total, each can hold a design or be None)
-        self.design_slots = [None] * 64
+        # UI state (designs are stored in faction.designs, not here)
         self.selected_slot = 0  # Currently selected slot (0-63)
         self.design_scroll_offset = 0
         self.designs_per_page = 8  # Show 8 slots at a time
-
-        # Initialize default designs in first two slots
-        self._initialize_default_designs_in_slots()
 
         # Current design being edited (reflects selected slot)
         self.dw_selected_chassis = 'infantry'
@@ -39,9 +35,6 @@ class DesignWorkshopScreen:
         self.dw_selected_reactor = 'fission'
         self.dw_selected_ability1 = 'none'
         self.dw_selected_ability2 = 'none'
-
-        # Load first empty slot or slot 0
-        self._load_slot_into_editor(self._find_first_empty_slot())
 
         # Which component panel is currently being edited
         self.dw_editing_panel = None
@@ -75,51 +68,29 @@ class DesignWorkshopScreen:
         self.dw_rename_ok_rect = None
         self.dw_rename_cancel_rect = None
 
-    @property
-    def unit_designs(self):
-        """Return list of non-None designs for backward compatibility."""
-        return [d for d in self.design_slots if d is not None]
+    def get_designs(self, game):
+        """Get list of all non-None designs for player's faction.
 
-    def _initialize_default_designs_in_slots(self):
-        """Initialize default unit designs in first two slots."""
-        # Basic starting designs (no tech required)
-        self.design_slots[0] = {
-            "chassis": "infantry",
-            "weapon": "hand_weapons",
-            "armor": "no_armor",
-            "reactor": "fission",
-            "ability1": "none",
-            "ability2": "none"
-        }
-        self.design_slots[1] = {
-            "chassis": "infantry",
-            "weapon": "colony_pod",
-            "armor": "no_armor",
-            "reactor": "fission",
-            "ability1": "none",
-            "ability2": "none"
-        }
-
-    def _find_first_empty_slot(self):
-        """Find the first empty slot (None) in design_slots.
+        Args:
+            game: Game instance to access faction designs
 
         Returns:
-            int: Index of first empty slot, or 0 if all full
+            list: All active designs (excludes None slots)
         """
-        for i, slot in enumerate(self.design_slots):
-            if slot is None:
-                return i
-        return 0  # If all full, return first slot
+        return game.factions[game.player_faction_id].designs.get_designs()
 
-    def _load_slot_into_editor(self, slot_index):
+    def _load_slot_into_editor(self, slot_index, game):
         """Load a slot's design into the editor, or reset to defaults if empty.
 
         Args:
             slot_index: Index of slot to load (0-63)
+            game: Game instance to access faction designs
         """
         self.selected_slot = slot_index
+        designs = game.factions[game.player_faction_id].designs
+        design = designs.get_design(slot_index)
 
-        if self.design_slots[slot_index] is None:
+        if design is None:
             # Empty slot - reset to defaults
             self.dw_selected_chassis = 'infantry'
             self.dw_selected_weapon = 'hand_weapons'
@@ -129,7 +100,6 @@ class DesignWorkshopScreen:
             self.dw_selected_ability2 = 'none'
         else:
             # Load existing design (already stores IDs)
-            design = self.design_slots[slot_index]
             self.dw_selected_chassis = design['chassis']
             self.dw_selected_weapon = design['weapon']
             self.dw_selected_armor = design['armor']
@@ -179,7 +149,7 @@ class DesignWorkshopScreen:
 
         return (len(unlocked) > 0, unlocked)
 
-    def rebuild_available_designs(self, tech_tree, completed_tech_id=None):
+    def rebuild_available_designs(self, tech_tree, game, completed_tech_id=None):
         """Intelligently rebuild unit designs based on what new tech unlocked.
 
         Only creates units that are strategically useful:
@@ -190,18 +160,23 @@ class DesignWorkshopScreen:
 
         Args:
             tech_tree: TechTree instance to check discovered techs
+            game: Game instance to access faction designs
             completed_tech_id: Optional - the tech that was just completed (for targeted generation)
         """
         from game.unit_components import CHASSIS, WEAPONS, ARMOR, REACTORS, generate_unit_name
 
-        print(f"DESIGN WORKSHOP: Rebuilding designs (current count: {len(self.unit_designs)})")
+        # Get player's faction designs
+        faction_designs = game.factions[game.player_faction_id].designs
+        current_designs = faction_designs.get_designs()
+
+        print(f"DESIGN WORKSHOP: Rebuilding designs (current count: {len(current_designs)})")
         if completed_tech_id:
             print(f"  Triggered by tech: {completed_tech_id}")
 
         # Keep existing designs (don't reset!)
         # Generate names from component IDs for duplicate checking
         existing_names = {generate_unit_name(d['weapon'], d['chassis'], d['armor'], d['reactor'])
-                          for d in self.unit_designs}
+                          for d in current_designs}
 
         # Get available components
         available_chassis = [c for c in CHASSIS if c['prereq'] is None or tech_tree.has_tech(c['prereq'])]
@@ -223,12 +198,8 @@ class DesignWorkshopScreen:
         new_designs = []
 
         if not completed_tech_id:
-            # Initial generation: create basic starting units if we have none or very few
-            if len(self.unit_designs) < 2:
-                # Initialize with basic designs
-                self._initialize_default_designs_in_slots()
-                existing_names = {d['name'] for d in self.unit_designs}
-                print(f"  Initialized with default designs")
+            # Initial generation: designs already initialized in faction
+            print(f"  Initial load (designs already exist)")
             return  # Don't generate anything else on initial load
 
         if completed_tech_id:
@@ -324,16 +295,14 @@ class DesignWorkshopScreen:
         for design in new_designs:
             design_name = generate_unit_name(design['weapon'], design['chassis'], design['armor'], design['reactor'])
             if design_name not in existing_names:
-                # Find first empty slot
-                for i in range(64):
-                    if self.design_slots[i] is None:
-                        self.design_slots[i] = design
-                        existing_names.add(design_name)
-                        added_count += 1
-                        break
+                # Add to first empty slot
+                slot_index = faction_designs.add_design(design)
+                if slot_index is not None:
+                    existing_names.add(design_name)
+                    added_count += 1
 
         print(f"  Added {added_count} new designs")
-        print(f"  Final design count: {len(self.unit_designs)}")
+        print(f"  Final design count: {len(faction_designs.get_designs())}")
         if added_count > 0:
             print(f"  Added {added_count} new design variants")
 
@@ -512,7 +481,8 @@ class DesignWorkshopScreen:
                                          design_size, design_size)
                 self.dw_design_rects.append((design_rect, slot_idx))
 
-                design = self.design_slots[slot_idx]
+                faction_designs = game.factions[game.player_faction_id].designs
+                design = faction_designs.get_design(slot_idx)
                 is_hover = design_rect.collidepoint(pygame.mouse.get_pos())
                 is_selected = (slot_idx == self.selected_slot)
 
@@ -588,7 +558,8 @@ class DesignWorkshopScreen:
             is_hover = btn_rect.collidepoint(pygame.mouse.get_pos())
 
             # Disable Rename button if selected slot is empty
-            is_disabled = (label == "Rename" and self.design_slots[self.selected_slot] is None)
+            current_design = game.factions[game.player_faction_id].designs.get_design(self.selected_slot)
+            is_disabled = (label == "Rename" and current_design is None)
 
             if is_disabled:
                 pygame.draw.rect(screen, (60, 60, 60), btn_rect, border_radius=6)
@@ -729,7 +700,8 @@ class DesignWorkshopScreen:
             all_components = []
 
         # Filter components by tech prerequisites
-        components = [c for c in all_components if unit_components.is_component_available(c, game.tech_tree)]
+        player_tech_tree = game.factions[game.player_faction_id].tech_tree
+        components = [c for c in all_components if unit_components.is_component_available(c, player_tech_tree)]
 
         # Draw components
         self.dw_component_selection_rects = []
@@ -930,11 +902,12 @@ class DesignWorkshopScreen:
         cancel_text = self.font.render("Cancel", True, COLOR_TEXT)
         screen.blit(cancel_text, (cancel_rect.centerx - cancel_text.get_width() // 2, cancel_rect.centery - 10))
 
-    def handle_design_workshop_click(self, pos):
+    def handle_design_workshop_click(self, pos, game):
         """Handle clicks in the Design Workshop screen.
 
         Args:
             pos: Mouse click position tuple (x, y)
+            game: Game instance to access faction designs
 
         Returns:
             'close' if should exit the screen, None otherwise
@@ -1017,8 +990,17 @@ class DesignWorkshopScreen:
         # Check Rename button
         if hasattr(self, 'dw_rename_rect') and self.dw_rename_rect.collidepoint(pos):
             # Only open if selected slot has a design
-            if self.design_slots[self.selected_slot] is not None:
-                self.rename_text_input = self.design_slots[self.selected_slot]['name']
+            faction_designs = game.factions[game.player_faction_id].designs
+            current_design = faction_designs.get_design(self.selected_slot)
+            if current_design is not None:
+                # Names are auto-generated, but we can show the current name
+                from game.unit_components import generate_unit_name
+                self.rename_text_input = generate_unit_name(
+                    current_design['weapon'],
+                    current_design['chassis'],
+                    current_design['armor'],
+                    current_design['reactor']
+                )
                 self.rename_text_selected = True  # Text starts selected
                 self.rename_popup_open = True
             return None
@@ -1102,12 +1084,13 @@ class DesignWorkshopScreen:
             )
 
             # Save to the currently selected slot
-            self.design_slots[self.selected_slot] = new_design
+            faction_designs = game.factions[game.player_faction_id].designs
+            faction_designs.set_design(self.selected_slot, new_design)
             print(f"DESIGN WORKSHOP: Saved design '{design_name}' to slot {self.selected_slot}")
 
             # Move to next empty slot for convenience
-            next_empty = self._find_first_empty_slot()
-            self._load_slot_into_editor(next_empty)
+            next_empty = faction_designs.find_first_empty_slot()
+            self._load_slot_into_editor(next_empty, game)
 
             return None
 
@@ -1140,7 +1123,7 @@ class DesignWorkshopScreen:
             for rect, slot_idx in self.dw_design_rects:
                 if rect.collidepoint(pos):
                     # Load this slot into the editor
-                    self._load_slot_into_editor(slot_idx)
+                    self._load_slot_into_editor(slot_idx, game)
                     return None
 
         return None

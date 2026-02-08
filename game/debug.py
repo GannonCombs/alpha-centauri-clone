@@ -166,12 +166,15 @@ class DebugManager:
 
     def _grant_all_techs(self, game):
         """Grant all available technologies."""
+        # Get player's tech tree
+        player_tech_tree = game.factions[game.player_faction_id].tech_tree
+
         # Get all tech IDs
-        all_techs = list(game.tech_tree.techs.keys())
+        all_techs = list(player_tech_tree.techs.keys())
         count = 0
         for tech_id in all_techs:
-            if not game.tech_tree.has_tech(tech_id):
-                game.tech_tree.discovered_techs.add(tech_id)
+            if not player_tech_tree.has_tech(tech_id):
+                player_tech_tree.discovered_techs.add(tech_id)
                 count += 1
 
         game.set_status_message(f"DEBUG: Granted {count} technologies")

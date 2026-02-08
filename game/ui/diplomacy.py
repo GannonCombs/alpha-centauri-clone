@@ -3,7 +3,7 @@
 import pygame
 from game.data import constants
 from game.data.constants import COLOR_TEXT, COLOR_BUTTON_BORDER
-from game.data.data import FACTIONS
+from game.data.data import FACTION_DATA
 from game.commlink_text import DialogSubstitution, select_greeting_dialog
 
 
@@ -44,10 +44,10 @@ class DiplomacyManager:
 
         Args:
             faction: AI faction dictionary
-            player_faction_index: Index of player's faction in FACTIONS list
+            player_faction_index: Index of player's faction in FACTION_DATA list
         """
         self.target_faction = faction
-        self.player_faction = FACTIONS[player_faction_index]  # Get actual player faction
+        self.player_faction = FACTION_DATA[player_faction_index]  # Get actual player faction
         self.diplo_stage = "greeting"
         self._last_diplo_stage = None  # Force dialog refresh
 
@@ -78,7 +78,7 @@ class DiplomacyManager:
         name_surf = self.font.render(self.target_faction['full_name'], True, self.target_faction['color'])
         screen.blit(name_surf, (info_x, info_y))
 
-        faction_id = next((i for i, f in enumerate(FACTIONS) if f['name'] == self.target_faction['name']), None)
+        faction_id = next((i for i, f in enumerate(FACTION_DATA) if f['name'] == self.target_faction['name']), None)
         relation = self.diplo_relations.get(faction_id, "Uncommitted")
 
         info_lines = [f"STATUS: {relation}", f"MOOD: {self.diplo_mood}",
@@ -245,7 +245,7 @@ class DiplomacyManager:
         # Map actions to stages
         if action == 'exit':
             # On exit, establish Truce if no formal relationship exists
-            faction_id = next((i for i, f in enumerate(FACTIONS) if f['name'] == self.target_faction['name']), None)
+            faction_id = next((i for i, f in enumerate(FACTION_DATA) if f['name'] == self.target_faction['name']), None)
             if faction_id is not None:
                 current_relation = self.diplo_relations.get(faction_id, "Uncommitted")
                 # If uncommitted (first meeting), establish Truce
@@ -263,7 +263,7 @@ class DiplomacyManager:
         elif action == 'ai_decide_pact':
             # AI decides whether to accept player's pact proposal
             # For now, always accept (later: base on relationship)
-            faction_id = next((i for i, f in enumerate(FACTIONS) if f['name'] == self.target_faction['name']), None)
+            faction_id = next((i for i, f in enumerate(FACTION_DATA) if f['name'] == self.target_faction['name']), None)
             if faction_id is not None:
                 self.diplo_relations[faction_id] = 'Pact'
             self.diplo_stage = 'accept_pact'  # AI accepts
@@ -279,7 +279,7 @@ class DiplomacyManager:
         elif action == 'ai_decide_treaty':
             # AI decides whether to accept player's treaty proposal
             # For now, always accept (later: base on relationship)
-            faction_id = next((i for i, f in enumerate(FACTIONS) if f['name'] == self.target_faction['name']), None)
+            faction_id = next((i for i, f in enumerate(FACTION_DATA) if f['name'] == self.target_faction['name']), None)
             if faction_id is not None:
                 self.diplo_relations[faction_id] = 'Treaty'
             self.diplo_stage = 'accept_treaty'  # AI accepts

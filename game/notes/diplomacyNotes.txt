@@ -11,7 +11,6 @@ unit.owner used to be weird. it's just faction_id now.
 
 
 1 Try to move a unit: game.try_move_unit(self, unit, target_x, target_y).
- - Poorly named. It DOES move a unit if it can.
 2 After it moves, but still within try_move_unit, we call game._check_first_contact.
 3 Within, we set game.pending_commlink_requests. Each entry in this list contains player_id and other_faction_id.
  - Fishy smell: self.faction_contacts.append(other_faction_id)

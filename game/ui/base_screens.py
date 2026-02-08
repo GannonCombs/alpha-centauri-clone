@@ -310,11 +310,11 @@ class BaseScreenManager:
                     # Center tile is the base
                     if dx == 1 and dy == 1:
                         # Use faction color for base square
-                        from game.data.data import FACTIONS
+                        from game.data.data import FACTION_DATA
                         base_color = (255, 255, 255)  # Default to white
                         faction_index = base.owner  # owner IS faction_id
-                        if faction_index < len(FACTIONS):
-                            base_color = FACTIONS[faction_index]['color']
+                        if faction_index < len(FACTION_DATA):
+                            base_color = FACTION_DATA[faction_index]['color']
                         pygame.draw.rect(screen, base_color, tile_rect, border_radius=4)
                     else:
                         pygame.draw.rect(screen, terrain_color, tile_rect)
@@ -443,11 +443,11 @@ class BaseScreenManager:
         screen.blit(fac_title, (facilities_x + 10, facilities_y + 8))
 
         # Get free facility from faction bonuses
-        from game.data.data import FACTIONS
+        from game.data.data import FACTION_DATA
         # owner IS faction_id - use it directly
         faction_index = base.owner
-        if faction_index < len(FACTIONS):
-            faction = FACTIONS[faction_index]
+        if faction_index < len(FACTION_DATA):
+            faction = FACTION_DATA[faction_index]
             free_facility = faction.get('bonuses', {}).get('free_facility')
         else:
             free_facility = None
@@ -840,40 +840,36 @@ class BaseScreenManager:
         # Build production items list
         production_items = []
 
-        # Units from design workshop
-        if hasattr(game, 'ui_manager') and hasattr(game.ui_manager, 'social_screens'):
-            from game.unit_components import generate_unit_name, get_chassis_by_id
-            workshop = game.ui_manager.social_screens.design_workshop_screen
-            for design in workshop.unit_designs:
-                # Generate unit name from component IDs
-                unit_name = generate_unit_name(
-                    design['weapon'], design['chassis'], design['armor'], design['reactor']
-                )
-                turns = get_turns(unit_name)
-                # Show basic stats in description
-                chassis_data = get_chassis_by_id(design['chassis'])
-                chassis_display = chassis_data['name'] if chassis_data else design['chassis']
-                description = f"{chassis_display}, {turns} turns"
-                production_items.append({
-                    "name": unit_name,
-                    "type": "unit",
-                    "description": description,
-                    "design": design  # Store design data for stats display
-                })
-        else:
-            # Fallback to hardcoded units if workshop not available
-            production_items.append({"name": "Scout Patrol", "type": "unit", "description": f"Infantry unit, {get_turns('Scout Patrol')} turns"})
-            production_items.append({"name": "Colony Pod", "type": "unit", "description": f"Found new base, {get_turns('Colony Pod')} turns"})
+        # Units from faction designs (use base owner's faction)
+        from game.unit_components import generate_unit_name, get_chassis_by_id
+        faction_designs = game.factions[base.owner].designs
+        for design in faction_designs.get_designs():
+            # Generate unit name from component IDs
+            unit_name = generate_unit_name(
+                design['weapon'], design['chassis'], design['armor'], design['reactor']
+            )
+            turns = get_turns(unit_name)
+            # Show basic stats in description
+            chassis_data = get_chassis_by_id(design['chassis'])
+            chassis_display = chassis_data['name'] if chassis_data else design['chassis']
+            description = f"{chassis_display}, {turns} turns"
+            production_items.append({
+                "name": unit_name,
+                "type": "unit",
+                "description": description,
+                "design": design  # Store design data for stats display
+            })
 
         # Facilities (filtered by tech and not already built)
-        available_facilities = facilities.get_available_facilities(game.tech_tree)
+        player_tech_tree = game.factions[game.player_faction_id].tech_tree
+        available_facilities = facilities.get_available_facilities(player_tech_tree)
 
         # Get free facility for this base's faction
-        from game.data.data import FACTIONS
+        from game.data.data import FACTION_DATA
         free_facility_name = None
         faction_index = base.owner  # owner IS faction_id
-        if faction_index < len(FACTIONS):
-            faction = FACTIONS[faction_index]
+        if faction_index < len(FACTION_DATA):
+            faction = FACTION_DATA[faction_index]
             free_facility_name = faction.get('bonuses', {}).get('free_facility')
 
         for facility in available_facilities:
@@ -893,7 +889,7 @@ class BaseScreenManager:
         # Secret Projects (filtered by tech and global uniqueness)
         if not hasattr(game, 'built_projects'):
             game.built_projects = set()
-        available_projects = facilities.get_available_projects(game.tech_tree, game.built_projects)
+        available_projects = facilities.get_available_projects(player_tech_tree, game.built_projects)
         for project in available_projects:
             turns = get_turns(project['name'])
             description = f"{project['effect']}, {turns} turns"

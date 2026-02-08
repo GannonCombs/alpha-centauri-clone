@@ -1,7 +1,7 @@
 """Intro screen and faction selection UI."""
 
 import pygame
-from game.data.data import FACTIONS
+from game.data.data import FACTION_DATA
 
 
 class IntroScreenManager:
@@ -486,7 +486,7 @@ class IntroScreenManager:
         button_h = 70
         start_y = 180
 
-        for i, faction in enumerate(FACTIONS):
+        for i, faction in enumerate(FACTION_DATA):
             button_y = start_y + i * 85
             button_rect = pygame.Rect(
                 screen_width // 2 - button_w // 2,
@@ -522,7 +522,7 @@ class IntroScreenManager:
         if self.selected_faction_id is not None:
             ok_button_w = 200
             ok_button_h = 50
-            ok_button_y = start_y + len(FACTIONS) * 85 + 30
+            ok_button_y = start_y + len(FACTION_DATA) * 85 + 30
             self.ok_button_rect = pygame.Rect(
                 screen_width // 2 - ok_button_w // 2,
                 ok_button_y,
@@ -545,7 +545,7 @@ class IntroScreenManager:
         screen.fill((10, 15, 25))
 
         # Get selected faction
-        faction = FACTIONS[self.selected_faction_id]
+        faction = FACTION_DATA[self.selected_faction_id]
 
         # Title
         title_text = f"Enter Your Name"
@@ -844,7 +844,7 @@ class IntroScreenManager:
                     # Move to name input
                     self.mode = 'name_input'
                     # Auto-suggest the faction leader's name (selected for easy replacement)
-                    self.player_name_input = FACTIONS[self.selected_faction_id]['leader']
+                    self.player_name_input = FACTION_DATA[self.selected_faction_id]['leader']
                     self.name_input_selected = True  # Text is selected, will be replaced on first keypress
                     return None
 

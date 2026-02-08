@@ -42,6 +42,18 @@ class Game:
         self.player_faction_id = player_faction_id  # Which faction the player chose
         self.player_name = player_name  # Player's custom name
         self.mission_year = 2100  # Starting year
+
+        # Initialize all factions (player + AIs)
+        from game.faction import Faction
+        self.factions = {}  # Dict[faction_id -> Faction]
+
+        # Create faction objects for all 7 factions
+        for faction_id in range(7):
+            is_player = (faction_id == player_faction_id)
+            self.factions[faction_id] = Faction(faction_id, is_player=is_player)
+
+        # Legacy: Keep energy_credits as direct attribute for now
+        # TODO: Migrate to self.factions[player_faction_id].energy_credits
         self.energy_credits = 0  # Starting credits
 
         # Global energy allocation (applies to all bases)
@@ -73,15 +85,16 @@ class Game:
         # Get list of AI faction IDs (all factions except player's)
         self.ai_faction_ids = [fid for fid in range(7) if fid != player_faction_id]
 
-        # Technology
-        self.tech_tree = TechTree()  # Player's tech tree
-        self._grant_starting_tech()  # Grant faction's starting technology
-        self.tech_tree.auto_select_research()  # Start with an active research
-        self.ai_tech_trees = {}  # AI tech trees by faction_id
-        for ai_faction_id in self.ai_faction_ids:
-            self.ai_tech_trees[ai_faction_id] = TechTree()
-            self._grant_starting_tech_for_ai(ai_faction_id)
-            self.ai_tech_trees[ai_faction_id].auto_select_research()
+        # Initialize tech trees for all factions
+        for faction_id in range(7):
+            self.factions[faction_id].tech_tree = TechTree()
+            self._grant_starting_tech(faction_id)
+            self.factions[faction_id].tech_tree.auto_select_research()
+
+        # Initialize unit designs for all factions
+        from game.design_data import DesignData
+        for faction_id in range(7):
+            self.factions[faction_id].designs = DesignData()
 
         # Facilities and Projects
         self.built_projects = set()  # Global set of secret projects built (one per game)
@@ -136,7 +149,7 @@ class Game:
         self.pending_new_designs_flag = False  # Delayed flag (shows after upkeep)
 
         # Commlink tracking (contacts with other factions)
-        self.faction_contacts = []  # List of faction IDs we've contacted (preserves order)
+        self.faction_contacts = set()  # Set of faction IDs we've contacted
         self.all_contacts_obtained = False  # Flag: have we contacted all living factions?
         self.shown_all_contacts_popup = False  # Flag: have we shown the popup?
         self.pending_commlink_requests = []  # List of {faction_id, player_id} dicts for AI contact popups
@@ -153,31 +166,23 @@ class Game:
         # Spawn some initial units for testing
         self._spawn_test_units()
 
-    def _grant_starting_tech(self):
-        """Grant the player's faction starting technology (without prerequisites)."""
-        from game.data.data import FACTIONS
-
-        if self.player_faction_id < len(FACTIONS):
-            starting_tech = FACTIONS[self.player_faction_id].get('starting_tech')
-            if starting_tech and starting_tech in self.tech_tree.technologies:
-                self.tech_tree.discovered_techs.add(starting_tech)
-                tech_name = self.tech_tree.technologies[starting_tech]['name']
-                print(f"Player starts with {tech_name}")
-
-    def _grant_starting_tech_for_ai(self, ai_faction_id):
-        """Grant an AI faction's starting technology (without prerequisites).
+    def _grant_starting_tech(self, faction_id):
+        """Grant a faction's starting technology (without prerequisites).
 
         Args:
-            ai_faction_id (int): The AI faction ID (0-6, excluding player's faction)
+            faction_id (int): The faction ID (0-6)
         """
-        from game.data.data import FACTIONS
+        from game.data.data import FACTION_DATA
 
-        if ai_faction_id < len(FACTIONS):
-            starting_tech = FACTIONS[ai_faction_id].get('starting_tech')
-            if starting_tech and starting_tech in self.ai_tech_trees[ai_faction_id].technologies:
-                self.ai_tech_trees[ai_faction_id].discovered_techs.add(starting_tech)
-                tech_name = self.ai_tech_trees[ai_faction_id].technologies[starting_tech]['name']
-                print(f"AI Faction {ai_faction_id} starts with {tech_name}")
+        if faction_id < len(FACTION_DATA):
+            tech_tree = self.factions[faction_id].tech_tree
+            starting_tech = FACTION_DATA[faction_id].get('starting_tech')
+            if starting_tech and starting_tech in tech_tree.technologies:
+                tech_tree.discovered_techs.add(starting_tech)
+                tech_name = tech_tree.technologies[starting_tech]['name']
+                is_player = (faction_id == self.player_faction_id)
+                prefix = "Player" if is_player else f"AI Faction {faction_id}"
+                print(f"{prefix} starts with {tech_name}")
 
     def _spawn_test_units(self):
         """Create starting units for all 7 factions."""
@@ -213,8 +218,8 @@ class Game:
 
         for faction_id in all_faction_ids:
             # Get faction data for naming
-            from game.data.data import FACTIONS
-            faction_name = FACTIONS[faction_id]['name'] if faction_id < len(FACTIONS) else f"Faction{faction_id}"
+            from game.data.data import FACTION_DATA
+            faction_name = FACTION_DATA[faction_id]['name'] if faction_id < len(FACTION_DATA) else f"Faction{faction_id}"
             faction_prefix = "Player" if faction_id == self.player_faction_id else faction_name
 
             # Both units spawn on the same tile
@@ -301,9 +306,15 @@ class Game:
 
         # Check if clicked on a unit on the tile
         clicked_unit = self.game_map.get_unit_at(tile_x, tile_y)
-        if clicked_unit and clicked_unit.is_friendly(self.player_faction_id):
-            # Select friendly unit
-            self.selected_unit = clicked_unit
+        if clicked_unit:
+            if clicked_unit.is_friendly(self.player_faction_id):
+                # Select friendly unit
+                self.selected_unit = clicked_unit
+            else:
+                # Clicked on enemy unit - try to attack with selected unit
+                if self.selected_unit and self.selected_unit.is_friendly(self.player_faction_id):
+                    # Try to move to enemy unit (will initiate combat)
+                    self.try_move_unit(self.selected_unit, tile_x, tile_y)
 
         return None
 
@@ -401,6 +412,7 @@ class Game:
             - Manages garrison entry/exit
             - Sets relationship to Vendetta on combat
         """
+
         # Wrap X coordinate horizontally
         target_x = target_x % self.game_map.width
 
@@ -444,7 +456,7 @@ class Game:
                 # Enemy stack - initiate combat with first unit
                 if unit.owner == self.player_faction_id:
                     # Set up pending battle - UI will show prediction screen
-                    self.pending_battle = {
+                    self.combat.pending_battle = {
                         'attacker': unit,
                         'defender': first_unit,
                         'target_x': target_x,
@@ -927,7 +939,7 @@ class Game:
                 diplo.diplo_relations[defender_faction_id] = 'Vendetta'
 
         # Set up active battle for animation
-        self.active_battle = {
+        self.combat.active_battle = {
             'attacker': attacker,
             'defender': defender,
             'target_x': target_x,
@@ -980,7 +992,7 @@ class Game:
                 sim_defender_hp -= damage
                 if sim_defender_hp < 0:
                     sim_defender_hp = 0
-                self.active_battle['rounds'].append({
+                self.combat.active_battle['rounds'].append({
                     'winner': 'attacker',
                     'damage': damage,
                     'attacker_hp': sim_attacker_hp,
@@ -989,13 +1001,13 @@ class Game:
 
                 # Check if defender can disengage
                 if sim_defender_hp > 0 and self.can_disengage(defender, attacker, sim_defender_hp, original_defender_hp):
-                    self.active_battle['disengaged'] = 'defender'
+                    self.combat.active_battle['disengaged'] = 'defender'
                     break
             else:
                 sim_attacker_hp -= damage
                 if sim_attacker_hp < 0:
                     sim_attacker_hp = 0
-                self.active_battle['rounds'].append({
+                self.combat.active_battle['rounds'].append({
                     'winner': 'defender',
                     'damage': damage,
                     'attacker_hp': sim_attacker_hp,
@@ -1004,16 +1016,16 @@ class Game:
 
                 # Check if attacker can disengage
                 if sim_attacker_hp > 0 and self.can_disengage(attacker, defender, sim_attacker_hp, original_attacker_hp):
-                    self.active_battle['disengaged'] = 'attacker'
+                    self.combat.active_battle['disengaged'] = 'attacker'
                     break
 
         # Determine final outcome
-        if 'disengaged' in self.active_battle:
-            self.active_battle['victor'] = 'disengage'
+        if 'disengaged' in self.combat.active_battle:
+            self.combat.active_battle['victor'] = 'disengage'
         elif sim_attacker_hp <= 0:
-            self.active_battle['victor'] = 'defender'
+            self.combat.active_battle['victor'] = 'defender'
         else:
-            self.active_battle['victor'] = 'attacker'
+            self.combat.active_battle['victor'] = 'attacker'
 
     def _finish_battle(self):
         """Clean up after battle completes."""
@@ -1426,13 +1438,14 @@ class Game:
 
             if success:
                 # Steal a random tech they have that we don't
-                target_techs = self.ai_tech_trees.get(target_base.owner, self.tech_tree).discovered_techs
-                stealable = target_techs - self.tech_tree.discovered_techs
+                player_tech_tree = self.factions[self.player_faction_id].tech_tree
+                target_techs = self.factions[target_base.owner].tech_tree.discovered_techs
+                stealable = target_techs - player_tech_tree.discovered_techs
 
                 if stealable:
                     stolen_tech = random.choice(list(stealable))
-                    tech_name = self.tech_tree.technologies[stolen_tech]['name']
-                    self.tech_tree.discovered_techs.add(stolen_tech)
+                    tech_name = player_tech_tree.technologies[stolen_tech]['name']
+                    player_tech_tree.discovered_techs.add(stolen_tech)
                     return True, f"Stole technology: {tech_name}!"
                 else:
                     return True, "No new technologies to steal"
@@ -1488,16 +1501,13 @@ class Game:
         return False, "Unknown action"
 
     def _check_first_contact(self, unit, x, y):
-        """Check for first contact with adjacent enemy units and establish commlink.
+        """Check for first contact with adjacent enemy units or bases and establish commlink.
 
         Args:
             unit: The unit that just moved
             x: Current x position
             y: Current y position
         """
-        # Only check for player or AI units
-        if unit.owner < 0 or unit.owner > 6:
-            return
 
         # Check all adjacent tiles (8 directions including diagonals)
         for dx in [-1, 0, 1]:
@@ -1516,6 +1526,11 @@ class Game:
                 if not adj_tile:
                     continue
 
+                # Check for other bases on adjacent tile
+                for other_base in adj_tile.bases:
+                    #TODO: handle in just the same way
+                    continue
+
                 # Check for units on adjacent tile
                 for other_unit in adj_tile.units:
                     # Skip if same owner
@@ -1530,12 +1545,12 @@ class Game:
                     # If player is involved, add to faction_contacts
                     print(f" Unit.owner: {unit.owner}")
                     print(f" player_id: {self.player_faction_id}")
-                    #TODO: both just printed 0 when neither was Deirdre. We are using bad ID values.
+                    #TODO: Ensure we are using good ID values below.
                     if unit.owner == self.player_faction_id:
                         # Player met the AI faction (owner IS faction_id)
                         other_faction_id = other_unit.owner
                         if other_faction_id not in self.faction_contacts:
-                            self.faction_contacts.append(other_faction_id)  # Append to preserve contact order
+                            self.faction_contacts.add(other_faction_id)
                             print(f"Player established contact with faction {other_faction_id}")
 
                             # Show commlink request popup (player initiated contact)
@@ -1559,7 +1574,7 @@ class Game:
                         # AI met the player (owner IS faction_id)
                         other_faction_id = unit.owner
                         if other_faction_id not in self.faction_contacts:
-                            self.faction_contacts.append(other_faction_id)  # Append to preserve contact order
+                            self.faction_contacts.add(other_faction_id)
                             print(f"Player established contact with faction {other_faction_id}")
 
                             # Show commlink request popup (AI initiated contact)
@@ -1629,18 +1644,18 @@ class Game:
         Returns:
             str: The generated base name
         """
-        from game.data.data import FACTIONS
+        from game.data.data import FACTION_DATA
         import random
 
         # Get faction ID for this player
         # player_id IS faction_id
         faction_id = player_id
-        if faction_id >= len(FACTIONS):
+        if faction_id >= len(FACTION_DATA):
             # Fallback if faction not found
             player_bases = [b for b in self.bases if b.owner == player_id]
             return f"Base {len(player_bases) + 1}"
 
-        faction = FACTIONS[faction_id]
+        faction = FACTION_DATA[faction_id]
         base_names = faction.get('base_names', [])
 
         if not base_names:
@@ -1816,13 +1831,9 @@ class Game:
         from game.unit import Unit
         design = None
 
-        # Access design workshop through ui_manager
-        if not hasattr(self, 'ui_manager') or not hasattr(self.ui_manager, 'social_screens'):
-            print(f"WARNING: Design workshop not available, cannot spawn {item_name}")
-            return
-
-        workshop = self.ui_manager.social_screens.design_workshop_screen
-        for d in workshop.unit_designs:
+        # Get designs from base owner's faction
+        faction_designs = self.factions[base.owner].designs
+        for d in faction_designs.get_designs():
             design_name = generate_unit_name(
                 d['weapon'], d['chassis'], d['armor'], d['reactor']
             )
@@ -1982,14 +1993,15 @@ class Game:
         self.energy_credits += total_economy
 
         # Process player tech research with labs output
-        self.tech_tree.add_research(total_labs)
-        completed_tech = self.tech_tree.process_turn()
+        player_tech_tree = self.factions[self.player_faction_id].tech_tree
+        player_tech_tree.add_research(total_labs)
+        completed_tech = player_tech_tree.process_turn()
 
         # Store completed tech for upkeep phase announcement
         if completed_tech:
             if not hasattr(self, 'upkeep_events'):
                 self.upkeep_events = []
-            tech_name = self.tech_tree.technologies[completed_tech]['name']
+            tech_name = player_tech_tree.technologies[completed_tech]['name']
             self.upkeep_events.append({
                 'type': 'tech_complete',
                 'tech_id': completed_tech,
@@ -2101,9 +2113,9 @@ class Game:
                     total_labs += base.labs_output
 
             # Process AI tech research with labs output
-            if ai_player.player_id in self.ai_tech_trees:
-                self.ai_tech_trees[ai_player.player_id].add_research(total_labs)
-                self.ai_tech_trees[ai_player.player_id].process_turn()
+            ai_tech_tree = self.factions[ai_player.player_id].tech_tree
+            ai_tech_tree.add_research(total_labs)
+            ai_tech_tree.process_turn()
 
             # Check if AI wants to call a council
             if hasattr(self, 'council_manager'):
@@ -2124,27 +2136,8 @@ class Game:
             if self.status_message_timer <= 0:
                 self.status_message = ""
 
-        # Update battle animation
-        if self.active_battle and not self.active_battle['complete']:
-            self.active_battle['round_timer'] += dt
-
-            # Check if it's time for the next round
-            if self.active_battle['round_timer'] >= self.active_battle['round_delay']:
-                self.active_battle['round_timer'] = 0
-                self.active_battle['current_round'] += 1
-
-                # Check if battle is complete
-                if self.active_battle['current_round'] >= len(self.active_battle['rounds']):
-                    self.active_battle['complete'] = True
-                    # Small delay before cleanup
-                    self.active_battle['cleanup_timer'] = 1000  # 1 second
-
-        # Clean up completed battle
-        if self.active_battle and self.active_battle.get('complete'):
-            if 'cleanup_timer' in self.active_battle:
-                self.active_battle['cleanup_timer'] -= dt
-                if self.active_battle['cleanup_timer'] <= 0:
-                    self._finish_battle()
+        # Update battle animation (handled by Combat class)
+        self.combat.update(dt)
 
     def get_ai_status_text(self):
         """Get text describing current AI state."""
@@ -2370,19 +2363,21 @@ class Game:
         # Check if this tech unlocks anything first
         if hasattr(self, 'ui_manager') and self.ui_manager is not None:
             workshop = self.ui_manager.social_screens.design_workshop_screen
+            player_tech_tree = self.factions[self.player_faction_id].tech_tree
 
             # Check what the tech unlocks
             unlocks_components, component_types = workshop.check_if_tech_unlocks_components(
-                completed_tech_id, self.tech_tree
+                completed_tech_id, player_tech_tree
             )
 
             if unlocks_components:
                 print(f"Tech '{completed_tech_id}' unlocks: {component_types}")
 
                 # Generate designs targeting the new components
-                old_count = len(workshop.unit_designs)
-                workshop.rebuild_available_designs(self.tech_tree, completed_tech_id)
-                new_count = len(workshop.unit_designs)
+                faction_designs = self.factions[self.player_faction_id].designs
+                old_count = len(faction_designs.get_designs())
+                workshop.rebuild_available_designs(player_tech_tree, self, completed_tech_id)
+                new_count = len(faction_designs.get_designs())
 
                 # Show popup if new designs were added (after upkeep events)
                 if new_count > old_count:
@@ -2506,14 +2501,18 @@ class Game:
         self.shown_all_contacts_popup = False
         self.pending_commlink_requests = []
         self.designs_need_rebuild = False
-        self.tech_tree = TechTree()
-        self._grant_starting_tech()
-        self.tech_tree.auto_select_research()
-        self.ai_tech_trees = {}
-        for ai_id in range(1, 7):
-            self.ai_tech_trees[ai_id] = TechTree()
-            self._grant_starting_tech_for_ai(ai_id)
-            self.ai_tech_trees[ai_id].auto_select_research()
+
+        # Recreate factions with new tech trees and designs
+        from game.faction import Faction
+        from game.design_data import DesignData
+        self.factions = {}
+        for faction_id in range(7):
+            is_player = (faction_id == self.player_faction_id)
+            self.factions[faction_id] = Faction(faction_id, is_player=is_player)
+            self.factions[faction_id].tech_tree = TechTree()
+            self._grant_starting_tech(faction_id)
+            self.factions[faction_id].tech_tree.auto_select_research()
+            self.factions[faction_id].designs = DesignData()
         self.territory = TerritoryManager(self.game_map)
         self.built_projects = set()
         self.se_selections = {
@@ -2564,14 +2563,18 @@ class Game:
             'map': self.game_map.to_dict(),
             'units': [u.to_dict() for u in self.units],
             'bases': [b.to_dict(unit_index_map) for b in self.bases],
-            'tech_tree': self.tech_tree.to_dict(),
-            'ai_players': [
-                {
-                    'player_id': ai.player_id,
-                    'tech_tree': self.ai_tech_trees[ai.player_id].to_dict()
+            'factions': {
+                faction_id: {
+                    'id': faction.id,
+                    'is_player': faction.is_player,
+                    'tech_tree': faction.tech_tree.to_dict() if faction.tech_tree else None,
+                    'designs': faction.designs.to_dict() if faction.designs else None,
+                    'energy_credits': faction.energy_credits,
+                    'relations': faction.relations,
+                    'contacts': list(faction.contacts)
                 }
-                for ai in self.ai_players
-            ],
+                for faction_id, faction in self.factions.items()
+            },
             'selected_unit_index': unit_index_map.get(self.selected_unit, None)
         }
 
@@ -2622,15 +2625,54 @@ class Game:
             if tile:
                 tile.base = base
 
-        # Restore tech trees
-        game.tech_tree = TechTree.from_dict(data['tech_tree'])
-        game.ai_tech_trees = {}
-        for ai_data in data['ai_players']:
-            player_id = ai_data['player_id']
-            game.ai_tech_trees[player_id] = TechTree.from_dict(ai_data['tech_tree'])
+        # Restore factions
+        from game.faction import Faction
+        from game.design_data import DesignData
+        game.factions = {}
+        if 'factions' in data:
+            # New save format with faction objects
+            for faction_id_str, faction_data in data['factions'].items():
+                faction_id = int(faction_id_str)
+                faction = Faction(faction_id, is_player=faction_data['is_player'])
+                faction.energy_credits = faction_data.get('energy_credits', 0)
+                faction.relations = faction_data.get('relations', {})
+                faction.contacts = set(faction_data.get('contacts', []))
+                if faction_data.get('tech_tree'):
+                    faction.tech_tree = TechTree.from_dict(faction_data['tech_tree'])
+                if faction_data.get('designs'):
+                    faction.designs = DesignData.from_dict(faction_data['designs'])
+                else:
+                    # Initialize default designs if not in save
+                    faction.designs = DesignData()
+                game.factions[faction_id] = faction
+        else:
+            # Old save format - migrate from tech_tree and ai_tech_trees
+            for faction_id in range(7):
+                is_player = (faction_id == game.player_faction_id)
+                faction = Faction(faction_id, is_player=is_player)
+                if is_player:
+                    faction.tech_tree = TechTree.from_dict(data['tech_tree'])
+                else:
+                    # Find this faction in ai_players if available
+                    if 'ai_players' in data:
+                        for ai_data in data['ai_players']:
+                            if ai_data['player_id'] == faction_id:
+                                faction.tech_tree = TechTree.from_dict(ai_data['tech_tree'])
+                                break
+                    else:
+                        # Very old save - initialize new tech tree
+                        faction.tech_tree = TechTree()
+                # Initialize default designs for old saves
+                faction.designs = DesignData()
+                game.factions[faction_id] = faction
 
         # Restore AI players
-        game.ai_players = [AIPlayer(ai_data['player_id']) for ai_data in data['ai_players']]
+        if 'ai_players' in data:
+            # Old save format - restore from ai_players list
+            game.ai_players = [AIPlayer(ai_data['player_id']) for ai_data in data['ai_players']]
+        else:
+            # New save format - reconstruct from factions
+            game.ai_players = [AIPlayer(fid) for fid in game.ai_faction_ids]
 
         # Restore selected unit
         sel_idx = data.get('selected_unit_index')

@@ -17,8 +17,8 @@ class DialogSubstitution:
         """Set up substitution context for dialog with a specific faction.
 
         Args:
-            player_faction: The player's faction dict from FACTIONS
-            ai_faction: The AI faction dict from FACTIONS (contains all flavor text)
+            player_faction: The player's faction dict from FACTION_DATA
+            ai_faction: The AI faction dict from FACTION_DATA (contains all flavor text)
         """
         print(f"Setting dialog context - Player: {player_faction['name']}, AI: {ai_faction['name']}")
 
@@ -34,6 +34,7 @@ class DialogSubstitution:
             return flavor.get(key, default)
 
         self.variables = {
+            'NAME0': player_faction.get('$NAME', 'I am'),
             'NAME1': player_faction.get('leader', 'Commander'),
             'TITLE0': player_faction.get('$TITLE', 'Leader'),
             'NAME3': get_f('$NAME', 'The Leader'),

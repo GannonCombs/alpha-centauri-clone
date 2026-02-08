@@ -103,12 +103,12 @@ class SocialEngineeringScreen:
         screen.blit(effects_title, (effects_x + effects_w // 2 - effects_title.get_width() // 2, effects_y + 10))
 
         # Calculate cumulative effects from current selections + faction bonuses
-        from game.data.data import FACTIONS
+        from game.data.data import FACTION_DATA
         cumulative_effects = {}
         faction_bonuses = {}
 
         # Get faction bonuses
-        faction = FACTIONS[game.player_faction_id]
+        faction = FACTION_DATA[game.player_faction_id]
         if 'bonuses' in faction:
             for stat_key, value in faction['bonuses'].items():
                 # Map faction bonus keys to display names
@@ -225,7 +225,8 @@ class SocialEngineeringScreen:
                 choice_rect = pygame.Rect(x, choice_y, choice_w, choice_h)
 
                 # Check if this choice is unlocked
-                available_choices = social_engineering.get_available_choices(category, game.tech_tree)
+                player_tech_tree = game.factions[game.player_faction_id].tech_tree
+                available_choices = social_engineering.get_available_choices(category, player_tech_tree)
                 is_unlocked = any(c['name'] == choice_name for c in available_choices)
 
                 # Only store unlocked choices for clicking
