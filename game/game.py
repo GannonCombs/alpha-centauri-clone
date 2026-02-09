@@ -151,6 +151,9 @@ class Game:
         self.auto_cycle_timer = 0  # Time in ms since last unit action
         self.auto_cycle_delay = 500  # Wait 500ms (0.5 seconds) before auto-cycling
 
+        # Auto-end turn tracking
+        self.last_unit_action = None  # 'action', 'hold', or None
+
         # Production queue (for spawning at start of next turn)
         self.pending_production = []  # List of (base, item_name) tuples to spawn
 
@@ -549,6 +552,8 @@ class Game:
         # Reset auto-cycle timer when unit moves
         if unit.owner == self.player_faction_id:
             self.auto_cycle_timer = pygame.time.get_ticks()
+            # Track that last action was an action (not hold)
+            self.last_unit_action = 'action'
 
         # Check for first contact with adjacent enemy units
         self._check_first_contact(unit, target_x, target_y)
@@ -1041,6 +1046,10 @@ class Game:
         unit.moves_remaining = 0
         unit.has_moved = True
 
+        # Track that last action was an action (not hold)
+        if unit.owner == self.player_faction_id:
+            self.last_unit_action = 'action'
+
         # Disable artillery mode after firing
         unit.artillery_mode = False
 
@@ -1492,6 +1501,8 @@ class Game:
             # Trigger auto-cycle after delay if player unit
             if unit.owner == self.player_faction_id:
                 self.auto_cycle_timer = pygame.time.get_ticks()
+                # Track that last action was an action (not hold)
+                self.last_unit_action = 'action'
 
         # Update territory
         self.territory.update_territory(self.bases)
@@ -1824,7 +1835,7 @@ class Game:
                 self.auto_cycle_timer = 0
 
     def cycle_units(self):
-        """Select next friendly unit (W key). Cycles only through units that still have moves."""
+        """Select next friendly unit (W key). Cycles only through unheld units that still have moves."""
         friendly_units = [u for u in self.units if u.is_friendly(self.player_faction_id)]
 
         if not friendly_units:
@@ -1833,8 +1844,9 @@ class Game:
         # Filter to units with moves remaining and not held
         units_with_moves = [u for u in friendly_units if u.moves_remaining > 0 and not u.held]
 
-        # If no units have moves, do nothing
+        # If no units need attention, check for auto-end
         if not units_with_moves:
+            self.check_auto_end_turn()
             return
 
         # Cycle through units in sequence
@@ -1852,6 +1864,35 @@ class Game:
                 tile.displayed_unit_index = tile.units.index(self.selected_unit)
             # Center camera on newly selected unit
             self.center_camera_on_selected = True
+
+    def check_auto_end_turn(self):
+        """Check if turn should auto-end or require manual button press.
+
+        Auto-ends turn if all units have been processed (moved or held),
+        UNLESS:
+        - Last action was a hold (signals player might do more)
+        - All units are held (player hasn't committed to any actions)
+        """
+        # Don't auto-end during AI turn or upkeep
+        if self.processing_ai or self.upkeep_phase_active:
+            return
+
+        friendly_units = [u for u in self.units if u.is_friendly(self.player_faction_id)]
+        if not friendly_units:
+            return
+
+        # Check if all units are held (none have taken actions)
+        all_held = all(u.held for u in friendly_units)
+
+        # Require manual end if:
+        # 1. Last action was a hold, OR
+        # 2. All units are held (nobody moved)
+        if self.last_unit_action == 'hold' or all_held:
+            # Manual end required - button will continue glowing
+            return
+
+        # Otherwise, auto-end turn
+        self.end_turn()
 
     def end_turn(self):
         """End player turn and begin AI/upkeep sequence.
@@ -2211,6 +2252,9 @@ class Game:
             the sequence, but new turn doesn't start until after AI turns
             and upkeep phase complete.
         """
+        # Reset auto-end turn tracking
+        self.last_unit_action = None
+
         self.turn += 1
         print(f"Turn {self.turn} started!")
 

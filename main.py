@@ -236,6 +236,9 @@ def main():
                                 # When holding, skip to next unit (but don't end turn)
                                 game.set_status_message(f"{held_unit.name} held (will skip in cycling)")
 
+                                # Track that last action was a hold
+                                game.last_unit_action = 'hold'
+
                                 # Auto-cycle to next unit
                                 game.cycle_units()
 
@@ -266,6 +269,9 @@ def main():
                                 game.selected_unit.moves_remaining = 0
                                 game.selected_unit.has_moved = True
                                 game.set_status_message(f"{game.selected_unit.name} movement ended")
+
+                            # Track that last action was an action (not hold)
+                            game.last_unit_action = 'action'
 
                             # Auto-cycle to next unit
                             game.cycle_units()
