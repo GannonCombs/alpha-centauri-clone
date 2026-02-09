@@ -117,19 +117,49 @@ class Faction:
         """
         self.relations[other_faction_id] = status
 
-    def get_voting_power(self):
+    def get_voting_power(self, game=None):
         """Calculate voting power based on total population across all bases.
 
-        In SMAC, voting power equals total population. For now, we'll use a hardcoded
-        value but the infrastructure is in place for when we implement proper calculation.
+        Votes = Sum of base populations + bonuses:
+        - Empath Guild: +25% votes
+        - Clinical Immortality tech: 2x votes
+        - Lal's faction perk: 2x votes
+
+        Args:
+            game: Game instance (needed to check for facilities/techs/bases)
 
         Returns:
             int: Number of votes this faction has
         """
-        # TODO: Calculate from actual base populations when that system is implemented
-        # For now, return a hardcoded value based on number of bases
-        if len(self.bases) == 0:
+        if not game:
             return 0
-        # Placeholder: each base contributes votes based on its population
-        total_votes = sum(base.population for base in self.bases)
+
+        # Get all bases owned by this faction
+        faction_bases = [b for b in game.bases if b.owner == self.id]
+
+        if len(faction_bases) == 0:
+            return 0
+
+        # Base votes = sum of all base population
+        total_votes = sum(base.population for base in faction_bases)
+
+        # Bonus 1: Empath Guild (+25%)
+        has_empath_guild = any('Empath Guild' in base.facilities for base in faction_bases)
+        if has_empath_guild:
+            total_votes = int(total_votes * 1.25)
+
+        # Bonus 2: Clinical Immortality tech (2x votes)
+        has_clinical_immortality = False
+        if game and hasattr(self, 'tech_tree'):
+            has_clinical_immortality = 'clinical_immortality' in self.tech_tree.discovered_techs
+
+        if has_clinical_immortality:
+            total_votes *= 2
+
+        # Bonus 3: Lal's double votes perk (2x votes)
+        from game.data.data import FACTION_DATA
+        faction_data = FACTION_DATA[self.id]
+        if faction_data.get('double_votes', False):
+            total_votes *= 2
+
         return total_votes

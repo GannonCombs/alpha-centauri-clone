@@ -968,7 +968,7 @@ class UIManager:
 
             # Draw player's votes above council button
             player_faction = game.factions.get(game.player_faction_id)
-            player_votes = player_faction.get_voting_power() if player_faction else 0
+            player_votes = player_faction.get_voting_power(game) if player_faction else 0
 
             votes_y = self.council_btn.rect.y - 25
             votes_text = f"Votes: {player_votes}"
