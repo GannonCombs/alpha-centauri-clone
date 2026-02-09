@@ -138,4 +138,3 @@ Advanced unit movement (G command, J command, drag path)
 V to hover
 Isometric
 Aliens/Fungus
-Commerce

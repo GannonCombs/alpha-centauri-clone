@@ -1932,44 +1932,8 @@ class Game:
         # Refuel air units at bases and check for crashes
         self._process_air_unit_fuel(self.player_faction_id)
 
-        # Process player bases at end of player turn
-        total_economy = 0
-        total_labs = 0
-        for base in self.bases:
-            if base.owner == self.player_faction_id:
-                # Reset hurry flag at start of turn
-                base.hurried_this_turn = False
-                player_faction = self.factions[self.player_faction_id]
-                completed_item = base.process_turn(self.global_energy_allocation, player_faction, self)
-                if completed_item:
-                    # Store for spawning at start of next turn (after upkeep)
-                    self.pending_production.append((base, completed_item))
-
-                # Collect energy outputs
-                total_economy += base.economy_output
-                total_labs += base.labs_output
-
-        # Add economy output to energy reserves
-        self.energy_credits += total_economy
-
-        # Process player tech research with labs output
-        player_tech_tree = self.factions[self.player_faction_id].tech_tree
-        player_tech_tree.add_research(total_labs)
-        completed_tech = player_tech_tree.process_turn()
-
-        # Store completed tech for upkeep phase announcement
-        if completed_tech:
-            if not hasattr(self, 'upkeep_events'):
-                self.upkeep_events = []
-            tech_name = player_tech_tree.technologies[completed_tech]['name']
-            self.upkeep_events.append({
-                'type': 'tech_complete',
-                'tech_id': completed_tech,
-                'tech_name': tech_name
-            })
-
-            # Auto-generate new unit designs based on newly unlocked components
-            self._auto_generate_unit_designs(completed_tech)
+        # Note: Player base processing moved to upkeep phase (after AI turns)
+        # This ensures production, growth, and credits are shown during upkeep
 
         # Update mission year
         self.mission_year += 1
@@ -2031,8 +1995,48 @@ class Game:
 
             # If we get here, all AI players are done (or eliminated)
             else:
-                # All AIs done, calculate commerce and collect upkeep events
+                # All AIs done, process player bases and calculate commerce
                 self.processing_ai = False
+
+                # Process player bases (deferred from end_turn for upkeep display)
+                total_economy = 0
+                total_labs = 0
+                for base in self.bases:
+                    if base.owner == self.player_faction_id:
+                        # Reset hurry flag at start of turn
+                        base.hurried_this_turn = False
+                        player_faction = self.factions[self.player_faction_id]
+                        completed_item = base.process_turn(self.global_energy_allocation, player_faction, self)
+                        if completed_item:
+                            # Store for spawning at start of next turn (after upkeep)
+                            self.pending_production.append((base, completed_item))
+
+                        # Collect energy outputs
+                        total_economy += base.economy_output
+                        total_labs += base.labs_output
+
+                # Add economy output to energy reserves
+                self.energy_credits += total_economy
+                print(f"Player earned {total_economy} energy credits from economy")
+
+                # Process player tech research with labs output
+                player_tech_tree = self.factions[self.player_faction_id].tech_tree
+                player_tech_tree.add_research(total_labs)
+                completed_tech = player_tech_tree.process_turn()
+
+                # Store completed tech for upkeep phase announcement
+                if completed_tech:
+                    if not hasattr(self, 'upkeep_events'):
+                        self.upkeep_events = []
+                    tech_name = player_tech_tree.technologies[completed_tech]['name']
+                    self.upkeep_events.append({
+                        'type': 'tech_complete',
+                        'tech_id': completed_tech,
+                        'tech_name': tech_name
+                    })
+
+                    # Auto-generate new unit designs based on newly unlocked components
+                    self._auto_generate_unit_designs(completed_tech)
 
                 # Calculate commerce for all factions (distributes to player and AI energy_credits)
                 # Initialize commerce system if not present (for old saves)
