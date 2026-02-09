@@ -443,6 +443,30 @@ class BaseScreenManager:
         commerce_title = self.small_font.render("COMMERCE", True, (180, 200, 220))
         screen.blit(commerce_title, (commerce_x + 10, commerce_y + 8))
 
+        # Display commerce breakdown (if commerce system exists)
+        if hasattr(game, 'commerce'):
+            commerce_data = game.commerce.get_commerce_display_data()
+            y_offset = commerce_y + 30
+            total_commerce = 0
+
+            # Show all commerce relationships (even if 0)
+            if commerce_data:
+                for partner_name, your_amount, their_amount in commerce_data:
+                    text = f"{partner_name}: +{your_amount} (they get +{their_amount})"
+                    commerce_line = self.small_font.render(text, True, (200, 220, 200))
+                    screen.blit(commerce_line, (commerce_x + 10, y_offset))
+                    y_offset += 16
+                    total_commerce += your_amount
+
+                # Show total (even if 0)
+                total_text = f"Total: +{total_commerce}"
+                total_line = self.small_font.render(total_text, True, (180, 220, 180))
+                screen.blit(total_line, (commerce_x + 10, y_offset))
+            else:
+                # No treaties/pacts
+                no_commerce = self.small_font.render("No trade agreements", True, (150, 150, 150))
+                screen.blit(no_commerce, (commerce_x + 10, y_offset))
+
         # Errata Panel (below commerce panel)
         errata_x = commerce_x
         errata_y = commerce_y + commerce_h + 10

@@ -74,6 +74,7 @@ class Base:
         self.economy_output = 0     # Energy to credits
         self.labs_output = 0        # Energy to research
         self.psych_output = 0       # Energy to happiness
+        self.commerce_income = 0    # Bonus energy from commerce (set by commerce system)
 
         # Population happiness (for psych system)
         self.workers = 1            # Working citizens
@@ -593,6 +594,7 @@ class Base:
         base.production_queue = data.get('production_queue', [])
         base.governor_enabled = data.get('governor_enabled', False)
         base.governor_mode = data.get('governor_mode', None)
+        base.commerce_income = data.get('commerce_income', 0)
 
         # Initialize derived/calculated values
         base.supported_units = []

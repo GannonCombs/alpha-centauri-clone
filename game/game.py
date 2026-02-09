@@ -22,6 +22,7 @@ from game.ai import AIPlayer
 from game.tech import TechTree
 from game.territory import TerritoryManager
 from game.combat import Combat
+from game.commerce import CommerceCalculator
 from game.debug import DebugManager  # DEBUG: Remove for release
 
 
@@ -153,6 +154,10 @@ class Game:
 
         # Auto-end turn tracking
         self.last_unit_action = None  # 'action', 'hold', or None
+
+        # Commerce system
+        self.commerce = CommerceCalculator(self)
+        self.global_trade_pact_active = False  # Planetary council proposal (placeholder)
 
         # Production queue (for spawning at start of next turn)
         self.pending_production = []  # List of (base, item_name) tuples to spawn
@@ -2026,8 +2031,28 @@ class Game:
 
             # If we get here, all AI players are done (or eliminated)
             else:
-                # All AIs done, collect upkeep events and start upkeep phase
+                # All AIs done, calculate commerce and collect upkeep events
                 self.processing_ai = False
+
+                # Calculate commerce for all factions (distributes to player and AI energy_credits)
+                # Initialize commerce system if not present (for old saves)
+                if not hasattr(self, 'commerce'):
+                    from game.commerce import CommerceCalculator
+                    self.commerce = CommerceCalculator(self)
+                    self.global_trade_pact_active = False
+
+                player_commerce = self.commerce.calculate_all_commerce()
+
+                # Add commerce to upkeep events if player received any
+                if player_commerce > 0:
+                    if not hasattr(self, 'upkeep_events'):
+                        self.upkeep_events = []
+                    self.upkeep_events.append({
+                        'type': 'commerce',
+                        'amount': player_commerce,
+                        'details': self.commerce.get_commerce_display_data()
+                    })
+
                 self._collect_upkeep_events()
 
                 # If there are upkeep events, show them; otherwise start new turn immediately
@@ -2150,8 +2175,9 @@ class Game:
             self.set_status_message("Unity Fusion Core salvaged! +500 energy credits")
 
         elif proposal_id == "GLOBAL_TRADE":
-            # Grant +1 commerce to all bases (implemented as economy bonus)
-            self.set_status_message("Global Trade Pact enacted! +1 commerce in all bases")
+            # Doubles commerce from treaties/pacts (commerce.py handles calculation)
+            self.global_trade_pact_active = True
+            self.set_status_message("Global Trade Pact enacted! Commerce doubled")
             # This would need to be tracked and applied in base calculations
             # For now, just notify the player
 
