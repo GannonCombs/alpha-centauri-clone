@@ -1483,12 +1483,28 @@ class Game:
         # Check if this is the player's first base - if so, add Headquarters
         player_bases = [b for b in self.bases if b.owner == unit.owner]
         if len(player_bases) == 0:
-            base.facilities.append('Headquarters')
+            base.facilities.append('headquarters')
             print(f"First base founded - Headquarters added automatically")
             # First base starts with governor OFF
             base.governor_enabled = False
             base.governor_mode = None
-        else:
+
+        # Add faction's free facility (always gets it)
+        from game.data.data import FACTION_DATA
+        from game.facilities import get_facility_by_name
+        if unit.owner < len(FACTION_DATA):
+            faction = FACTION_DATA[unit.owner]
+            free_facility_name = faction.get('bonuses', {}).get('free_facility')
+            if free_facility_name:
+                # Convert name to ID
+                facility_data = get_facility_by_name(free_facility_name)
+                if facility_data:
+                    facility_id = facility_data['id']
+                    base.facilities.append(facility_id)
+                    base.free_facilities.append(facility_id)
+                    print(f"Added free facility: {free_facility_name} ({facility_id})")
+
+        if len(player_bases) > 0:
             # Not first base - check governor settings
             if unit.owner == self.player_faction_id:
                 # Player faction: enable governor if any other base has it enabled
@@ -1620,7 +1636,7 @@ class Game:
         # Check for Empath Guild
         for player_base in self.bases:
             if player_base.owner == self.player_faction_id:
-                if 'Empath Guild' in player_base.facilities:
+                if 'empath_guild' in player_base.facilities:
                     return True
 
         # TODO: Check for planetary governor status
@@ -1838,7 +1854,7 @@ class Game:
 
         # Command Center bonus: land units start with +2 morale (additive)
         # Note: This applies after any SE/facility/project bonuses to starting morale
-        if unit.type == 'land' and 'Command Center' in base.facilities:
+        if unit.type == 'land' and 'command_center' in base.facilities:
             original_morale = unit.morale_level
             unit.morale_level = min(7, unit.morale_level + 2)  # Cap at Elite (7)
             if unit.morale_level > original_morale:

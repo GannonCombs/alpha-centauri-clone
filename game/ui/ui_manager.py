@@ -1802,7 +1802,13 @@ class UIManager:
             pygame.draw.circle(screen, COLOR_BLACK, (icon_x + icon_size // 2, icon_y + icon_size // 2), icon_size // 2, 1)
 
             # Draw unit type indicator (first letter of unit type)
-            type_letter = unit.type[0].upper()
+            # Show 'C' for colony pods, 'A' for artifacts, otherwise first letter of type
+            if unit.weapon == 'colony_pod':
+                type_letter = 'C'
+            elif unit.weapon == 'artifact':
+                type_letter = 'A'
+            else:
+                type_letter = unit.type[0].upper()  # 'L', 'S', 'A'
             letter_font = pygame.font.Font(None, 16)
             letter_surf = letter_font.render(type_letter, True, COLOR_BLACK)
             letter_rect = letter_surf.get_rect(center=(icon_x + icon_size // 2, icon_y + icon_size // 2))

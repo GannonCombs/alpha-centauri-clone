@@ -7,7 +7,7 @@ Format: ✓ = Fully implemented, ◐ = Partially implemented, 👤 = Human signe
 Headquarters
 Children's Creche
 Recycling Tanks
-Perimeter Defense
+Perimeter Defense ✓
 Tachyon Field
 Recreation Commons
 Energy Bank

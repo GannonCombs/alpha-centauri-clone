@@ -67,6 +67,14 @@ class Combat:
                     'display': '+25%'
                 })
 
+                # Perimeter Defense: +100% defense
+                if 'perimeter_defense' in tile.base.facilities:
+                    modifiers.append({
+                        'name': 'Perimeter Defense',
+                        'multiplier': 2.00,
+                        'display': '+100%'
+                    })
+
             # Trance defending vs Psi (+50%)
             if vs_unit and hasattr(unit, 'abilities'):
                 if 'trance' in unit.abilities and vs_unit.weapon_data.get('mode', 'projectile') == 'psi':

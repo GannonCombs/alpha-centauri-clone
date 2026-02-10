@@ -513,27 +513,17 @@ class BaseScreenManager:
         fac_title = self.small_font.render("BASE FACILITIES", True, (200, 180, 220))
         screen.blit(fac_title, (facilities_x + 10, facilities_y + 8))
 
-        # Get free facility from faction bonuses
-        from game.data.data import FACTION_DATA
-        # owner IS faction_id - use it directly
-        faction_index = base.owner
-        if faction_index < len(FACTION_DATA):
-            faction = FACTION_DATA[faction_index]
-            free_facility = faction.get('bonuses', {}).get('free_facility')
-        else:
-            free_facility = None
-
-        # Combine regular facilities with free facility
-        all_facilities = []
-        if free_facility:
-            all_facilities.append(f"* {free_facility}")  # Asterisk for free
-        all_facilities.extend(base.facilities)
-
-        # List facilities
-        if all_facilities:
-            for i, facility in enumerate(all_facilities):
-                fac_text = self.small_font.render(facility, True, COLOR_TEXT)
-                screen.blit(fac_text, (facilities_x + 15, facilities_y + 35 + i * 22))
+        # Display facilities (convert IDs to names, add * for free facilities)
+        from game.facilities import get_facility_by_id
+        if base.facilities:
+            for i, facility_id in enumerate(base.facilities):
+                facility_data = get_facility_by_id(facility_id)
+                if facility_data:
+                    # Add asterisk for free facilities
+                    prefix = "* " if facility_id in base.free_facilities else ""
+                    facility_name = prefix + facility_data['name']
+                    fac_text = self.small_font.render(facility_name, True, COLOR_TEXT)
+                    screen.blit(fac_text, (facilities_x + 15, facilities_y + 35 + i * 22))
         else:
             no_fac = self.small_font.render("No facilities yet", True, (120, 120, 140))
             screen.blit(no_fac, (facilities_x + 15, facilities_y + 40))
@@ -1001,13 +991,10 @@ class BaseScreenManager:
 
         for facility in available_facilities:
             # Skip Headquarters (auto-granted to first base)
-            if facility['name'] == 'Headquarters':
+            if facility['id'] == 'headquarters':
                 continue
-            # Skip if already built in this base
-            if facility['name'] in base.facilities:
-                continue
-            # Skip if this is the faction's free facility (automatically provided)
-            if free_facility_name and facility['name'] == free_facility_name:
+            # Skip if already built in this base (check by ID)
+            if facility['id'] in base.facilities:
                 continue
             turns = get_turns(facility['name'])
             description = f"{facility['effect']}, {turns} turns, {facility['maint']} energy/turn"

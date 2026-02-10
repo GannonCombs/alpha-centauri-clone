@@ -150,8 +150,13 @@ in similar fashion. Note that if the tile has multiple units on it, the artifact
 16 Healing isn't working correctly. It's applying the bonuses correctly, but when the units are moving. It should only
 be when they've skipped their turn entirely. If a unit has even partially moved or acted that turn, healing doesn't happen
 naturally (movement onto a monolith is the exception.)
-17 The garrison icon below an artifact shows it with an L, not an A.
-
+18 Combat showed a bonus of 12% without any descriptor. Was this a moral boost? If so, display it as <morale level>: +<x>%
+19 Combat should take one movement of a unit. For some reason, it seems to end the turn of a scout patrol, but take zero
+turns off a speeder. It can take additional if the unit is sufficiently wounded. The math there: if the unit has a fraction
+of their health gone equal to the number of moves they have, they lose a move. For example, if a speeder starts the turn
+with 50% damage, it has 1 move. If it starts the turn with combat, and in the process loses 50% health, it's turn is over
+(lost 1 move to battle, 1 to health).
+20 If I click on an enemy base, its base view should still pop up. To the right of the base name, it should say (<faction>
 
 
 ***************************************************************************

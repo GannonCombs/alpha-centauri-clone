@@ -113,7 +113,7 @@ def _calculate_healing_percentage(unit, tile, base, game):
         bonuses.append("In base +10%")
 
     # +10% if air unit in Airbase
-    if unit.type == 'air' and base and 'Aerospace Complex' in base.facilities:
+    if unit.type == 'air' and base and 'aerospace_complex' in base.facilities:
         # Note: Airbase improvement doesn't exist yet, using Aerospace Complex as proxy
         healing_percent += 0.10
         bonuses.append("Airbase +10%")
@@ -152,18 +152,18 @@ def _check_full_repair_facility(unit, base):
     Returns:
         str: Name of facility that provides full repair, or None
     """
-    if unit.type == 'land' and 'Command Center' in base.facilities:
+    if unit.type == 'land' and 'command_center' in base.facilities:
         return 'Command Center'
 
-    if unit.type == 'sea' and 'Naval Yard' in base.facilities:
+    if unit.type == 'sea' and 'naval_yard' in base.facilities:
         return 'Naval Yard'
 
-    if unit.type == 'air' and 'Aerospace Complex' in base.facilities:
+    if unit.type == 'air' and 'aerospace_complex' in base.facilities:
         return 'Aerospace Complex'
 
     # Check for native units (placeholder)
     is_native = unit.weapon == 'native'
-    if is_native and 'Biology Lab' in base.facilities:
+    if is_native and 'biology_lab' in base.facilities:
         return 'Biology Lab'
 
     return None
@@ -231,7 +231,7 @@ def _faction_has_nano_factory(faction_id, game):
     # TODO: Implement secret projects tracking
     # For now, check all bases for Nano Factory
     for base in game.bases:
-        if base.owner == faction_id and 'The Nano Factory' in base.facilities:
+        if base.owner == faction_id and 'nano_factory' in base.facilities:
             return True
     return False
 
@@ -249,7 +249,7 @@ def _faction_has_xenoempathy_dome(faction_id, game):
     # TODO: Implement secret projects tracking
     # For now, check all bases for Xenoempathy Dome
     for base in game.bases:
-        if base.owner == faction_id and 'The Xenoempathy Dome' in base.facilities:
+        if base.owner == faction_id and 'xenoempathy_dome' in base.facilities:
             return True
     return False
 

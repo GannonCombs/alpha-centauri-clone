@@ -48,7 +48,8 @@ class Base:
 
         # Base attributes
         self.population = 1
-        self.facilities = []  # Buildings in the base
+        self.facilities = []  # Facility IDs in the base (e.g., 'perimeter_defense', 'network_node')
+        self.free_facilities = []  # IDs of facilities that are free (for UI display with *)
         self.garrison = []  # Units stationed at this base (legacy - use get_garrison_units instead)
         self.supported_units = []  # Units this base supports
 
@@ -126,9 +127,9 @@ class Base:
         """
         # Determine population limit based on facilities
         max_pop = 7  # Default limit
-        if 'Habitation Dome' in self.facilities:
+        if 'habitation_dome' in self.facilities:
             max_pop = 999  # Effectively unlimited
-        elif 'Habitation Complex' in self.facilities:
+        elif 'hab_complex' in self.facilities:
             max_pop = 14
 
         # Scaling: 7, 10, 14, 19, 25, 32 for pops 1->2, 2->3, 3->4, etc.
@@ -359,8 +360,8 @@ class Base:
                 # Check if it's a facility or project - add to base
                 facility_data = facilities.get_facility_by_name(completed_item)
                 if facility_data:
-                    self.facilities.append(completed_item)
-                    print(f"{self.name} now has facility: {completed_item}")
+                    self.facilities.append(facility_data['id'])
+                    print(f"{self.name} now has facility: {completed_item} ({facility_data['id']})")
 
                 # Reset production - check queue first
                 if completed_item == "Stockpile Energy":
@@ -453,9 +454,9 @@ class Base:
             self.disloyal_drones = 0
 
         # Apply facility effects
-        if 'Recreation Commons' in self.facilities:
+        if 'recreation_commons' in self.facilities:
             base_drones = max(0, base_drones - 2)
-        if 'Hologram Theatre' in self.facilities:
+        if 'hologram_theatre' in self.facilities:
             base_drones = max(0, base_drones - 2)
 
         # Convert psych to talents (2 psych = 1 talent)
@@ -491,7 +492,7 @@ class Base:
             int: Number of free support slots
         """
         free = 2  # Base support
-        if "Children's Creche" in self.facilities:
+        if 'childrens_creche' in self.facilities:
             free += 1
         self.free_support = free
         return free
@@ -543,6 +544,7 @@ class Base:
             'name': self.name,
             'population': self.population,
             'facilities': list(self.facilities),
+            'free_facilities': list(self.free_facilities),
             'garrison_unit_indices': garrison_indices,
             'current_production': self.current_production,
             'previous_production': self.previous_production,
@@ -586,6 +588,7 @@ class Base:
         base.name = data['name']
         base.population = data['population']
         base.facilities = data['facilities']
+        base.free_facilities = data.get('free_facilities', [])  # Default to empty for old saves
         base.current_production = data['current_production']
         base.previous_production = data.get('previous_production', None)
         base.production_progress = data['production_progress']
