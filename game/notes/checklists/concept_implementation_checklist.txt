@@ -1,0 +1,82 @@
+Note: only a human can check off any of these.
+
+Basic Concepts:
+
+Rainfall
+Rockiness
+Altitude ◐
+Pact of Brotherhood ◐
+Treaty of Friendship ◐
+Blood Truce ◐
+Vendetta ✓
+Integrity
+Atrocities
+Drone Riots
+Golden Age
+Morale ◐
+Monoliths ◐
+Artifacts ◐
+Fungus/Xenofungus
+Psi Combat
+Waypoints
+Patrol
+Explore (Governor) ◐
+Discover (Governor) ◐
+Build (Governor) ◐
+Conquer (Governor) ◐
+Damage and Repair ✓
+Prototypes
+Unit Cost (Basic)
+Inefficiency (Basic)
+Ecology (Basic)
+Planetary Council ◐
+Planetary Governor ◐
+Commerce (Basic) ◐
+Victory and Defeat
+Territory/Borders ◐
+Might
+Disengage ◐
+Zone of Control ◐
+Bombardment ◐
+Drones
+Talents
+Psych
+Landmarks, Volcanos, etc.
+Council Proposals ◐
+Nutrients
+Minerals
+Energy ◐
+Economy ◐
+Labs
+Energy Reserves ◐
+Specialists
+Diplomatic Relations ◐
+Base Conquest ◐
+Unity Pods ◐
+Random Events
+
+Advanced Concepts:
+
+Unit Cost (Advanced)
+Inefficiency (Advanced)
+Ecology (Advanced)
+Commerce (Advanced) ◐
+Score
+Victory (Diplomatic)
+Victory (Conquest)
+Victory (Transcendence)
+Victory (Economic)
+Retirement
+Might Formula
+Drones (Advanced)
+Bureaucracy
+Ecology (Revised)
+Self Destruction
+Morale (Advanced) ◐
+Hurry Cost
+Upgrade Cost
+Repair (Advanced) ✓
+Altitude (Advanced) ◐
+Random Events(Advanced)
+Perihelion Event
+Wild Natives and Fungus

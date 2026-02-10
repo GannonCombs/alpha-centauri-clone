@@ -71,7 +71,7 @@ TECHS = {
         'name': 'Ethical Calculus',
         'prereqs': ['Psych'],
         'cost': 15,
-        'category': 'build',
+        'category': 'explore',
     },
     'IndEcon': {
         'name': 'Industrial Economics',

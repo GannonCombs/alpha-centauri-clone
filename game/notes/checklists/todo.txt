@@ -13,11 +13,11 @@ Use it to test the following issues, but also test debug mode along the way.
 ✅
 
  2. Energy Allocation System
-  - Split energy production between Economy, Labs, and Psych
+  - Split energy production between Economy, Labs, and Psych ✅
   - Economy → Energy reserves (treasury)
   - Labs → Research speed
   - Psych → Talent creation (happiness)
-  - Adjustable slider/percentage allocation
+  - Adjustable slider/percentage allocation ✅
 
   3. Psych, Drones, and Talents System
   - Drones = unhappy citizens (appear based on difficulty and base size)
@@ -82,7 +82,7 @@ Use it to test the following issues, but also test debug mode along the way.
 
    Feature 25: Planetary Council Proposals
 
-  - Added 5 proposals: Unity Core, Global Trade Pact, Solar Shade, Melt Polar Caps, Atrocity Prohibitions
+  - Added ALL proposals ✅
   - Voting UI fully functional
   - Effects implemented (some stubbed for future work)
 
@@ -101,22 +101,56 @@ Use it to test the following issues, but also test debug mode along the way.
 
 ***************************************************************************
 
-** Known Bugs **
+** Possible Bugs **
 
 ***************************************************************************
 
 
 
-Notes:
 1 Once we get the commlink of every living faction, give a popup that we now have them all, and thus can now call council.
 2 If another unit gets all contacts first, they may call council. Add to the AI behavior that encourages them to call things
 that they like. Examples: remove atrocity prohibitions if their faction is warlike, elect governor if they are a candidate, etc.
 3 New unit design on better unit tech is still not popping up, at least not consistently. Is the pattern that chassis and
  armor upgrade, but weapons don't?
 4 Got a diplomatic milestone popup when missing commlinks.
+
+
+
+***************************************************************************
+
+** Known Bugs **
+
+***************************************************************************
+
+
+Note: this is the ONLY section of todo.txt that can be edited by Claude Code.
+
+1 Healing should not occur at turn end. It happens in upkeep of the next turn.
+2 My diplomatic statuses have disappeared as turns pass. It now shows nothing. Speaking to the factions, it's clear this
+is not just a bug in display. I'm able to propose treaties and pacts all over again. Obv, these should persist.
+3 The base title name is too high, overlapping on the governor button. There is no space for it between this button and
+the mini-map, so move the mini-map down so there is space.
+4 Rename button in base view needs to be implemented. A popup with a text box allows us to rename the base. OK and cancel
+buttons. The text should be visibly highlighted, so that one backspace button deletes the entire name.
 5 Production times are off. Merchant Exchange takes 20 turns on Turn 1 for Morgan.
 6 FACTION_DATA contains single quotes and double quotes.
 7 Not all faction bonuses are applied.
+8 Scroll through all saved files.
+9 When I'm surprise attacked, another popup appears for each Pact brother or sister I have, saying, "On behalf of your
+ pact, <pactbors> has pronounced on <attacker>!"
+10 Invert the way damage is shown.
+11 If an artifact is held in a base with an unlinked Network Node, a popup occurs, asking if we'd like to link it.
+If yes, the artifact is consumed and we get a free tech. Linking means a network node can only consume one artifact ever.
+12 If an artifact walks onto a square that is adjacent to an enemy, a popup occurs that the artifact was stolen. Ok button.
+The artifact transports to the title the unit was on.
+13 If an artifact is on the same title as a military unit, and another faction kills that unit, the artifact gets taken
+in similar fashion. Note that if the tile has multiple units on it, the artifact stays put. Only transfers on the last death.
+14 If an artifact moves onto a supply pod, both artifact and pod are consumed. No tech comes of it.
+15 The first person to discover any of the three techs starting with "Secrets of" get another tech right after.
+16 Healing isn't working correctly. It's applying the bonuses correctly, but when the units are moving. It should only
+be when they've skipped their turn entirely. If a unit has even partially moved or acted that turn, healing doesn't happen
+naturally (movement onto a monolith is the exception.)
+17 The garrison icon below an artifact shows it with an L, not an A.
 
 
 

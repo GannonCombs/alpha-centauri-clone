@@ -1,0 +1,83 @@
+TODO: List every tech out here. Put a check by it if it is fully complete. Put a yield sign by it if the tech was
+analyzed and considered to be waiting on a feature. Example: Centauri Meditation increases energy from fungus, but we
+haven't created fungus yet.
+
+Format: ✓ = Fully implemented, ◐ = Partially implemented, 👤 = Human signed off, ⚠ = Waiting on feature, blank = Not implemented
+
+Biogenetics
+Industrial Base
+Information Networks
+Applied Physics
+Social Psych
+Doctrine: Mobility
+Centauri Ecology
+Optical Computers
+Polymorphic Software
+High Energy Chemistry
+Doctrine: Flexibility
+Ethical Calculus
+Industrial Economics
+Gene Splicing
+Planetary Networks
+Doctrine: Loyalty
+Secrets of the Human Brain
+Ecological Engineering
+Superconductor
+Advanced Subatomic Theory
+Industrial Automation
+Nonlinear Mathematics
+Advanced Military Algorithms
+Synthetic Fossil Fuels
+Doctrine: Air Power
+Doctrine: Initiative
+Intellectual Integrity
+Cyberethics
+Environmental Economics
+Neural Grafting
+Bio-Engineering
+Centauri Empathy
+Silksteel Alloys
+Photon/Wave Mechanics
+Pre-Sentient Algorithms
+Fusion Power
+Applied Relativity
+Superstring Theory
+Planetary Economics
+Adv. Ecological Engineering
+Probability Mechanics
+Mind/Machine Interface
+Monopole Magnets
+Organic Superlubricant
+Nanominiaturization
+Unified Field Theory
+Retroviral Engineering
+Orbital Spaceflight
+Centauri Meditation
+Nanometallurgy
+Frictionless Surfaces
+Matter Compression
+Graviton Theory
+Applied Gravitonics
+Quantum Power
+Industrial Nanorobotics
+Advanced Spaceflight
+Homo Superior
+Quantum Machinery
+Digital Sentience
+Self-Aware Machines
+Biomachinery
+Super Tensile Solids
+Centauri Genetics
+Sentient Econometrics
+Singularity Mechanics
+Controlled Singularity
+Temporal Mechanics
+Centauri Psi
+Secrets of Alpha Centauri
+Matter Editation
+Matter Transmission
+The Will to Power
+Eudaimonia
+Secrets of Creation
+Threshold of Transcendence
+Transcendent Thought

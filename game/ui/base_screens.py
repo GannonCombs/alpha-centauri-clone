@@ -30,6 +30,15 @@ class BaseScreenManager:
         self.queue_management_open = False
         self.queue_item_rects = []  # List of (rect, item_index) tuples
 
+        # Garrison context menu
+        self.garrison_context_menu_open = False
+        self.garrison_context_unit = None  # Unit that was right-clicked
+        self.garrison_context_menu_rect = None
+        self.garrison_context_menu_x = 0  # Save menu position
+        self.garrison_context_menu_y = 0
+        self.garrison_activate_rect = None
+        self.garrison_unit_rects = []  # List of (rect, unit) tuples
+
         # UI elements
         self.base_naming_ok_rect = None
         self.base_naming_cancel_rect = None
@@ -619,15 +628,50 @@ class BaseScreenManager:
         pygame.draw.rect(screen, (100, 110, 120), garrison_rect, 2, border_radius=8)
 
         # Draw garrison units or empty message inside the bar
-        if base.garrison:
-            for i, unit in enumerate(base.garrison):
+        # Use dynamic garrison to ensure we show all units actually at the base
+        garrison_units = base.get_garrison_units(game)
+        self.garrison_unit_rects = []  # Reset for click detection
+
+        if garrison_units:
+            for i, unit in enumerate(garrison_units):
                 unit_x = garrison_rect.x + 10 + i * 50
                 unit_circle = pygame.Rect(unit_x, garrison_rect.y + 10, 40, 40)
                 pygame.draw.circle(screen, (255, 255, 255), unit_circle.center, 20)
                 pygame.draw.circle(screen, COLOR_BLACK, unit_circle.center, 20, 2)
+
+                # Draw H indicator for held units
+                if unit.held:
+                    held_text = self.small_font.render("H", True, (255, 100, 100))
+                    screen.blit(held_text, (unit_circle.centerx - held_text.get_width() // 2,
+                                           unit_circle.centery - held_text.get_height() // 2))
+
+                # Store rect for click detection
+                self.garrison_unit_rects.append((unit_circle, unit))
         else:
             empty_text = self.small_font.render("No units garrisoned", True, (120, 130, 140))
             screen.blit(empty_text, (garrison_rect.centerx - empty_text.get_width() // 2, garrison_rect.centery - 8))
+
+        # Draw garrison context menu if open
+        if self.garrison_context_menu_open and self.garrison_context_unit:
+            menu_w = 120
+            menu_h = 40
+
+            # Use saved position from when menu was opened
+            menu_x = self.garrison_context_menu_x
+            menu_y = self.garrison_context_menu_y
+
+            self.garrison_context_menu_rect = pygame.Rect(menu_x, menu_y, menu_w, menu_h)
+            pygame.draw.rect(screen, (50, 50, 55), self.garrison_context_menu_rect, border_radius=4)
+            pygame.draw.rect(screen, (120, 120, 130), self.garrison_context_menu_rect, 2, border_radius=4)
+
+            # Activate button
+            self.garrison_activate_rect = pygame.Rect(menu_x + 5, menu_y + 5, menu_w - 10, 30)
+            pygame.draw.rect(screen, COLOR_BUTTON, self.garrison_activate_rect, border_radius=4)
+            pygame.draw.rect(screen, COLOR_BUTTON_BORDER, self.garrison_activate_rect, 2, border_radius=4)
+
+            activate_text = self.small_font.render("Activate", True, COLOR_TEXT)
+            screen.blit(activate_text, (self.garrison_activate_rect.centerx - activate_text.get_width() // 2,
+                                       self.garrison_activate_rect.centery - activate_text.get_height() // 2))
 
         # BOTTOM LEFT: Current Production (expanded)
         prod_x = content_x
@@ -1239,9 +1283,49 @@ class BaseScreenManager:
         close_surf = self.small_font.render("Close", True, COLOR_TEXT)
         screen.blit(close_surf, (close_rect.centerx - close_surf.get_width() // 2, close_rect.centery - 8))
 
+    def handle_base_view_right_click(self, pos, game):
+        """Handle right-clicks in the base view screen (for garrison context menu)."""
+        # Check if right-clicking on a garrison unit
+        for unit_rect, unit in self.garrison_unit_rects:
+            if unit_rect.collidepoint(pos):
+                # Open context menu for this unit and save position
+                self.garrison_context_menu_open = True
+                self.garrison_context_unit = unit
+
+                # Save menu position (with screen boundary checks)
+                menu_w = 120
+                menu_h = 40
+                screen_w = 1280  # From display.py
+                screen_h = 720
+
+                self.garrison_context_menu_x = min(pos[0], screen_w - menu_w)
+                self.garrison_context_menu_y = min(pos[1], screen_h - menu_h)
+
+                return True
+        return False
+
     def handle_base_view_click(self, pos, game):
         """Handle clicks in the base view screen. Returns 'close' if should exit, None otherwise."""
         base = self.viewing_base
+
+        # If garrison context menu is open, handle it first
+        if self.garrison_context_menu_open:
+            # Check if clicking Activate button
+            if self.garrison_activate_rect and self.garrison_activate_rect.collidepoint(pos):
+                unit = self.garrison_context_unit
+                if unit:
+                    # Unhold the unit
+                    unit.held = False
+                    # Select the unit
+                    game.selected_unit = unit
+                    # Close context menu and base view
+                    self.garrison_context_menu_open = False
+                    self.garrison_context_unit = None
+                    return 'close'  # Exit base view
+            # Close menu on any other click
+            self.garrison_context_menu_open = False
+            self.garrison_context_unit = None
+            return None
 
         # If queue management popup is open, handle its clicks first
         if self.queue_management_open:

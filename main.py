@@ -249,26 +249,13 @@ def main():
                                 # Unheld - unit can now be cycled to again
                                 game.set_status_message(f"{held_unit.name} unheld")
                     elif event.key == pygame.K_SPACE:
-                        # Try to heal unit, or end movement if it can't heal
-                        #TODO: healing should only activate next turn. This would incorrectly affect enemy-initiated battles.
+                        # End movement and skip turn (healing happens automatically at end of turn)
+                        # Manual SPACE key healing was removed - units now heal automatically
                         if game.selected_unit and game.selected_unit.owner == game.player_faction_id:
-                            # Check if unit is in a friendly base
-                            in_base = game.is_unit_in_friendly_base(game.selected_unit)
-
-                            # Check if unit can heal
-                            can_heal, heal_amount, reason = game.selected_unit.can_heal(in_base)
-
-                            if can_heal:
-                                # Heal the unit
-                                actual_heal = game.selected_unit.heal(heal_amount)
-                                game.selected_unit.moves_remaining = 0
-                                game.selected_unit.has_moved = True
-                                game.set_status_message(f"{game.selected_unit.name} healed {actual_heal} HP")
-                            else:
-                                # Just end movement
-                                game.selected_unit.moves_remaining = 0
-                                game.selected_unit.has_moved = True
-                                game.set_status_message(f"{game.selected_unit.name} movement ended")
+                            # Just end movement - unit will heal automatically at end of turn
+                            game.selected_unit.moves_remaining = 0
+                            game.selected_unit.has_moved = True
+                            game.set_status_message(f"{game.selected_unit.name} movement ended")
 
                             # Track that last action was an action (not hold)
                             game.last_unit_action = 'action'

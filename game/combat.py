@@ -40,19 +40,11 @@ class Combat:
         """
         modifiers = []
 
-        # Morale modifier
+        # Morale modifier: +12.5% per level above Green (level 2)
+        # Green (level 2) is baseline 1.0
         if hasattr(unit, 'morale_level'):
-            morale_multipliers = {
-                0: 0.70,  # Very Very Green: -30%
-                1: 0.85,  # Very Green: -15%
-                2: 1.00,  # Green: no modifier
-                3: 1.10,  # Disciplined: +10%
-                4: 1.20,  # Hardened: +20%
-                5: 1.30,  # Veteran: +30%
-                6: 1.40,  # Commando: +40%
-                7: 1.50   # Elite: +50%
-            }
-            multiplier = morale_multipliers.get(unit.morale_level, 1.0)
+            # Calculate multiplier: 1.0 + (level - 2) * 0.125
+            multiplier = 1.0 + (unit.morale_level - 2) * 0.125
             if multiplier != 1.0:
                 morale_name = unit.get_morale_name()
                 percent = int((multiplier - 1.0) * 100)
@@ -118,18 +110,57 @@ class Combat:
                     'display': '+25%'
                 })
 
+            # Artillery defending vs ship: +50%
+            if unit.has_artillery and vs_unit and vs_unit.type == 'sea':
+                modifiers.append({
+                    'name': 'Artillery vs Ship',
+                    'multiplier': 1.50,
+                    'display': '+50%'
+                })
+
         # Attacker bonuses
         else:
             tile = self.game.game_map.get_tile(unit.x, unit.y)
             defender_tile = self.game.game_map.get_tile(vs_unit.x, vs_unit.y) if vs_unit else None
 
             # Infantry attacking base bonus
-            if unit.type == 'land' and defender_tile and defender_tile.base:
+            if unit.chassis == 'infantry' and defender_tile and defender_tile.base:
                 modifiers.append({
                     'name': 'Infantry vs Base',
                     'multiplier': 1.25,
                     'display': '+25%'
                 })
+
+            # Mobile unit vs infantry in open
+            if (unit.chassis in ['speeder', 'hovertank'] and
+                vs_unit and vs_unit.chassis == 'infantry' and
+                defender_tile and not defender_tile.base):
+                modifiers.append({
+                    'name': 'Mobile vs Infantry',
+                    'multiplier': 1.25,
+                    'display': '+25%'
+                })
+
+            # Artillery altitude bonuses
+            if unit.has_artillery and vs_unit and tile and defender_tile:
+                # Artillery vs ship: +50%
+                if vs_unit.type == 'sea':
+                    modifiers.append({
+                        'name': 'Artillery vs Ship',
+                        'multiplier': 1.50,
+                        'display': '+50%'
+                    })
+                # Artillery attacking land target from higher ground: +25% per 1000m
+                elif vs_unit.type == 'land':
+                    altitude_diff = tile.altitude - defender_tile.altitude
+                    levels_above = altitude_diff // 1000
+                    if levels_above > 0:
+                        bonus_multiplier = 1.0 + (0.25 * levels_above)
+                        modifiers.append({
+                            'name': f'Artillery High Ground (+{levels_above})',
+                            'multiplier': bonus_multiplier,
+                            'display': f'+{int(levels_above * 25)}%'
+                        })
 
             # Airdrop penalty - check if unit has used airdrop this turn
             if hasattr(unit, 'used_airdrop') and unit.used_airdrop:

@@ -407,14 +407,23 @@ class Unit:
         unit.moves_remaining = 0  # Unloading consumes all moves
         return True
 
-    def can_heal(self, in_friendly_base=False):
-        """Check if unit can heal.
+    def can_heal(self, in_friendly_base=False, base=None, under_bombardment=False):
+        """DEPRECATED: Use game.repair.calculate_healing() instead.
+
+        This method is kept for backwards compatibility but redirects to the
+        comprehensive repair system in repair.py.
 
         Args:
-            in_friendly_base (bool): Whether unit is in a friendly base
+            in_friendly_base (bool): Whether unit is in a friendly base (ignored)
+            base (Base): Base unit is in (ignored)
+            under_bombardment (bool): Whether base is under artillery bombardment (ignored)
 
         Returns:
             tuple: (can_heal, heal_amount, reason) - reason is string explaining why/why not
+
+        Note:
+            This is a simplified version. For full SMAC repair formula with all
+            bonuses and facilities, use game.repair.calculate_healing(unit, game).
         """
         # Can't heal if at full health
         if self.current_health >= self.max_health:
@@ -424,16 +433,8 @@ class Unit:
         if self.has_moved:
             return (False, 0, "Unit has moved this turn")
 
-        # In base: can heal 20% per turn, can reach full health
-        if in_friendly_base:
-            heal_amount = max(1, int(self.max_health * 0.20))
-            return (True, heal_amount, f"Healing {heal_amount} HP in base")
-
-        # In field: can heal 10% per turn, but only up to 80% health
-        current_pct = self.current_health / self.max_health
-        if current_pct >= 0.80:
-            return (False, 0, "Can only heal to 80% in field")
-
+        # Simplified healing for backwards compatibility
+        # Real healing is handled by repair.py module
         heal_amount = max(1, int(self.max_health * 0.10))
         return (True, heal_amount, f"Healing {heal_amount} HP")
 

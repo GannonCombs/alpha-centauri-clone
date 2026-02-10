@@ -395,7 +395,7 @@ class Renderer:
         pop_rect = pygame.Rect(screen_x + 2, screen_y + 2, pop_size, pop_size)
 
         # Only draw background fill if there are garrisoned units
-        if len(base.garrison) > 0:
+        if len(base.get_garrison_units(game)) > 0:
             # Use faction color for garrison indicator (base.owner IS faction_id)
             pop_color = FACTION_DATA[base.owner]['color']
             pygame.draw.rect(self.screen, pop_color, pop_rect)

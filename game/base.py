@@ -49,8 +49,25 @@ class Base:
         # Base attributes
         self.population = 1
         self.facilities = []  # Buildings in the base
-        self.garrison = []  # Units stationed at this base
+        self.garrison = []  # Units stationed at this base (legacy - use get_garrison_units instead)
         self.supported_units = []  # Units this base supports
+
+    def get_garrison_units(self, game):
+        """Get all units actually garrisoned at this base.
+
+        This dynamically reads from the tile instead of relying on the garrison list,
+        which can get out of sync.
+
+        Args:
+            game: Game instance (to access map)
+
+        Returns:
+            list: Units at this base belonging to the base owner
+        """
+        tile = game.game_map.get_tile(self.x, self.y)
+        if not tile:
+            return []
+        return [u for u in tile.units if u.owner == self.owner]
 
         # Production
         self.current_production = "Scout Patrol"  # Default production

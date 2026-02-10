@@ -333,8 +333,8 @@ class Game:
             return 'base_click', tile.base
 
         # If there's a base with garrisoned units, clicking elsewhere cycles through units
-        if tile.base and tile.base.garrison:
-            friendly_garrison = [u for u in tile.base.garrison if u.is_friendly(self.player_faction_id)]
+        if tile.base:
+            friendly_garrison = [u for u in tile.base.get_garrison_units(self) if u.is_friendly(self.player_faction_id)]
             if friendly_garrison:
                 # If currently selected unit is in this garrison, select next one
                 if self.selected_unit in friendly_garrison:
@@ -351,8 +351,7 @@ class Game:
                     self.center_camera_on_tile = (tile_x, tile_y)
                     return 'unit_selected', self.selected_unit
 
-        # If there's a base but no garrison units, clicking opens base view
-        if tile.base:
+            # If there's a base but no garrison units, clicking opens base view
             return 'base_click', tile.base
 
         # Check if clicked on a unit on the tile
@@ -579,7 +578,7 @@ class Game:
         if target_tile.base:
             base = target_tile.base
             # Can't capture pact partner bases
-            if base.owner != unit.owner and not self.has_pact_with(unit.owner, base.owner) and len(base.garrison) == 0:
+            if base.owner != unit.owner and not self.has_pact_with(unit.owner, base.owner) and len(base.get_garrison_units(self)) == 0:
                 # Capture the base!
                 old_owner = base.owner
 
@@ -1093,6 +1092,30 @@ class Game:
         for unit in units_to_remove:
             self._remove_unit(unit)
 
+    def _process_unit_healing(self, player_id):
+        """Process unit healing at end of turn using the repair module.
+
+        Args:
+            player_id (int): Player ID whose units to heal
+        """
+        from game.repair import calculate_healing
+
+        for unit in self.units:
+            if unit.owner != player_id:
+                continue
+
+            # Calculate healing using the repair module
+            can_heal, heal_amount, reason, is_full_repair = calculate_healing(unit, self)
+
+            if can_heal and heal_amount > 0:
+                # Apply healing
+                actual_healed = unit.heal(heal_amount)
+
+                # Show message for player units
+                if actual_healed > 0 and player_id == self.player_faction_id:
+                    repair_type = "Full repair" if is_full_repair else "Healed"
+                    print(f"{unit.name}: {repair_type} {actual_healed} HP ({reason})")
+
     def calculate_probe_success(self, probe_unit, target_base):
         """Calculate probability of probe action success.
 
@@ -1497,8 +1520,9 @@ class Game:
                 base.garrison.append(other_unit)
                 print(f"{other_unit.name} garrisoned at newly founded {base.name}")
 
-        # Remove the unit
-        self.units.remove(unit)
+        # Remove the unit (if still in list - may have been removed during faction elimination)
+        if unit in self.units:
+            self.units.remove(unit)
 
         # Deselect if this was the selected unit
         if self.selected_unit == unit:
@@ -1812,6 +1836,15 @@ class Game:
         unit.home_base = base
         base.supported_units.append(unit)
 
+        # Command Center bonus: land units start with +2 morale (additive)
+        # Note: This applies after any SE/facility/project bonuses to starting morale
+        if unit.type == 'land' and 'Command Center' in base.facilities:
+            original_morale = unit.morale_level
+            unit.morale_level = min(7, unit.morale_level + 2)  # Cap at Elite (7)
+            if unit.morale_level > original_morale:
+                morale_gained = unit.morale_level - original_morale
+                print(f"  Command Center: +{morale_gained} morale (now {unit.morale_level})")
+
         self.units.append(unit)
         self.game_map.add_unit_at(base.x, base.y, unit)
         self.set_status_message(f"{base.name} completed {item_name}")
@@ -1932,6 +1965,9 @@ class Game:
         # Refuel air units at bases and check for crashes
         self._process_air_unit_fuel(self.player_faction_id)
 
+        # Heal player units
+        self._process_unit_healing(self.player_faction_id)
+
         # Note: Player base processing moved to upkeep phase (after AI turns)
         # This ensures production, growth, and credits are shown during upkeep
 
@@ -1986,6 +2022,9 @@ class Game:
                 for unit in self.units:
                     if unit.owner == ai_player.player_id:
                         unit.end_turn()
+
+                # Heal AI units
+                self._process_unit_healing(ai_player.player_id)
 
                 # Queue up all AI units with moves
                 self.ai_unit_queue = [u for u in self.units

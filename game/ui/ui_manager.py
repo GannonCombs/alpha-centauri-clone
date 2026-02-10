@@ -367,6 +367,13 @@ class UIManager:
                 return False
 
         # 2. Mouse Logic
+        # Right-click handling (for context menus)
+        if event.type == pygame.MOUSEBUTTONDOWN and event.button == 3:
+            # Handle garrison context menu in base view
+            if self.active_screen == "BASE_VIEW":
+                if self.base_screens.handle_base_view_right_click(event.pos, game):
+                    return True
+
         if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
             # Handle upkeep event popup (highest priority)
             if game.upkeep_phase_active:
@@ -895,8 +902,9 @@ class UIManager:
                 terrain_text = self.small_font.render(terrain_type, True, (180, 200, 180))
                 screen.blit(terrain_text, (terrain_x, terrain_y + 30))
 
-                # Elevation (hardcoded for now)
-                elev_text = self.small_font.render("Elev: 1000 ft", True, (200, 200, 180))
+                # Elevation (exact altitude in meters)
+                altitude_m = tile.altitude
+                elev_text = self.small_font.render(f"Elev: {altitude_m}m", True, (200, 200, 180))
                 screen.blit(elev_text, (terrain_x, terrain_y + 52))
 
                 # Nutrients (placeholder)

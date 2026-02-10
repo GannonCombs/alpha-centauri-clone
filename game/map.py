@@ -28,6 +28,7 @@ class Tile:
         self.supply_pod = False  # Unity supply pods
         self.monolith = False  # Alien monolith
         self.displayed_unit_index = 0  # Which unit in stack to display
+        self.altitude = 0  # Exact altitude in meters: -3000 to 3500
 
     def is_land(self):
         """Check if this tile is land terrain."""
@@ -90,6 +91,9 @@ class GameMap:
                 row.append(tile)
             self.tiles.append(row)
 
+        # Generate altitudes for all tiles
+        self._generate_altitudes(random_values)
+
         # Place supply pods on 3% of tiles
         self._place_supply_pods()
 
@@ -142,6 +146,106 @@ class GameMap:
             attempts += 1
 
         print(f"Placed {placed} monoliths on the map")
+
+    def _generate_altitudes(self, noise_values):
+        """Generate exact altitude values for all tiles using noise and constraint enforcement.
+
+        Altitudes range from -3000m (deep ocean) to 3500m (mountain peaks).
+        Adjacent tiles can differ by at most 1000m.
+
+        Args:
+            noise_values: 2D array of random values (0.0-1.0) from terrain generation
+        """
+        print("\n=== GENERATING ALTITUDES ===")
+
+        # Step 1: Initial assignment based on noise values (exact meters)
+        for y in range(self.height):
+            for x in range(self.width):
+                tile = self.tiles[y][x]
+                noise = noise_values[y][x]
+
+                if tile.is_ocean():
+                    # Ocean: -3000 to -1 meters
+                    # Map noise 0.0-1.0 to -3000 to -1
+                    tile.altitude = int(-3000 + (noise * 2999))
+                else:
+                    # Land: 0 to 3500 meters
+                    # Map noise 0.0-1.0 to 0 to 3500
+                    tile.altitude = int(noise * 3500)
+
+        # Step 2: Enforce ±1000m constraint using iterative relaxation
+        # This gradually adjusts tiles instead of snapping them to boundaries
+        max_iterations = 200
+        relaxation_factor = 0.3  # Adjust 30% of violation per iteration
+
+        for iteration in range(max_iterations):
+            max_violation = 0
+            adjustments_made = 0
+
+            # Store proposed adjustments for this iteration
+            adjustments = {}
+
+            for y in range(self.height):
+                for x in range(self.width):
+                    tile = self.tiles[y][x]
+
+                    # Calculate average desired adjustment from all neighbors
+                    total_adjustment = 0
+                    neighbor_count = 0
+
+                    for dy in [-1, 0, 1]:
+                        for dx in [-1, 0, 1]:
+                            if dx == 0 and dy == 0:
+                                continue
+
+                            nx, ny = x + dx, y + dy
+                            if 0 <= nx < self.width and 0 <= ny < self.height:
+                                neighbor = self.tiles[ny][nx]
+                                diff = tile.altitude - neighbor.altitude
+
+                                # If constraint violated, calculate adjustment needed
+                                if abs(diff) > 1000:
+                                    max_violation = max(max_violation, abs(diff) - 1000)
+
+                                    # Calculate how much to move toward valid range
+                                    if diff > 1000:
+                                        # Too high, need to lower
+                                        target = neighbor.altitude + 1000
+                                        adjustment = target - tile.altitude
+                                    else:  # diff < -1000
+                                        # Too low, need to raise
+                                        target = neighbor.altitude - 1000
+                                        adjustment = target - tile.altitude
+
+                                    total_adjustment += adjustment
+                                    neighbor_count += 1
+
+                    # If adjustments needed, apply gradual relaxation
+                    if neighbor_count > 0:
+                        avg_adjustment = total_adjustment / neighbor_count
+                        proposed_altitude = tile.altitude + int(avg_adjustment * relaxation_factor)
+                        adjustments[(x, y)] = proposed_altitude
+                        adjustments_made += 1
+
+            # Apply adjustments with clamping
+            for (x, y), new_altitude in adjustments.items():
+                tile = self.tiles[y][x]
+                tile.altitude = new_altitude
+
+                # Clamp to valid ranges
+                if tile.is_ocean():
+                    tile.altitude = max(-3000, min(-1, tile.altitude))
+                else:
+                    tile.altitude = max(0, min(3500, tile.altitude))
+
+            # Stop if violations are minimal
+            if max_violation < 5:
+                print(f"  Converged after {iteration + 1} iterations")
+                break
+
+        print(f"  Initial altitude assignment complete")
+        print(f"  Constraint enforcement: {iteration + 1} iterations, max violation: {max_violation}m")
+        print("=== ALTITUDE GENERATION COMPLETE ===\n")
 
     def get_tile(self, x, y):
         """Safely get a tile at coordinates."""
@@ -211,7 +315,8 @@ class GameMap:
                 row_data.append({
                     'terrain': tile.terrain_type,
                     'supply_pod': tile.supply_pod,
-                    'monolith': tile.monolith
+                    'monolith': tile.monolith,
+                    'altitude': tile.altitude
                 })
             tiles_data.append(row_data)
 
@@ -243,6 +348,7 @@ class GameMap:
                 tile = Tile(x, y, tile_data['terrain'])
                 tile.supply_pod = tile_data.get('supply_pod', False)
                 tile.monolith = tile_data.get('monolith', False)
+                tile.altitude = tile_data.get('altitude', 0)  # Default to 0 for old saves
                 row.append(tile)
             game_map.tiles.append(row)
 

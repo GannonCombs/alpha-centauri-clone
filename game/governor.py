@@ -50,7 +50,7 @@ def select_build_production(base, faction, game):
     5. General infrastructure
     """
     # 1. Check garrison strength
-    garrison_size = len([u for u in base.garrison if u.owner == base.owner])
+    garrison_size = len(base.get_garrison_units(game))
     if garrison_size < 2:
         unit = _select_defensive_unit(base, faction, game)
         if unit:
@@ -92,7 +92,7 @@ def select_conquer_production(base, faction, game):
     4. More offensive units
     """
     # 1. Ensure minimal garrison
-    garrison_size = len([u for u in base.garrison if u.owner == base.owner])
+    garrison_size = len(base.get_garrison_units(game))
     if garrison_size < 1:
         unit = _select_defensive_unit(base, faction, game)
         if unit:

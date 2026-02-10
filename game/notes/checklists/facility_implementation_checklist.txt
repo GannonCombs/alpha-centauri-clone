@@ -1,0 +1,44 @@
+TODO: List every base facility out here. Put a check by it if it is fully complete. Put a yield sign by it if the tech was
+analyzed and considered to be waiting on a feature. Example: Genejack Factory increases drones, but we haven't implemented
+drones yet.
+
+Format: ✓ = Fully implemented, ◐ = Partially implemented, 👤 = Human signed off, ⚠ = Waiting on feature, blank = Not implemented
+
+Headquarters
+Children's Creche
+Recycling Tanks
+Perimeter Defense
+Tachyon Field
+Recreation Commons
+Energy Bank
+Network Node
+Biology Lab
+Skunkworks
+Hologram Theatre
+Tree Farm
+Fusion Lab
+Research Hospital
+Genejack Factory
+Hab Complex
+Habitation Dome
+Pressure Dome
+Command Center
+Naval Yard
+Aerospace Complex
+Bioenhancement Center
+Paradise Garden
+Hybrid Forest
+Quantum Lab
+Nanohospital
+Robotic Assembly Plant
+Nanoreplicator
+Quantum Converter
+Punishment Sphere
+Centauri Preserve
+Temple of Planet
+Psi Gate
+Sky Hydroponics Lab
+Nessus Mining Station
+Orbital Power Transmitter
+Orbital Defense Pod
+Stockpile Energy

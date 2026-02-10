@@ -3,7 +3,7 @@
 ## Entry Point
 
 **main.py**
-Entry point and main game loop. Initializes Pygame with dynamic screen sizing, manages the 60 FPS game loop, handles keyboard/mouse input, coordinates AI turn processing, and renders all game layers (map, bases, units, UI, status messages) in correct order.
+Entry point and main game loop. Initializes Pygame with dynamic screen sizing, manages the 60 FPS game loop, handles keyboard/mouse input (SPACE ends unit movement, healing is automatic at turn end), coordinates AI turn processing, and renders all game layers (map, bases, units, UI, status messages) in correct order.
 
 ## Core Game Package (game/)
 
@@ -12,7 +12,7 @@ All game logic resides in the `game/` package, organized into modules by respons
 ### Core Game Systems
 
 **game/game.py**
-Core game state manager. Handles unit spawning and movement, base founding with adjacency validation, turn management (player → AI → new turn), garrison mechanics, status messages, click handling for units and bases, and AI turn sequencing with base growth processing. Coordinates with the Combat system for battle resolution.
+Core game state manager. Handles unit spawning and movement, base founding with adjacency validation, turn management (player → AI → new turn), garrison mechanics, status messages, click handling for units and bases, and AI turn sequencing with base growth processing. Coordinates with the Combat system for battle resolution. Processes automatic end-of-turn healing for all factions using the repair module. Applies Command Center morale bonus (+2 additive, capped at Elite) to land units produced at bases with Command Centers.
 
 **game/map.py**
 Map generation and tile management. Tile class stores terrain type, resources, improvements, units, and bases. GameMap class generates procedural land/ocean distribution and provides safe coordinate access with bounds checking.
@@ -21,7 +21,7 @@ Map generation and tile management. Tile class stores terrain type, resources, i
 Unit class for all mobile game entities. Supports land units, sea units, and air units. Handles movement points, terrain restrictions, turn resets, garrison status, ownership tracking, and combat calculations with weapon/armor/reactor components.
 
 **game/base.py**
-Base (city) class with population growth mechanics. Tracks population, nutrients accumulation, progressive growth requirements, garrison units, production queue, facilities, and processes turn-based growth automatically.
+Base (city) class with population growth mechanics. Tracks population, nutrients accumulation, progressive growth requirements, garrison units, production queue, facilities, and processes turn-based growth automatically. Provides get_garrison_units() method for dynamic garrison calculation from tile units instead of cached garrison list.
 
 **game/ai.py**
 Classic rule-based AI using decision-making algorithms. Colony pods find good base locations, military units pursue player targets or explore randomly.
@@ -48,7 +48,10 @@ Social Engineering system managing Politics, Economics, Values, and Future Socie
 Unit component system for the Design Workshop. Provides utilities for chassis, weapons, armor, and reactors. Generates unit names based on component combinations and handles unit design validation.
 
 **game/combat.py**
-Combat resolution system handling all battle mechanics. Calculates combat modifiers (morale, terrain, facilities, special abilities), computes combat odds for predictions, simulates round-by-round combat with 1-3 damage per hit, manages unit disengagement when damaged below 50% HP, handles retreat movement, and coordinates battle animations. Maintains pending_battle (player confirmation) and active_battle (ongoing animation) state.
+Combat resolution system handling all battle mechanics. Calculates combat modifiers using formula-based morale (+12.5% per level above Green), terrain, facilities, and special abilities. Implements combat bonuses: mobile units (speeder/hovertank) get +25% vs infantry in open terrain, infantry get +25% attacking bases, artillery gets +25% per 1000m altitude advantage vs land units or +50% vs ships. Computes combat odds for predictions, simulates round-by-round combat with 1-3 damage per hit, manages unit disengagement when damaged below 50% HP, handles retreat movement, and coordinates battle animations. Maintains pending_battle (player confirmation) and active_battle (ongoing animation) state.
+
+**game/repair.py**
+Unit repair and healing system implementing full SMAC repair formula. Base 10% healing per turn with additive +10% bonuses for: friendly territory, base location, airbase, bunker, fungus tiles. Full repair facilities: Command Center (land units), Naval Yard (sea units), Aerospace Complex (air units), Biology Lab (native units). Special cases: Nano Factory provides 100% repair anywhere, Monoliths provide instant 100% repair. Caps at 80% healing in field or 100% in bases. Provides calculate_healing() function returning heal amount, eligibility, reason, and full repair flag.
 
 **game/commlink_text.py**
 Dialog system for talking with other factions. Handles variable substitution in dialog text using faction-specific flavor text and context.
@@ -89,7 +92,7 @@ All user interface screens and components.
 Comprehensive UI system orchestrating all game screens. Manages main game panel (turn counter, unit info, End Turn button), screen transitions, and coordinates rendering of all UI elements. Central hub for UI state management.
 
 **game/ui/base_screens.py**
-Base management interface. Displays population growth, garrison units, production queue, facility list, unit support costs, and nutrient/mineral/energy calculations. Provides production selection and facility management.
+Base management interface. Displays population growth, garrison units (with "H" indicator for held units), production queue, facility list, unit support costs, and nutrient/mineral/energy calculations. Provides production selection and facility management. Right-click garrison units to open context menu with Activate option for unheld and selecting held units.
 
 **game/ui/social_engineering_screen.py**
 Social Engineering interface with four categories: Politics (Frontier/Police State/Democratic/Fundamentalist), Economics (Simple/Free Market/Planned/Green), Values (Survival/Power/Knowledge/Wealth), and Future Society (None/Cybernetic/Eudaimonic/Thought Control). Shows stat effects and enforces faction restrictions.
@@ -160,6 +163,18 @@ Unit stacking system design and implementation plan.
 
 **game/notes/holdNotes.txt**
 Temporary notes and ideas on hold.
+
+**game/notes/checklists/**
+Subdirectory containing implementation checklists for tracking completion status of game content.
+
+**game/notes/checklists/tech_implementation_checklist.txt**
+Checklist of all 78 technologies from the tech tree. Used to track which techs have been fully implemented, which are waiting on features, and which remain to be implemented.
+
+**game/notes/checklists/facility_implementation_checklist.txt**
+Checklist of all 38 base facilities. Used to track which facilities have been fully implemented, which are waiting on features (e.g., drones, specialists), and which remain to be implemented.
+
+**game/notes/checklists/secret_project_implementation_checklist.txt**
+Checklist of all 33 secret projects (wonders). Used to track which projects have been fully implemented, which are waiting on features (e.g., fungus, social engineering effects), and which remain to be implemented.
 
 **game/notes/smacNotes/**
 Subdirectory containing original SMAC reference material (alpha.txt, concepts.txt, Script.txt).
