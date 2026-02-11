@@ -37,6 +37,7 @@ COLOR_BUTTON_HIGHLIGHT = (120, 180, 200)
 COLOR_TEXT = (220, 230, 240)
 COLOR_UNIT_SELECTED = (255, 255, 0)  # Yellow
 COLOR_BASE_BORDER = (255, 255, 255)    # White border
+COLOR_TILE_CURSOR = (255, 255, 255)    # White pulsing tile cursor
 
 # Council colors
 COLOR_COUNCIL_BG = (15, 25, 20)

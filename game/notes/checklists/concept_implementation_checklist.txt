@@ -2,7 +2,7 @@ Note: only a human can check off any of these.
 
 Basic Concepts:
 
-Rainfall
+Rainfall ✓ (not SMAC formula)
 Rockiness
 Altitude ◐
 Pact of Brotherhood ◐

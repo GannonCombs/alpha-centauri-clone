@@ -13,11 +13,13 @@ and draws all game entities to the screen.
 """
 import pygame
 from game.data import display
+import math
 from game.data.display import (TILE_SIZE, COLOR_OCEAN, COLOR_LAND,
                                COLOR_LAND_RAINY, COLOR_LAND_MODERATE, COLOR_LAND_ARID,
                                COLOR_GRID, COLOR_BLACK,
-                                 COLOR_UNIT_SELECTED,
-                                 COLOR_BASE_BORDER)
+                               COLOR_UNIT_SELECTED,
+                               COLOR_BASE_BORDER,
+                               COLOR_TILE_CURSOR)
 from game.data.data import FACTION_DATA
 
 
@@ -464,6 +466,52 @@ class Renderer:
             pygame.draw.rect(self.screen, (100, 100, 100), bg_rect, 1)
 
             self.screen.blit(text_surf, text_rect)
+
+    def draw_tile_cursor(self, cursor_x, cursor_y, game_map):
+        """Draw a pulsing white border on the tile cursor position.
+
+        Args:
+            cursor_x (int): Cursor tile X coordinate
+            cursor_y (int): Cursor tile Y coordinate
+            game_map: The game map (for wrapping and bounds)
+        """
+        # Calculate screen position with wrapping
+        wrapped_x = (cursor_x - self.camera_offset_x) % game_map.width
+        screen_x = (wrapped_x * TILE_SIZE) + self.base_offset_x
+        screen_y = (cursor_y - self.camera_offset_y) * TILE_SIZE
+
+        # Don't draw if off screen
+        if screen_x < -TILE_SIZE or screen_x > display.SCREEN_WIDTH:
+            return
+        if screen_y < 0 or screen_y >= display.MAP_AREA_HEIGHT:
+            return
+
+        # Pulsing brightness: 0→1→0, same timing as end-turn glow (300ms period)
+        pulse = abs(math.sin(pygame.time.get_ticks() / 300.0))
+        brightness = int(100 + 155 * pulse)
+        color = (brightness, brightness, brightness)
+
+        cursor_rect = pygame.Rect(screen_x + 2, screen_y + 2, TILE_SIZE - 4, TILE_SIZE - 4)
+        pygame.draw.rect(self.screen, color, cursor_rect, 3)
+
+    def is_tile_on_screen(self, tile_x, tile_y, game_map):
+        """Return True if the tile is within the current viewport.
+
+        Args:
+            tile_x (int): Tile X coordinate
+            tile_y (int): Tile Y coordinate
+            game_map: The game map
+        """
+        visible_tiles_x = display.SCREEN_WIDTH // TILE_SIZE
+        visible_tiles_y = display.MAP_AREA_HEIGHT // TILE_SIZE
+
+        # Check Y (no wrap)
+        if tile_y < self.camera_offset_y or tile_y >= self.camera_offset_y + visible_tiles_y:
+            return False
+
+        # Check X (wraps) — true if within visible_tiles_x of camera_offset_x
+        delta_x = (tile_x - self.camera_offset_x) % game_map.width
+        return delta_x < visible_tiles_x
 
     def draw_territory_borders(self, territory, game_map):
         """Draw dotted territory borders for all players using faction colors.
