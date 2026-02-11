@@ -123,7 +123,7 @@ that they like. Examples: remove atrocity prohibitions if their faction is warli
 ***************************************************************************
 
 
-Note: this is the ONLY section of todo.txt that can be edited by Claude Code.
+Note: this is the ONLY section of todo.txt that can be edited by Claude Code, but only to add checkmarks to tasks.
 
 1 Healing should not occur at turn end. It happens in upkeep of the next turn.
 2 My diplomatic statuses have disappeared as turns pass. It now shows nothing. Speaking to the factions, it's clear this
@@ -172,7 +172,6 @@ Sounds
 Terraforming
 Fog of war
 Advanced unit movement (G command, J command, drag path)
-V to hover
 Isometric
 Diplomacy trees
 Datalinks concepts
