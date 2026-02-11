@@ -181,6 +181,11 @@ class Game:
         self.center_camera_on_selected = False  # Flag to center camera on selected unit
         self.center_camera_on_tile = None  # Tuple (x, y) to center camera on specific tile
 
+        # Tile cursor mode (V key)
+        self.tile_cursor_mode = False   # Whether tile inspection cursor is active
+        self.cursor_x = 0               # Cursor tile X
+        self.cursor_y = 0               # Cursor tile Y
+
         # DEBUG: Debug/cheat mode manager (remove for release)
         self.debug = DebugManager()
 
@@ -547,6 +552,10 @@ class Game:
         # Move unit
         unit.move_to(target_x, target_y)
         self.game_map.add_unit_at(target_x, target_y, unit)
+
+        # Rocky terrain costs an extra movement point (2 total per tile)
+        if target_tile.is_land() and getattr(target_tile, 'rockiness', 0) == 2:
+            unit.moves_remaining = max(0, unit.moves_remaining - 1)
 
         # If unit was held, unheld it when manually moved
         if hasattr(unit, 'held') and unit.held:
@@ -1395,6 +1404,10 @@ class Game:
         tile = self.game_map.get_tile(unit.x, unit.y)
         if tile and tile.base:
             return False, "Base already exists here"
+
+        # Cannot found on rocky terrain
+        if tile and getattr(tile, 'rockiness', 0) == 2:
+            return False, "Cannot found base on rocky terrain"
 
         # Check for adjacent bases (including diagonals, with wrapping)
         for dx in [-1, 0, 1]:

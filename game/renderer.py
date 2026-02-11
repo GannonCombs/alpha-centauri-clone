@@ -138,6 +138,34 @@ class Renderer:
         rainfall_colors = [COLOR_LAND_ARID, COLOR_LAND_MODERATE, COLOR_LAND_RAINY]
         return rainfall_colors[tile.rainfall]
 
+    def _draw_rocks(self, screen_x, screen_y, tile_map_x, tile_map_y):
+        """Draw a cluster of rock shapes on a rocky tile.
+
+        Positions are derived deterministically from the tile's map coordinates
+        so rocks appear in the same place every frame without needing state.
+
+        Args:
+            screen_x (int): Pixel X of tile top-left
+            screen_y (int): Pixel Y of tile top-left
+            tile_map_x (int): Tile X on the map (used as seed)
+            tile_map_y (int): Tile Y on the map (used as seed)
+        """
+        h = tile_map_x * 2749 + tile_map_y * 1423
+        # Four rock ellipses at slightly varied positions within the tile
+        rock_specs = [
+            (0.20 + (h % 13) * 0.018, 0.52 + (h % 7)  * 0.025, 5 + h % 3),
+            (0.45 + (h % 11) * 0.015, 0.38 + (h % 9)  * 0.022, 6 + h % 4),
+            (0.62 + (h % 7)  * 0.020, 0.62 + (h % 11) * 0.018, 5 + h % 3),
+            (0.33 + (h % 9)  * 0.017, 0.72 + (h % 5)  * 0.020, 4 + h % 3),
+        ]
+        rock_fill  = (135, 125, 112)
+        rock_edge  = (88, 80, 72)
+        for rx_frac, ry_frac, r in rock_specs:
+            cx = screen_x + int(TILE_SIZE * rx_frac)
+            cy = screen_y + int(TILE_SIZE * ry_frac)
+            pygame.draw.ellipse(self.screen, rock_fill, (cx - r, cy - r // 2, r * 2, r))
+            pygame.draw.ellipse(self.screen, rock_edge,  (cx - r, cy - r // 2, r * 2, r), 1)
+
     def draw_tile_at_screen_pos(self, tile, screen_x_idx, screen_y_idx):
         """Draw a tile at a specific screen position."""
         screen_x = (screen_x_idx * TILE_SIZE) + self.base_offset_x
@@ -146,6 +174,10 @@ class Renderer:
         rect = pygame.Rect(screen_x, screen_y, TILE_SIZE, TILE_SIZE)
         pygame.draw.rect(self.screen, self._tile_color(tile), rect)
         pygame.draw.rect(self.screen, COLOR_GRID, rect, 1)
+
+        # Draw rock shapes on rocky tiles
+        if tile.is_land() and getattr(tile, 'rockiness', 0) == 2:
+            self._draw_rocks(screen_x, screen_y, tile.x, tile.y)
 
     def draw_tile(self, tile):
         """Draw a tile at its world position (with camera wrapping)."""

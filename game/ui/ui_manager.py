@@ -14,7 +14,7 @@ from .base_screens import BaseScreenManager
 from .save_load_dialog import SaveLoadDialogManager
 from .context_menu import ContextMenu
 from game.data.data import FACTION_DATA
-from game.map import tile_base_nutrients, tile_base_energy
+from game.map import tile_base_nutrients, tile_base_energy, tile_base_minerals
 
 
 class UIManager:
@@ -883,11 +883,13 @@ class UIManager:
             screen.blit(morale_text, (info_x, info_y + 106))
 
         # Terrain panel - far right of console
-        if game.selected_unit:
+        # Show when a unit is selected OR when tile cursor mode is active
+        _show_terrain = game.selected_unit or game.tile_cursor_mode
+        if _show_terrain:
             terrain_x = 1080
             terrain_y = display.UI_PANEL_Y + 20
             terrain_box_w = 200
-            terrain_box_h = 152
+            terrain_box_h = 168
             terrain_box = pygame.Rect(terrain_x - 10, terrain_y - 5, terrain_box_w, terrain_box_h)
             pygame.draw.rect(screen, (30, 40, 35), terrain_box)
             pygame.draw.rect(screen, COLOR_BUTTON_BORDER, terrain_box, 2)
@@ -895,8 +897,11 @@ class UIManager:
             # Title
             screen.blit(self.font.render("Terrain", True, COLOR_TEXT), (terrain_x, terrain_y))
 
-            # Get current tile info
-            tile = game.game_map.get_tile(game.selected_unit.x, game.selected_unit.y)
+            # Get current tile info — cursor tile in cursor mode, else selected unit's tile
+            if game.tile_cursor_mode:
+                tile = game.game_map.get_tile(game.cursor_x, game.cursor_y)
+            else:
+                tile = game.game_map.get_tile(game.selected_unit.x, game.selected_unit.y)
             if tile:
                 # Terrain type
                 terrain_type = "Land" if tile.is_land() else "Ocean"
@@ -914,23 +919,36 @@ class UIManager:
                     rain_text = self.small_font.render("Rainfall: \u2014", True, (120, 150, 180))
                 screen.blit(rain_text, (terrain_x, terrain_y + 46))
 
+                # Rockiness (land: Flat/Rolling/Rocky; ocean: em dash)
+                if tile.is_land():
+                    rock_val = getattr(tile, 'rockiness', 0)
+                    rock_labels = {0: "Flat", 1: "Rolling", 2: "Rocky"}
+                    rock_colors = {0: (170, 180, 160), 1: (180, 160, 130), 2: (160, 140, 110)}
+                    rock_text = self.small_font.render(
+                        f"Rockiness: {rock_labels[rock_val]}",
+                        True, rock_colors[rock_val])
+                else:
+                    rock_text = self.small_font.render("Rockiness: \u2014", True, (120, 150, 180))
+                screen.blit(rock_text, (terrain_x, terrain_y + 62))
+
                 # Elevation
                 elev_text = self.small_font.render(f"Elev: {tile.altitude}m", True, (200, 200, 180))
-                screen.blit(elev_text, (terrain_x, terrain_y + 62))
+                screen.blit(elev_text, (terrain_x, terrain_y + 78))
 
                 # Nutrients (from rainfall for land; 1 for ocean)
                 nutrients = tile_base_nutrients(tile)
                 nut_text = self.small_font.render(f"Nutrients: {nutrients}", True, (150, 220, 150))
-                screen.blit(nut_text, (terrain_x, terrain_y + 80))
+                screen.blit(nut_text, (terrain_x, terrain_y + 96))
 
-                # Minerals (placeholder — Rockiness not yet implemented)
-                min_text = self.small_font.render("Minerals: 1", True, (200, 180, 140))
-                screen.blit(min_text, (terrain_x, terrain_y + 96))
+                # Minerals (from rockiness for land; 0 for unimproved ocean)
+                minerals = tile_base_minerals(tile)
+                min_text = self.small_font.render(f"Minerals: {minerals}", True, (200, 180, 140))
+                screen.blit(min_text, (terrain_x, terrain_y + 112))
 
                 # Energy (from altitude band for land; 0 for unimproved ocean)
                 energy = tile_base_energy(tile)
                 ene_text = self.small_font.render(f"Energy: {energy}", True, (220, 220, 100))
-                screen.blit(ene_text, (terrain_x, terrain_y + 112))
+                screen.blit(ene_text, (terrain_x, terrain_y + 128))
 
         # Layer 4a: Main Menu Drop-up
         if self.main_menu_open and self.active_screen == "GAME":

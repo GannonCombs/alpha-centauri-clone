@@ -47,6 +47,18 @@ def tile_base_energy(tile):
         return 1
 
 
+def tile_base_minerals(tile):
+    """Unimproved base mineral yield for a tile.
+
+    Ocean and flat land yield 0 unimproved minerals.
+    Rolling and rocky land both yield 1 unimproved mineral
+    (rocky can reach 4 with mine+road, rolling can reach 2 with mine).
+    """
+    if tile.is_ocean():
+        return 0
+    return 1 if getattr(tile, 'rockiness', 0) >= 1 else 0
+
+
 class Tile:
     """Represents a single map tile."""
 
@@ -64,6 +76,7 @@ class Tile:
         self.displayed_unit_index = 0  # Which unit in stack to display
         self.altitude = 0  # Exact altitude in meters: -3000 to 3500
         self.rainfall = 1  # 0=arid, 1=moderate, 2=rainy (land only; ocean is always 1)
+        self.rockiness = 0  # 0=flat, 1=rolling, 2=rocky (land only; ocean is always 0)
 
     def is_land(self):
         """Check if this tile is land terrain."""
@@ -136,7 +149,11 @@ class GameMap:
         # Generate altitudes for all tiles
         self._generate_altitudes(random_values)
 
-        # Generate rainfall using altitude and cloud cover
+        # Generate rockiness using independent noise (must come before rainfall)
+        rock_noise = [[random.random() for _ in range(self.width)] for _ in range(self.height)]
+        self._generate_rockiness(rock_noise)
+
+        # Generate rainfall using altitude, cloud cover, and rockiness
         self._generate_rainfall(self.cloud_cover)
 
         # Place supply pods on 3% of tiles
@@ -375,14 +392,102 @@ class GameMap:
                 m = moisture[y][x] + tropical_bonus + bias + random.gauss(0, 0.06)
                 m = max(0.0, min(1.0, m))
 
-                if m < 0.25:
+                # Rocky terrain is drier: exposed rock sheds water quickly and
+                # sits in high-altitude rain shadows.  Apply a moisture penalty
+                # at classification time so the penalty doesn't propagate to
+                # neighbouring tiles — rocky zones are dry but don't create
+                # artificial aridity further inland.
+                rock_penalty = (0.0, 0.07, 0.25)[tile.rockiness]
+                effective_m = m - rock_penalty
+
+                if effective_m < 0.25:
                     tile.rainfall = 0   # Arid
-                elif m < 0.62:
+                elif effective_m < 0.62:
                     tile.rainfall = 1   # Moderate
                 else:
                     tile.rainfall = 2   # Rainy
 
         print("=== RAINFALL GENERATION COMPLETE ===\n")
+
+    def _generate_rockiness(self, rock_noise):
+        """Generate rockiness levels for all land tiles.
+
+        Uses independent noise blended with altitude to produce geographically
+        clustered rocky terrain.  Higher altitude increases the chance of rocky
+        tiles; the clustering comes from two smoothing passes so rocky zones
+        spread naturally rather than appearing as isolated specks.
+
+        Rockiness is generated BEFORE rainfall so the moisture classifier in
+        _generate_rainfall can apply a dryness penalty to rocky tiles.
+
+        Args:
+            rock_noise: 2D array of random values (0.0–1.0), independent of
+                        the altitude noise to provide genuine variety.
+        """
+        print("\n=== GENERATING ROCKINESS ===")
+
+        # Step 1: Compute raw score for each land tile.
+        #   noise component   (65%) — provides variety independent of altitude
+        #   altitude component (35%) — higher ground is more likely to be rocky
+        score = [[0.0] * self.width for _ in range(self.height)]
+
+        for y in range(self.height):
+            for x in range(self.width):
+                tile = self.tiles[y][x]
+                if tile.is_ocean():
+                    continue
+                alt_factor = tile.altitude / 3500.0  # 0 (sea level) → 1 (peak)
+                score[y][x] = rock_noise[y][x] * 0.65 + alt_factor * 0.35
+
+        # Step 2: Two passes of neighbor-averaging for geographic clustering.
+        #   Tiles influence their neighbours so rocky zones clump together
+        #   rather than scattering randomly across the map.
+        for _ in range(2):
+            new_score = [row[:] for row in score]
+            for y in range(self.height):
+                for x in range(self.width):
+                    if self.tiles[y][x].is_ocean():
+                        continue
+                    neighbors = []
+                    for dy in [-1, 0, 1]:
+                        for dx in [-1, 0, 1]:
+                            nx = (x + dx) % self.width
+                            ny = y + dy
+                            if 0 <= ny < self.height and self.tiles[ny][nx].is_land():
+                                neighbors.append(score[ny][nx])
+                    if neighbors:
+                        new_score[y][x] = score[y][x] * 0.5 + (sum(neighbors) / len(neighbors)) * 0.5
+            score = new_score
+
+        # Step 3: Classify.
+        #   Targets (approximate): Flat ~52 %, Rolling ~35 %, Rocky ~13 %
+        rocky_threshold  = 0.70
+        rolling_threshold = 0.42
+
+        flat_count = rolling_count = rocky_count = 0
+        for y in range(self.height):
+            for x in range(self.width):
+                tile = self.tiles[y][x]
+                if tile.is_ocean():
+                    tile.rockiness = 0
+                    continue
+                s = score[y][x]
+                if s > rocky_threshold:
+                    tile.rockiness = 2   # Rocky
+                    rocky_count += 1
+                elif s > rolling_threshold:
+                    tile.rockiness = 1   # Rolling
+                    rolling_count += 1
+                else:
+                    tile.rockiness = 0   # Flat
+                    flat_count += 1
+
+        land_total = flat_count + rolling_count + rocky_count
+        if land_total:
+            print(f"  Flat: {flat_count} ({flat_count*100//land_total}%)  "
+                  f"Rolling: {rolling_count} ({rolling_count*100//land_total}%)  "
+                  f"Rocky: {rocky_count} ({rocky_count*100//land_total}%)")
+        print("=== ROCKINESS GENERATION COMPLETE ===\n")
 
     def get_tile(self, x, y):
         """Safely get a tile at coordinates."""
@@ -454,7 +559,8 @@ class GameMap:
                     'supply_pod': tile.supply_pod,
                     'monolith': tile.monolith,
                     'altitude': tile.altitude,
-                    'rainfall': tile.rainfall
+                    'rainfall': tile.rainfall,
+                    'rockiness': tile.rockiness
                 })
             tiles_data.append(row_data)
 
@@ -486,8 +592,9 @@ class GameMap:
                 tile = Tile(x, y, tile_data['terrain'])
                 tile.supply_pod = tile_data.get('supply_pod', False)
                 tile.monolith = tile_data.get('monolith', False)
-                tile.altitude = tile_data.get('altitude', 0)   # Default to 0 for old saves
-                tile.rainfall = tile_data.get('rainfall', 1)   # Default to moderate for old saves
+                tile.altitude = tile_data.get('altitude', 0)    # Default to 0 for old saves
+                tile.rainfall = tile_data.get('rainfall', 1)    # Default to moderate for old saves
+                tile.rockiness = tile_data.get('rockiness', 0)  # Default to flat for old saves
                 row.append(tile)
             game_map.tiles.append(row)
 

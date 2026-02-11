@@ -59,6 +59,15 @@ class Combat:
         if is_defender:
             tile = self.game.game_map.get_tile(unit.x, unit.y)
 
+            # Rocky terrain defense bonus (+50%) — only outside a base
+            # (base defense already accounts for fortifications)
+            if tile and not tile.base and tile.is_land() and getattr(tile, 'rockiness', 0) == 2:
+                modifiers.append({
+                    'name': 'Rocky Terrain',
+                    'multiplier': 1.50,
+                    'display': '+50%'
+                })
+
             # Base defense bonus
             if tile and tile.base:
                 modifiers.append({
