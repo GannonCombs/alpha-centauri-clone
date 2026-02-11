@@ -170,10 +170,8 @@ with 50% damage, it has 1 move. If it starts the turn with combat, and in the pr
 Art
 Sounds
 Terraforming
-Resources
-Enemy moods
 Fog of war
 Advanced unit movement (G command, J command, drag path)
 V to hover
 Isometric
-Aliens/Fungus
+Datalinks concepts
