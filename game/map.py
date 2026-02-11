@@ -90,7 +90,7 @@ class Tile:
 class GameMap:
     """Handles map generation and tile management."""
 
-    def __init__(self, width, height, ocean_percentage=None, cloud_cover=None):
+    def __init__(self, width, height, ocean_percentage=None, cloud_cover=None, erosive_forces=None):
         """Initialize map with specified dimensions and ocean percentage.
 
         Args:
@@ -111,6 +111,15 @@ class GameMap:
         if cloud_cover is None:
             cloud_cover = random.uniform(-0.15, 0.23)
         self.cloud_cover = cloud_cover
+
+        # Erosive forces drives rockiness generation.
+        # Positive bias → higher rocky threshold → fewer rocky tiles (strong erosion = smooth).
+        # Negative bias → lower rocky threshold → more rocky tiles (weak erosion = rough).
+        # None = pick randomly across the full range.
+        if erosive_forces is None:
+            erosive_forces = random.uniform(0.10, 0.30)
+        self.erosive_forces = erosive_forces
+
         self.generate_random_map()
 
     def generate_random_map(self):
@@ -149,9 +158,12 @@ class GameMap:
         # Generate altitudes for all tiles
         self._generate_altitudes(random_values)
 
+        # Scale land altitudes based on erosive forces (before rockiness so both benefit)
+        self._apply_erosion(self.erosive_forces)
+
         # Generate rockiness using independent noise (must come before rainfall)
         rock_noise = [[random.random() for _ in range(self.width)] for _ in range(self.height)]
-        self._generate_rockiness(rock_noise)
+        self._generate_rockiness(rock_noise, self.erosive_forces)
 
         # Generate rainfall using altitude, cloud cover, and rockiness
         self._generate_rainfall(self.cloud_cover)
@@ -409,7 +421,29 @@ class GameMap:
 
         print("=== RAINFALL GENERATION COMPLETE ===\n")
 
-    def _generate_rockiness(self, rock_noise):
+    def _apply_erosion(self, erosive_forces):
+        """Scale land altitudes based on erosive forces.
+
+        Weak erosion (negative bias) = terrain hasn't been worn down → peaks stay
+        tall, average altitude rises.  Strong erosion (positive bias) = terrain
+        has been smoothed → peaks lower, average altitude drops.
+
+        Args:
+            erosive_forces (float): Bias value; negative = weak/rough, positive = strong/smooth.
+        """
+        # erosive_forces is the target rocky fraction (0.10 = strong/smooth, 0.30 = weak/rough).
+        # Centre at 0.20: below that → lower terrain, above → taller terrain.
+        # Range 0.10–0.30 maps to scale 0.80–1.20 (±20% at extremes).
+        scale = 1.0 + (erosive_forces - 0.20) * 2.0
+        scale = max(0.7, min(1.3, scale))
+
+        for y in range(self.height):
+            for x in range(self.width):
+                tile = self.tiles[y][x]
+                if tile.is_land():
+                    tile.altitude = int(max(0, min(3500, tile.altitude * scale)))
+
+    def _generate_rockiness(self, rock_noise, erosive_forces=0.0):
         """Generate rockiness levels for all land tiles.
 
         Uses independent noise blended with altitude to produce geographically
@@ -423,8 +457,11 @@ class GameMap:
         Args:
             rock_noise: 2D array of random values (0.0–1.0), independent of
                         the altitude noise to provide genuine variety.
+            erosive_forces (float): Bias added to the rocky threshold.
+                Positive → fewer rocky tiles (strong erosion = smooth terrain).
+                Negative → more rocky tiles (weak erosion = rough terrain).
         """
-        print("\n=== GENERATING ROCKINESS ===")
+        print(f"\n=== GENERATING ROCKINESS (erosive_bias={erosive_forces:.3f}) ===")
 
         # Step 1: Compute raw score for each land tile.
         #   noise component   (65%) — provides variety independent of altitude
@@ -451,18 +488,39 @@ class GameMap:
                     neighbors = []
                     for dy in [-1, 0, 1]:
                         for dx in [-1, 0, 1]:
+                            if dx == 0 and dy == 0:
+                                continue  # Exclude center tile from neighbor average
                             nx = (x + dx) % self.width
                             ny = y + dy
                             if 0 <= ny < self.height and self.tiles[ny][nx].is_land():
                                 neighbors.append(score[ny][nx])
                     if neighbors:
-                        new_score[y][x] = score[y][x] * 0.5 + (sum(neighbors) / len(neighbors)) * 0.5
+                        # 70 % own score, 30 % neighbor average — enough smoothing to
+                        # cluster rocky zones without collapsing the variance entirely.
+                        new_score[y][x] = score[y][x] * 0.7 + (sum(neighbors) / len(neighbors)) * 0.3
             score = new_score
 
-        # Step 3: Classify.
-        #   Targets (approximate): Flat ~52 %, Rolling ~35 %, Rocky ~13 %
-        rocky_threshold  = 0.70
-        rolling_threshold = 0.42
+        # Step 3: Percentile-based classification.
+        #   erosive_forces is the TARGET fraction of land tiles that should be rocky
+        #   (e.g. 0.20 = exactly 20 %).  Using a percentile threshold guarantees the
+        #   output matches the target regardless of how smoothing compressed the scores.
+        #   Rolling fraction is fixed at 35 % of land tiles.
+        rolling_fraction = 0.35
+        rocky_fraction   = erosive_forces  # e.g. 0.20 for average
+
+        land_scores = sorted(
+            score[y][x]
+            for y in range(self.height)
+            for x in range(self.width)
+            if self.tiles[y][x].is_land()
+        )
+        n = len(land_scores)
+        if n > 0:
+            rocky_threshold  = land_scores[max(0, int(n * (1.0 - rocky_fraction)) - 1)]
+            rolling_threshold = land_scores[max(0, int(n * (1.0 - rocky_fraction - rolling_fraction)) - 1)]
+        else:
+            rocky_threshold  = 0.99
+            rolling_threshold = 0.99
 
         flat_count = rolling_count = rocky_count = 0
         for y in range(self.height):
@@ -472,10 +530,10 @@ class GameMap:
                     tile.rockiness = 0
                     continue
                 s = score[y][x]
-                if s > rocky_threshold:
+                if s >= rocky_threshold:
                     tile.rockiness = 2   # Rocky
                     rocky_count += 1
-                elif s > rolling_threshold:
+                elif s >= rolling_threshold:
                     tile.rockiness = 1   # Rolling
                     rolling_count += 1
                 else:

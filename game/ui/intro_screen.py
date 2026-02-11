@@ -32,7 +32,7 @@ class IntroScreenManager:
         # Map customization settings
         self.selected_map_size = 'standard'  # Only standard for now
         self.selected_ocean_percentage = None  # Will be set when ocean composition is selected
-        self.selected_erosive_forces = None  # 'abundant', 'average', 'desert'
+        self.selected_erosive_forces = None  # float bias sampled from chosen range, or None for random
         self.selected_cloud_cover = None  # float bias sampled from chosen range, or None for random
         self.selected_alien_life = None  # 'abundant', 'average', 'rare'
         self.selected_skill_level = None  # 1-6
@@ -318,29 +318,27 @@ class IntroScreenManager:
 
     def _draw_erosive_forces(self, screen, screen_width, screen_height):
         """Draw erosive forces selection screen."""
-        # Background
         screen.fill((10, 15, 25))
 
-        # Title
-        title_text = "Adjust Erosive Forces"
-        title_surf = self.title_font.render(title_text, True, (100, 200, 255))
+        title_surf = self.title_font.render("Adjust Erosive Forces", True, (100, 200, 255))
         screen.blit(title_surf, (screen_width // 2 - title_surf.get_width() // 2, 150))
 
-        # Erosive forces options (only first one enabled)
+        # Strong erosion → smooth, less rocky.  Weak erosion → rough, more rocky.
+        # The range values are the TARGET rocky fraction of land tiles (e.g. 0.12 = 12%).
         erosive_options = [
-            ('abundant', 'Abundant', True),  # Only this is enabled
-            ('average', 'Average', False),
-            ('desert', 'Desert', False)
+            ('Strong',  (0.10, 0.16), (110, 130, 100)),   # smooth, green
+            ('Average', (0.17, 0.23), (120, 120, 108)),   # mixed
+            ('Weak',    (0.24, 0.30), (135, 125, 112)),   # rocky gray
         ]
 
         button_w = 400
-        button_h = 70
+        button_h = 60
         button_spacing = 30
         start_y = 300
 
         self.erosive_forces_button_rects = []
 
-        for i, (erosive_id, erosive_name, enabled) in enumerate(erosive_options):
+        for i, (label, bias_range, swatch) in enumerate(erosive_options):
             button_y = start_y + i * (button_h + button_spacing)
             button_rect = pygame.Rect(
                 screen_width // 2 - button_w // 2,
@@ -349,24 +347,21 @@ class IntroScreenManager:
                 button_h
             )
 
-            if enabled:
-                is_hover = button_rect.collidepoint(pygame.mouse.get_pos())
-                bg_color = (70, 90, 110) if is_hover else (45, 55, 65)
-                border_color = (120, 180, 200)
-                text_color = (220, 230, 240)
-            else:
-                bg_color = (30, 35, 40)
-                border_color = (80, 90, 100)
-                text_color = (100, 110, 120)
-
+            is_hover = button_rect.collidepoint(pygame.mouse.get_pos())
+            bg_color = (70, 90, 110) if is_hover else (45, 55, 65)
             pygame.draw.rect(screen, bg_color, button_rect, border_radius=8)
-            pygame.draw.rect(screen, border_color, button_rect, 3 if enabled else 1, border_radius=8)
+            pygame.draw.rect(screen, (120, 180, 200), button_rect, 3, border_radius=8)
 
-            text_surf = self.font.render(erosive_name, True, text_color)
+            # Color swatch on the left
+            swatch_rect = pygame.Rect(button_rect.x + 12, button_rect.centery - 12, 24, 24)
+            pygame.draw.rect(screen, swatch, swatch_rect, border_radius=3)
+            pygame.draw.rect(screen, (180, 190, 200), swatch_rect, 1, border_radius=3)
+
+            text_surf = self.font.render(label, True, (220, 230, 240))
             screen.blit(text_surf, (button_rect.centerx - text_surf.get_width() // 2,
-                                   button_rect.centery - 10))
+                                    button_rect.centery - text_surf.get_height() // 2))
 
-            self.erosive_forces_button_rects.append((button_rect, erosive_id, enabled))
+            self.erosive_forces_button_rects.append((button_rect, bias_range))
 
     def _draw_cloud_cover(self, screen, screen_width, screen_height):
         """Draw cloud cover (rainfall) selection screen."""
@@ -847,7 +842,8 @@ class IntroScreenManager:
                 self.mode = 'faction_select'
                 self.selected_faction_id = None
                 self.selected_ocean_percentage = None  # Use default (70%)
-                self.selected_cloud_cover = None  # None → GameMap picks a random bias
+                self.selected_cloud_cover = None      # None → GameMap picks a random bias
+                self.selected_erosive_forces = None   # None → GameMap picks a random bias
                 return None
             elif self.custom_map_button_rect and self.custom_map_button_rect.collidepoint(event.pos):
                 # Go to map size selection
@@ -887,10 +883,11 @@ class IntroScreenManager:
     def _handle_erosive_forces_event(self, event):
         """Handle erosive forces selection events."""
         if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
-            for button_rect, erosive_id, enabled in self.erosive_forces_button_rects:
-                if enabled and button_rect.collidepoint(event.pos):
-                    self.selected_erosive_forces = erosive_id
-                    # Proceed to cloud cover
+            for button_rect, bias_range in self.erosive_forces_button_rects:
+                if button_rect.collidepoint(event.pos):
+                    import random
+                    min_bias, max_bias = bias_range
+                    self.selected_erosive_forces = random.uniform(min_bias, max_bias)
                     self.mode = 'cloud_cover'
                     return None
 
@@ -973,7 +970,7 @@ class IntroScreenManager:
             elif event.key == pygame.K_RETURN:
                 # Start game
                 if self.player_name_input.strip():
-                    return 'start_game', self.selected_faction_id, self.player_name_input.strip(), self.selected_ocean_percentage, self.selected_cloud_cover
+                    return 'start_game', self.selected_faction_id, self.player_name_input.strip(), self.selected_ocean_percentage, self.selected_cloud_cover, self.selected_erosive_forces
             elif len(self.player_name_input) < 50:
                 # Add character
                 char = event.unicode
@@ -988,7 +985,7 @@ class IntroScreenManager:
             elif self.ok_button_rect and self.ok_button_rect.collidepoint(event.pos):
                 # Start game
                 if self.player_name_input.strip():
-                    return ('start_game', self.selected_faction_id, self.player_name_input.strip(), self.selected_ocean_percentage, self.selected_cloud_cover)
+                    return ('start_game', self.selected_faction_id, self.player_name_input.strip(), self.selected_ocean_percentage, self.selected_cloud_cover, self.selected_erosive_forces)
             elif self.cancel_button_rect and self.cancel_button_rect.collidepoint(event.pos):
                 # Back to faction select
                 self.mode = 'faction_select'

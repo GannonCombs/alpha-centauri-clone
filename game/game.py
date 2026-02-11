@@ -29,7 +29,7 @@ from game.debug import DebugManager  # DEBUG: Remove for release
 class Game:
     """Main game state manager."""
 
-    def __init__(self, player_faction_id=0, player_name=None, ocean_percentage=None, map_width=None, map_height=None, cloud_cover=None):
+    def __init__(self, player_faction_id=0, player_name=None, ocean_percentage=None, map_width=None, map_height=None, cloud_cover=None, erosive_forces=None):
         """Initialize a new game.
 
         Args:
@@ -44,7 +44,7 @@ class Game:
         self.map_width = map_width
         self.map_height = map_height
 
-        self.game_map = GameMap(map_width, map_height, ocean_percentage, cloud_cover)
+        self.game_map = GameMap(map_width, map_height, ocean_percentage, cloud_cover, erosive_forces)
         self.turn = 1
         self.running = True
         self.player_faction_id = player_faction_id  # Which faction the player chose
@@ -221,7 +221,7 @@ class Game:
         for y in range(1, self.game_map.height - 1):
             for x in range(self.game_map.width):
                 tile = self.game_map.get_tile(x, y)
-                if tile.is_land() and not tile.supply_pod:  # Exclude supply pod tiles
+                if tile.is_land() and not tile.supply_pod and getattr(tile, 'rockiness', 0) != 2:
                     land_tiles.append((x, y))
                 elif not tile.is_land():
                     ocean_tiles.append((x, y))
