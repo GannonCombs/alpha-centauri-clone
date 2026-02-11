@@ -181,6 +181,11 @@ class Game:
         self.center_camera_on_selected = False  # Flag to center camera on selected unit
         self.center_camera_on_tile = None  # Tuple (x, y) to center camera on specific tile
 
+        # Tile cursor mode (V key)
+        self.tile_cursor_mode = False   # Whether tile inspection cursor is active
+        self.cursor_x = 0               # Cursor tile X
+        self.cursor_y = 0               # Cursor tile Y
+
         # DEBUG: Debug/cheat mode manager (remove for release)
         self.debug = DebugManager()
 

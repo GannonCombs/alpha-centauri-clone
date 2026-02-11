@@ -262,8 +262,26 @@ def main():
 
                             # Auto-cycle to next unit
                             game.cycle_units()
-                    # Arrow key movement (8 directions)
-                    elif game.selected_unit:
+                    elif event.key == pygame.K_v:
+                        # Toggle tile cursor mode
+                        if game.tile_cursor_mode:
+                            # Exit cursor mode — return to selected unit (or cycle to find one)
+                            game.tile_cursor_mode = False
+                            if not game.selected_unit:
+                                game.cycle_units()
+                            if game.selected_unit:
+                                game.center_camera_on_selected = True
+                        else:
+                            # Enter cursor mode — place cursor on selected unit (or map center)
+                            game.tile_cursor_mode = True
+                            if game.selected_unit:
+                                game.cursor_x = game.selected_unit.x
+                                game.cursor_y = game.selected_unit.y
+                            else:
+                                game.cursor_x = game.game_map.width // 2
+                                game.cursor_y = game.game_map.height // 2
+                    # Arrow/numpad movement — routes to cursor or unit depending on mode
+                    elif game.tile_cursor_mode or game.selected_unit:
                         dx, dy = 0, 0
                         # Arrow keys
                         if event.key == pygame.K_UP:
@@ -274,7 +292,7 @@ def main():
                             dx = -1
                         elif event.key == pygame.K_RIGHT:
                             dx = 1
-                        # Numpad (with num lock OFF, these are the directional keys)
+                        # Numpad
                         elif event.key == pygame.K_KP8:  # Up
                             dy = -1
                         elif event.key == pygame.K_KP2:  # Down
@@ -292,11 +310,17 @@ def main():
                         elif event.key == pygame.K_KP3:  # Down-Right
                             dx, dy = 1, 1
 
-                        # Try to move unit
                         if dx != 0 or dy != 0:
-                            target_x = game.selected_unit.x + dx
-                            target_y = game.selected_unit.y + dy
-                            game.try_move_unit(game.selected_unit, target_x, target_y)
+                            if game.tile_cursor_mode:
+                                # Move cursor; scroll camera only if it drifts off-screen
+                                game.cursor_x = (game.cursor_x + dx) % game.game_map.width
+                                game.cursor_y = max(0, min(game.cursor_y + dy, game.game_map.height - 1))
+                                if not renderer.is_tile_on_screen(game.cursor_x, game.cursor_y, game.game_map):
+                                    game.center_camera_on_tile = (game.cursor_x, game.cursor_y)
+                            elif game.selected_unit:
+                                target_x = game.selected_unit.x + dx
+                                target_y = game.selected_unit.y + dy
+                                game.try_move_unit(game.selected_unit, target_x, target_y)
 
             elif event.type == pygame.MOUSEBUTTONDOWN:
                 # Check for exit dialog first
@@ -460,6 +484,8 @@ def main():
         renderer.draw_map(game.game_map, game.territory)  # Draw map tiles and territory
         renderer.draw_bases(game.bases, game.player_faction_id, game.game_map, game)  # Draw bases
         renderer.draw_units(game.units, game.selected_unit, game.player_faction_id, game.game_map)  # Draw units on top
+        if game.tile_cursor_mode:
+            renderer.draw_tile_cursor(game.cursor_x, game.cursor_y, game.game_map)
         renderer.draw_status_message(game)  # Draw status message
         ui_panel.draw(screen, game, renderer)  # Draw UI last
 

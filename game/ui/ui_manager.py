@@ -883,7 +883,9 @@ class UIManager:
             screen.blit(morale_text, (info_x, info_y + 106))
 
         # Terrain panel - far right of console
-        if game.selected_unit:
+        # Show when a unit is selected OR when tile cursor mode is active
+        _show_terrain = game.selected_unit or game.tile_cursor_mode
+        if _show_terrain:
             terrain_x = 1080
             terrain_y = display.UI_PANEL_Y + 20
             terrain_box_w = 200
@@ -895,8 +897,11 @@ class UIManager:
             # Title
             screen.blit(self.font.render("Terrain", True, COLOR_TEXT), (terrain_x, terrain_y))
 
-            # Get current tile info
-            tile = game.game_map.get_tile(game.selected_unit.x, game.selected_unit.y)
+            # Get current tile info — cursor tile in cursor mode, else selected unit's tile
+            if game.tile_cursor_mode:
+                tile = game.game_map.get_tile(game.cursor_x, game.cursor_y)
+            else:
+                tile = game.game_map.get_tile(game.selected_unit.x, game.selected_unit.y)
             if tile:
                 # Terrain type
                 terrain_type = "Land" if tile.is_land() else "Ocean"

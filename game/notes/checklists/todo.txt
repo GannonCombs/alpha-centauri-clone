@@ -174,4 +174,5 @@ Fog of war
 Advanced unit movement (G command, J command, drag path)
 V to hover
 Isometric
+Diplomacy trees
 Datalinks concepts
