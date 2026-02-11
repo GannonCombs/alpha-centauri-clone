@@ -22,7 +22,10 @@ UI_PANEL_Y = 0
 
 # Colors (RGB)
 COLOR_OCEAN = (20, 50, 120)
-COLOR_LAND = (34, 139, 34)
+COLOR_LAND_RAINY = (34, 139, 34)     # Luscious green
+COLOR_LAND_MODERATE = (95, 125, 50)  # Green-brown savanna
+COLOR_LAND_ARID = (148, 116, 80)     # Dusty desert brown
+COLOR_LAND = COLOR_LAND_RAINY        # Fallback (unused by renderer after rainfall)
 COLOR_GRID = (60, 60, 60)
 COLOR_BLACK = (0, 0, 0)
 COLOR_UI_BACKGROUND = (25, 25, 30)

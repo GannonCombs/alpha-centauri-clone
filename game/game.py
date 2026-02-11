@@ -29,7 +29,7 @@ from game.debug import DebugManager  # DEBUG: Remove for release
 class Game:
     """Main game state manager."""
 
-    def __init__(self, player_faction_id=0, player_name=None, ocean_percentage=None, map_width=None, map_height=None):
+    def __init__(self, player_faction_id=0, player_name=None, ocean_percentage=None, map_width=None, map_height=None, cloud_cover=None):
         """Initialize a new game.
 
         Args:
@@ -38,12 +38,13 @@ class Game:
             ocean_percentage (int): Percentage of ocean tiles (30-90)
             map_width (int): Map width in tiles
             map_height (int): Map height in tiles
+            cloud_cover (str): 'arid', 'moderate', or 'rainy'; None picks randomly
         """
         # Store map dimensions for new_game() resets
         self.map_width = map_width
         self.map_height = map_height
 
-        self.game_map = GameMap(map_width, map_height, ocean_percentage)
+        self.game_map = GameMap(map_width, map_height, ocean_percentage, cloud_cover)
         self.turn = 1
         self.running = True
         self.player_faction_id = player_faction_id  # Which faction the player chose

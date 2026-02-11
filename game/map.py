@@ -13,6 +13,40 @@ represent the game world.
 import random
 
 
+def tile_base_nutrients(tile):
+    """Unimproved base nutrient yield for a tile.
+
+    Land yield is determined by rainfall (0=arid, 1=moderate, 2=rainy).
+    Ocean always yields 1 nutrient.
+    """
+    if tile.is_ocean():
+        return 1
+    return tile.rainfall  # 0 / 1 / 2
+
+
+def tile_base_energy(tile):
+    """Unimproved base energy yield for a tile.
+
+    Land yield is determined by altitude band (per SMAC datalinks):
+        < 1000m  → 1
+        1000-1999m → 2
+        2000-2999m → 3
+        3000m+   → 4
+    Ocean yields 0 without a Tidal Harness.
+    """
+    if tile.is_ocean():
+        return 0
+    alt = tile.altitude
+    if alt >= 3000:
+        return 4
+    elif alt >= 2000:
+        return 3
+    elif alt >= 1000:
+        return 2
+    else:
+        return 1
+
+
 class Tile:
     """Represents a single map tile."""
 
@@ -29,6 +63,7 @@ class Tile:
         self.monolith = False  # Alien monolith
         self.displayed_unit_index = 0  # Which unit in stack to display
         self.altitude = 0  # Exact altitude in meters: -3000 to 3500
+        self.rainfall = 1  # 0=arid, 1=moderate, 2=rainy (land only; ocean is always 1)
 
     def is_land(self):
         """Check if this tile is land terrain."""
@@ -42,13 +77,14 @@ class Tile:
 class GameMap:
     """Handles map generation and tile management."""
 
-    def __init__(self, width, height, ocean_percentage=None):
+    def __init__(self, width, height, ocean_percentage=None, cloud_cover=None):
         """Initialize map with specified dimensions and ocean percentage.
 
         Args:
             width (int): Map width in tiles
             height (int): Map height in tiles
             ocean_percentage (int): Percentage of ocean tiles (30-90), None for default
+            cloud_cover (str): 'arid', 'moderate', or 'rainy'; None picks randomly
         """
         self.width = width
         self.height = height
@@ -56,6 +92,12 @@ class GameMap:
         # Default to 60% ocean (equivalent to old default of 40% land)
         # TODO: This should not be here. Erase. (Edit: or do I randomize here, for Make Random Map?)
         self.ocean_percentage = ocean_percentage if ocean_percentage is not None else int(60)
+        # Cloud cover drives rainfall generation.
+        # Stored as a float bias in roughly [-0.50, 0.45].
+        # None = pick randomly across the full range.
+        if cloud_cover is None:
+            cloud_cover = random.uniform(-0.15, 0.23)
+        self.cloud_cover = cloud_cover
         self.generate_random_map()
 
     def generate_random_map(self):
@@ -93,6 +135,9 @@ class GameMap:
 
         # Generate altitudes for all tiles
         self._generate_altitudes(random_values)
+
+        # Generate rainfall using altitude and cloud cover
+        self._generate_rainfall(self.cloud_cover)
 
         # Place supply pods on 3% of tiles
         self._place_supply_pods()
@@ -247,6 +292,98 @@ class GameMap:
         print(f"  Constraint enforcement: {iteration + 1} iterations, max violation: {max_violation}m")
         print("=== ALTITUDE GENERATION COMPLETE ===\n")
 
+    def _generate_rainfall(self, cloud_cover):
+        """Generate rainfall levels for all land tiles.
+
+        Simulates orographic (wind-driven) rainfall on a west-to-east prevailing
+        wind model.  Ocean tiles produce moisture; air carries moisture eastward,
+        dropping it on the upwind (western) slopes of mountain ranges and leaving
+        a rain shadow on the downwind (eastern) side.  The map wraps east-west.
+
+        Args:
+            cloud_cover (str): 'arid', 'moderate', or 'rainy' – overall wetness bias
+        """
+        print(f"\n=== GENERATING RAINFALL (cloud_bias={cloud_cover:.2f}) ===")
+
+        # ------------------------------------------------------------------
+        # Step 1: Initialise moisture grid
+        #   Ocean = 1.0 (moisture source)
+        #   Land  = 0.0 (dry starting point; propagation fills this)
+        # ------------------------------------------------------------------
+        moisture = [[0.0] * self.width for _ in range(self.height)]
+        for y in range(self.height):
+            for x in range(self.width):
+                if self.tiles[y][x].is_ocean():
+                    moisture[y][x] = 1.0
+
+        # ------------------------------------------------------------------
+        # Step 2: Propagate moisture eastward in three Gauss-Seidel passes.
+        #   Because the map wraps east-west, the western neighbour of x=0 is
+        #   x=width-1.  Three passes converge well even with wrap-around.
+        #
+        #   decay=0.58  → moisture halves roughly every 2-3 tiles inland,
+        #                 creating a clear wet-coast / dry-interior gradient.
+        #   orographic  → altitude rise (upwind slope) adds moisture;
+        #                 altitude drop (downwind/rain-shadow) removes it.
+        #                 Only applied between two land tiles — the sea-to-land
+        #                 altitude jump at the coast must not count, or it would
+        #                 make nearly every coastal tile rainy regardless of bias.
+        # ------------------------------------------------------------------
+        decay = 0.58
+        for _ in range(3):
+            for y in range(self.height):
+                for x in range(self.width):
+                    tile = self.tiles[y][x]
+                    if tile.is_ocean():
+                        moisture[y][x] = 1.0
+                        continue
+
+                    west_x = (x - 1) % self.width
+                    west_tile = self.tiles[y][west_x]
+                    west_m = moisture[y][west_x]
+
+                    # Orographic only between two land tiles (coast rise excluded)
+                    if west_tile.is_land():
+                        alt_diff = tile.altitude - west_tile.altitude
+                        orographic = max(-0.4, min(0.4, alt_diff / 2500.0))
+                    else:
+                        orographic = 0.0
+
+                    moisture[y][x] = max(0.0, min(1.0,
+                        west_m * decay + orographic * 0.35))
+
+        # ------------------------------------------------------------------
+        # Step 3: Apply cloud-cover bias, equatorial bonus, noise, classify.
+        #   The equatorial bonus is additive here (after propagation) so it
+        #   is not overwritten.  It peaks at +0.10 on the map's centre row
+        #   and falls to 0 at the top and bottom edges.
+        # ------------------------------------------------------------------
+        bias = cloud_cover  # float bias sampled from the chosen cloud cover range
+
+        equator_y = (self.height - 1) / 2.0
+
+        for y in range(self.height):
+            dist = abs(y - equator_y) / equator_y if equator_y > 0 else 0.0
+            tropical_bonus = 0.10 * (1.0 - dist)
+
+            for x in range(self.width):
+                tile = self.tiles[y][x]
+                if tile.is_ocean():
+                    tile.rainfall = 1  # Oceans always produce 1 base nutrient
+                    continue
+
+                m = moisture[y][x] + tropical_bonus + bias + random.gauss(0, 0.06)
+                m = max(0.0, min(1.0, m))
+
+                if m < 0.25:
+                    tile.rainfall = 0   # Arid
+                elif m < 0.62:
+                    tile.rainfall = 1   # Moderate
+                else:
+                    tile.rainfall = 2   # Rainy
+
+        print("=== RAINFALL GENERATION COMPLETE ===\n")
+
     def get_tile(self, x, y):
         """Safely get a tile at coordinates."""
         if 0 <= x < self.width and 0 <= y < self.height:
@@ -316,7 +453,8 @@ class GameMap:
                     'terrain': tile.terrain_type,
                     'supply_pod': tile.supply_pod,
                     'monolith': tile.monolith,
-                    'altitude': tile.altitude
+                    'altitude': tile.altitude,
+                    'rainfall': tile.rainfall
                 })
             tiles_data.append(row_data)
 
@@ -348,7 +486,8 @@ class GameMap:
                 tile = Tile(x, y, tile_data['terrain'])
                 tile.supply_pod = tile_data.get('supply_pod', False)
                 tile.monolith = tile_data.get('monolith', False)
-                tile.altitude = tile_data.get('altitude', 0)  # Default to 0 for old saves
+                tile.altitude = tile_data.get('altitude', 0)   # Default to 0 for old saves
+                tile.rainfall = tile_data.get('rainfall', 1)   # Default to moderate for old saves
                 row.append(tile)
             game_map.tiles.append(row)
 

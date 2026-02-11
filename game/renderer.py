@@ -13,7 +13,9 @@ and draws all game entities to the screen.
 """
 import pygame
 from game.data import display
-from game.data.display import (TILE_SIZE, COLOR_OCEAN, COLOR_LAND, COLOR_GRID, COLOR_BLACK,
+from game.data.display import (TILE_SIZE, COLOR_OCEAN, COLOR_LAND,
+                               COLOR_LAND_RAINY, COLOR_LAND_MODERATE, COLOR_LAND_ARID,
+                               COLOR_GRID, COLOR_BLACK,
                                  COLOR_UNIT_SELECTED,
                                  COLOR_BASE_BORDER)
 from game.data.data import FACTION_DATA
@@ -128,14 +130,21 @@ class Renderer:
         # Draw map edge indicators
         self.draw_map_edge_indicators(game_map)
 
+    @staticmethod
+    def _tile_color(tile):
+        """Return the base fill color for a tile based on terrain and rainfall."""
+        if tile.is_ocean():
+            return COLOR_OCEAN
+        rainfall_colors = [COLOR_LAND_ARID, COLOR_LAND_MODERATE, COLOR_LAND_RAINY]
+        return rainfall_colors[tile.rainfall]
+
     def draw_tile_at_screen_pos(self, tile, screen_x_idx, screen_y_idx):
         """Draw a tile at a specific screen position."""
         screen_x = (screen_x_idx * TILE_SIZE) + self.base_offset_x
         screen_y = screen_y_idx * TILE_SIZE
 
-        color = COLOR_LAND if tile.is_land() else COLOR_OCEAN
         rect = pygame.Rect(screen_x, screen_y, TILE_SIZE, TILE_SIZE)
-        pygame.draw.rect(self.screen, color, rect)
+        pygame.draw.rect(self.screen, self._tile_color(tile), rect)
         pygame.draw.rect(self.screen, COLOR_GRID, rect, 1)
 
     def draw_tile(self, tile):
@@ -145,9 +154,8 @@ class Renderer:
         screen_x = (world_x_offset * TILE_SIZE) + self.base_offset_x
         screen_y = tile.y * TILE_SIZE
 
-        color = COLOR_LAND if tile.is_land() else COLOR_OCEAN
         rect = pygame.Rect(screen_x, screen_y, TILE_SIZE, TILE_SIZE)
-        pygame.draw.rect(self.screen, color, rect)
+        pygame.draw.rect(self.screen, self._tile_color(tile), rect)
         pygame.draw.rect(self.screen, COLOR_GRID, rect, 1)
 
     def draw_units(self, units, selected_unit, player_faction_id, game_map):

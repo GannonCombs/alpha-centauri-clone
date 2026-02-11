@@ -20,7 +20,7 @@ class IntroScreenManager:
         self.title_font = pygame.font.Font(None, 48)
 
         # Screen state
-        self.mode = 'intro'  # 'intro', 'map_select', 'map_size', 'land_composition', 'erosive_forces', 'alien_life', 'skill_level', 'faction_select', 'name_input', None (game started)
+        self.mode = 'intro'  # 'intro', 'map_select', 'map_size', 'land_composition', 'erosive_forces', 'cloud_cover', 'alien_life', 'skill_level', 'faction_select', 'name_input', None (game started)
         self.selected_faction_id = None
         self.player_name_input = ""
         self.name_input_selected = False  # Track if name input text is selected for replacement
@@ -33,6 +33,7 @@ class IntroScreenManager:
         self.selected_map_size = 'standard'  # Only standard for now
         self.selected_ocean_percentage = None  # Will be set when ocean composition is selected
         self.selected_erosive_forces = None  # 'abundant', 'average', 'desert'
+        self.selected_cloud_cover = None  # float bias sampled from chosen range, or None for random
         self.selected_alien_life = None  # 'abundant', 'average', 'rare'
         self.selected_skill_level = None  # 1-6
 
@@ -45,6 +46,7 @@ class IntroScreenManager:
         self.map_size_button_rects = []  # Map size selection buttons
         self.land_comp_button_rects = []  # Land composition selection buttons
         self.erosive_forces_button_rects = []  # Erosive forces selection buttons
+        self.cloud_cover_button_rects = []    # Cloud cover selection buttons
         self.alien_life_button_rects = []  # Alien life form selection buttons
         self.skill_level_button_rects = []  # Skill level selection buttons
         self.faction_button_rects = []
@@ -72,6 +74,8 @@ class IntroScreenManager:
             self._draw_land_composition(screen, screen_width, screen_height)
         elif self.mode == 'erosive_forces':
             self._draw_erosive_forces(screen, screen_width, screen_height)
+        elif self.mode == 'cloud_cover':
+            self._draw_cloud_cover(screen, screen_width, screen_height)
         elif self.mode == 'alien_life':
             self._draw_alien_life(screen, screen_width, screen_height)
         elif self.mode == 'skill_level':
@@ -363,6 +367,53 @@ class IntroScreenManager:
                                    button_rect.centery - 10))
 
             self.erosive_forces_button_rects.append((button_rect, erosive_id, enabled))
+
+    def _draw_cloud_cover(self, screen, screen_width, screen_height):
+        """Draw cloud cover (rainfall) selection screen."""
+        screen.fill((10, 15, 25))
+
+        title_surf = self.title_font.render("Cloud Cover", True, (100, 200, 255))
+        screen.blit(title_surf, (screen_width // 2 - title_surf.get_width() // 2, 150))
+
+        # Options: label, bias_range, swatch color
+        cover_options = [
+            ('Sparse',   (-0.15, -0.02), (148, 116, 80)),
+            ('Average',  (-0.03,  0.05), (95, 125, 50)),
+            ('Dense',    ( 0.13,  0.23), (34, 139, 34)),
+        ]
+
+        button_w = 400
+        button_h = 60
+        button_spacing = 30
+        start_y = 300
+
+        self.cloud_cover_button_rects = []
+
+        for i, (label, bias_range, swatch) in enumerate(cover_options):
+            button_y = start_y + i * (button_h + button_spacing)
+            button_rect = pygame.Rect(
+                screen_width // 2 - button_w // 2,
+                button_y,
+                button_w,
+                button_h
+            )
+
+            is_hover = button_rect.collidepoint(pygame.mouse.get_pos())
+            bg_color = (70, 90, 110) if is_hover else (45, 55, 65)
+
+            pygame.draw.rect(screen, bg_color, button_rect, border_radius=8)
+            pygame.draw.rect(screen, (120, 180, 200), button_rect, 3, border_radius=8)
+
+            # Color swatch on the left
+            swatch_rect = pygame.Rect(button_rect.x + 15, button_rect.y + 10, 30, 40)
+            pygame.draw.rect(screen, swatch, swatch_rect, border_radius=4)
+            pygame.draw.rect(screen, (200, 200, 200), swatch_rect, 1, border_radius=4)
+
+            label_surf = self.font.render(label, True, (220, 230, 240))
+            screen.blit(label_surf, (button_rect.centerx - label_surf.get_width() // 2,
+                                     button_rect.centery - label_surf.get_height() // 2))
+
+            self.cloud_cover_button_rects.append((button_rect, bias_range))
 
     def _draw_alien_life(self, screen, screen_width, screen_height):
         """Draw alien life form prominence selection screen."""
@@ -725,8 +776,11 @@ class IntroScreenManager:
             elif self.mode == 'erosive_forces':
                 self.mode = 'land_composition'
                 return None
-            elif self.mode == 'alien_life':
+            elif self.mode == 'cloud_cover':
                 self.mode = 'erosive_forces'
+                return None
+            elif self.mode == 'alien_life':
+                self.mode = 'cloud_cover'
                 return None
             elif self.mode == 'skill_level':
                 self.mode = 'alien_life'
@@ -757,6 +811,8 @@ class IntroScreenManager:
             return self._handle_land_composition_event(event)
         elif self.mode == 'erosive_forces':
             return self._handle_erosive_forces_event(event)
+        elif self.mode == 'cloud_cover':
+            return self._handle_cloud_cover_event(event)
         elif self.mode == 'alien_life':
             return self._handle_alien_life_event(event)
         elif self.mode == 'skill_level':
@@ -791,6 +847,7 @@ class IntroScreenManager:
                 self.mode = 'faction_select'
                 self.selected_faction_id = None
                 self.selected_ocean_percentage = None  # Use default (70%)
+                self.selected_cloud_cover = None  # None → GameMap picks a random bias
                 return None
             elif self.custom_map_button_rect and self.custom_map_button_rect.collidepoint(event.pos):
                 # Go to map size selection
@@ -833,7 +890,20 @@ class IntroScreenManager:
             for button_rect, erosive_id, enabled in self.erosive_forces_button_rects:
                 if enabled and button_rect.collidepoint(event.pos):
                     self.selected_erosive_forces = erosive_id
-                    # Proceed to alien life
+                    # Proceed to cloud cover
+                    self.mode = 'cloud_cover'
+                    return None
+
+        return None
+
+    def _handle_cloud_cover_event(self, event):
+        """Handle cloud cover selection events."""
+        if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+            for button_rect, bias_range in self.cloud_cover_button_rects:
+                if button_rect.collidepoint(event.pos):
+                    import random
+                    min_bias, max_bias = bias_range
+                    self.selected_cloud_cover = random.uniform(min_bias, max_bias)
                     self.mode = 'alien_life'
                     return None
 
@@ -903,7 +973,7 @@ class IntroScreenManager:
             elif event.key == pygame.K_RETURN:
                 # Start game
                 if self.player_name_input.strip():
-                    return 'start_game', self.selected_faction_id, self.player_name_input.strip(), self.selected_ocean_percentage
+                    return 'start_game', self.selected_faction_id, self.player_name_input.strip(), self.selected_ocean_percentage, self.selected_cloud_cover
             elif len(self.player_name_input) < 50:
                 # Add character
                 char = event.unicode
@@ -918,7 +988,7 @@ class IntroScreenManager:
             elif self.ok_button_rect and self.ok_button_rect.collidepoint(event.pos):
                 # Start game
                 if self.player_name_input.strip():
-                    return ('start_game', self.selected_faction_id, self.player_name_input.strip(), self.selected_ocean_percentage)
+                    return ('start_game', self.selected_faction_id, self.player_name_input.strip(), self.selected_ocean_percentage, self.selected_cloud_cover)
             elif self.cancel_button_rect and self.cancel_button_rect.collidepoint(event.pos):
                 # Back to faction select
                 self.mode = 'faction_select'

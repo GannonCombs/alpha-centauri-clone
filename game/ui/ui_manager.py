@@ -14,6 +14,7 @@ from .base_screens import BaseScreenManager
 from .save_load_dialog import SaveLoadDialogManager
 from .context_menu import ContextMenu
 from game.data.data import FACTION_DATA
+from game.map import tile_base_nutrients, tile_base_energy
 
 
 class UIManager:
@@ -886,7 +887,7 @@ class UIManager:
             terrain_x = 1080
             terrain_y = display.UI_PANEL_Y + 20
             terrain_box_w = 200
-            terrain_box_h = 135
+            terrain_box_h = 152
             terrain_box = pygame.Rect(terrain_x - 10, terrain_y - 5, terrain_box_w, terrain_box_h)
             pygame.draw.rect(screen, (30, 40, 35), terrain_box)
             pygame.draw.rect(screen, COLOR_BUTTON_BORDER, terrain_box, 2)
@@ -902,22 +903,34 @@ class UIManager:
                 terrain_text = self.small_font.render(terrain_type, True, (180, 200, 180))
                 screen.blit(terrain_text, (terrain_x, terrain_y + 30))
 
-                # Elevation (exact altitude in meters)
-                altitude_m = tile.altitude
-                elev_text = self.small_font.render(f"Elev: {altitude_m}m", True, (200, 200, 180))
-                screen.blit(elev_text, (terrain_x, terrain_y + 52))
+                # Rainfall (land: Arid/Moderate/Rainy; ocean: em dash)
+                if tile.is_land():
+                    rainfall_labels = {0: "Arid", 1: "Moderate", 2: "Rainy"}
+                    rainfall_colors = {0: (200, 170, 110), 1: (160, 200, 130), 2: (100, 210, 100)}
+                    rain_text = self.small_font.render(
+                        f"Rainfall: {rainfall_labels[tile.rainfall]}",
+                        True, rainfall_colors[tile.rainfall])
+                else:
+                    rain_text = self.small_font.render("Rainfall: \u2014", True, (120, 150, 180))
+                screen.blit(rain_text, (terrain_x, terrain_y + 46))
 
-                # Nutrients (placeholder)
-                nut_text = self.small_font.render("Nutrients: 2", True, (150, 220, 150))
-                screen.blit(nut_text, (terrain_x, terrain_y + 74))
+                # Elevation
+                elev_text = self.small_font.render(f"Elev: {tile.altitude}m", True, (200, 200, 180))
+                screen.blit(elev_text, (terrain_x, terrain_y + 62))
 
-                # Minerals (placeholder)
+                # Nutrients (from rainfall for land; 1 for ocean)
+                nutrients = tile_base_nutrients(tile)
+                nut_text = self.small_font.render(f"Nutrients: {nutrients}", True, (150, 220, 150))
+                screen.blit(nut_text, (terrain_x, terrain_y + 80))
+
+                # Minerals (placeholder — Rockiness not yet implemented)
                 min_text = self.small_font.render("Minerals: 1", True, (200, 180, 140))
-                screen.blit(min_text, (terrain_x, terrain_y + 90))
+                screen.blit(min_text, (terrain_x, terrain_y + 96))
 
-                # Energy (placeholder)
-                ene_text = self.small_font.render("Energy: 1", True, (220, 220, 100))
-                screen.blit(ene_text, (terrain_x, terrain_y + 106))
+                # Energy (from altitude band for land; 0 for unimproved ocean)
+                energy = tile_base_energy(tile)
+                ene_text = self.small_font.render(f"Energy: {energy}", True, (220, 220, 100))
+                screen.blit(ene_text, (terrain_x, terrain_y + 112))
 
         # Layer 4a: Main Menu Drop-up
         if self.main_menu_open and self.active_screen == "GAME":

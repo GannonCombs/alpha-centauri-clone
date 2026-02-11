@@ -53,23 +53,6 @@ class Base:
         self.garrison = []  # Units stationed at this base (legacy - use get_garrison_units instead)
         self.supported_units = []  # Units this base supports
 
-    def get_garrison_units(self, game):
-        """Get all units actually garrisoned at this base.
-
-        This dynamically reads from the tile instead of relying on the garrison list,
-        which can get out of sync.
-
-        Args:
-            game: Game instance (to access map)
-
-        Returns:
-            list: Units at this base belonging to the base owner
-        """
-        tile = game.game_map.get_tile(self.x, self.y)
-        if not tile:
-            return []
-        return [u for u in tile.units if u.owner == self.owner]
-
         # Production
         self.current_production = "Scout Patrol"  # Default production
         self.previous_production = None  # Track for retooling penalties
@@ -110,6 +93,23 @@ class Base:
         # Disloyal citizenry (for conquered bases)
         self.turns_since_capture = None  # None = never captured, else turns since capture
         self.disloyal_drones = 0    # Extra drones from disloyal citizens
+
+    def get_garrison_units(self, game):
+        """Get all units actually garrisoned at this base.
+
+        This dynamically reads from the tile instead of relying on the garrison list,
+        which can get out of sync.
+
+        Args:
+            game: Game instance (to access map)
+
+        Returns:
+            list: Units at this base belonging to the base owner
+        """
+        tile = game.game_map.get_tile(self.x, self.y)
+        if not tile:
+            return []
+        return [u for u in tile.units if u.owner == self.owner]
 
     def _calculate_nutrients_needed(self):
         """Calculate nutrients needed for next population growth.
@@ -315,7 +315,7 @@ class Base:
             energy_allocation = {'economy': 50, 'labs': 50, 'psych': 0}
 
         # Calculate energy production and allocate it
-        self.calculate_energy_output()
+        self.calculate_energy_output(game)
         self.allocate_energy(
             energy_allocation['economy'],
             energy_allocation['labs'],
@@ -329,9 +329,16 @@ class Base:
         # Calculate population happiness
         self.calculate_population_happiness()
 
-        # Add nutrients (1 per turn for now)
+        # Add nutrients from the base tile's rainfall level (0/1/2 for arid/moderate/rainy).
+        # Fall back to 1 if the game map is unavailable (e.g. loading old saves).
+        if game is not None:
+            from game.map import tile_base_nutrients
+            base_tile = game.game_map.get_tile(self.x, self.y)
+            nutrients_per_turn = tile_base_nutrients(base_tile) if base_tile else 1
+        else:
+            nutrients_per_turn = 1
         if self.population < 7:
-            self.nutrients_accumulated += 1
+            self.nutrients_accumulated += nutrients_per_turn
 
             # Check for growth
             if self.nutrients_accumulated >= self.nutrients_needed:
@@ -392,17 +399,23 @@ class Base:
 
         return completed_item
 
-    def calculate_energy_output(self):
+    def calculate_energy_output(self, game=None):
         """Calculate total energy production before allocation.
 
-        For now, uses a simple formula: population * 2
-        In the future, this will sum energy from worked tiles.
+        Uses the base tile's altitude band as the per-citizen energy rate
+        (per SMAC: <1000m→1, 1000-1999m→2, 2000-2999m→3, 3000m+→4).
+        Falls back to 2 per citizen if no game reference is available.
 
         Returns:
             int: Total energy production
         """
-        # Simple formula for now: 2 energy per citizen
-        self.energy_production = self.population * 2
+        if game is not None:
+            from game.map import tile_base_energy
+            base_tile = game.game_map.get_tile(self.x, self.y)
+            energy_per_citizen = tile_base_energy(base_tile) if base_tile else 2
+        else:
+            energy_per_citizen = 2
+        self.energy_production = self.population * energy_per_citizen
         return self.energy_production
 
     def allocate_energy(self, economy_percent, labs_percent, psych_percent):
@@ -579,13 +592,11 @@ class Base:
         Returns:
             Base: Reconstructed base instance
         """
-        base = cls.__new__(cls)
+        # Call __init__ first so all attributes have defaults, then overwrite with saved data.
+        # This ensures any attribute added after a save was created is still present.
+        base = cls(data['x'], data['y'], data['owner'], data['name'])
 
         # Copy basic attributes
-        base.x = data['x']
-        base.y = data['y']
-        base.owner = data['owner']
-        base.name = data['name']
         base.population = data['population']
         base.facilities = data['facilities']
         base.free_facilities = data.get('free_facilities', [])  # Default to empty for old saves
