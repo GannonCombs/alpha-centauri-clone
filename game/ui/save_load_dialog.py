@@ -42,6 +42,10 @@ class SaveLoadDialogManager:
         self.confirm_ok_rect = None
         self.confirm_cancel_rect = None
 
+        # Scrollbar button rects (load dialog)
+        self.scroll_up_rect = None
+        self.scroll_down_rect = None
+
     def show_save_dialog(self, game):
         """Open the save dialog with suggested filename.
 
@@ -169,56 +173,107 @@ class SaveLoadDialogManager:
         self._draw_dialog_buttons(screen, dialog_x, dialog_y, dialog_w, dialog_h, "Save")
 
     def _draw_load_dialog(self, screen, dialog_x, dialog_y, dialog_w, dialog_h):
-        """Draw load dialog contents."""
+        """Draw load dialog contents with a scrollable file list."""
 
         if not self.save_files:
-            # No saves available
-            no_saves_text = "No save files found"
-            no_saves_surf = self.font.render(no_saves_text, True, (150, 150, 150))
+            no_saves_surf = self.font.render("No save files found", True, (150, 150, 150))
             screen.blit(no_saves_surf, (dialog_x + dialog_w // 2 - no_saves_surf.get_width() // 2, dialog_y + 150))
-        else:
-            # File list
-            list_y = dialog_y + 70
-            list_h = dialog_h - 200
+            self._draw_dialog_buttons(screen, dialog_x, dialog_y, dialog_w, dialog_h, "Load")
+            return
 
-            # Scrollable list (5 visible at a time)
-            max_visible = 5
-            visible_files = self.save_files[self.scroll_offset:self.scroll_offset + max_visible]
+        # ── layout constants ──────────────────────────────────────────────
+        scrollbar_w = 18
+        list_x      = dialog_x + 20
+        list_y      = dialog_y + 60
+        list_w      = dialog_w - 40 - scrollbar_w - 6   # leave room for scrollbar
+        list_h      = dialog_h - 145                    # stop above buttons
+        item_h      = 62
+        item_gap    = 4
+        item_stride = item_h + item_gap
+        max_visible = list_h // item_stride
+        max_scroll  = max(0, len(self.save_files) - max_visible)
 
-            self.file_list_rects = []
+        # Clamp scroll offset (handles list shrinking between opens)
+        self.scroll_offset = max(0, min(self.scroll_offset, max_scroll))
 
-            for i, save_file in enumerate(visible_files):
-                item_y = list_y + i * 70
-                item_w = dialog_w - 40
-                item_h = 60
-                item_rect = pygame.Rect(dialog_x + 20, item_y, item_w, item_h)
+        # ── list background ───────────────────────────────────────────────
+        list_bg = pygame.Rect(list_x, list_y, list_w, list_h)
+        pygame.draw.rect(screen, (22, 30, 38), list_bg, border_radius=4)
+        pygame.draw.rect(screen, display.COLOR_BUTTON_BORDER, list_bg, 1, border_radius=4)
 
-                actual_index = self.scroll_offset + i
-                is_selected = actual_index == self.selected_file_index
+        # ── clip so items can never bleed outside the list area ───────────
+        old_clip = screen.get_clip()
+        screen.set_clip(list_bg)
 
-                # Background
-                bg_color = (70, 90, 110) if is_selected else (45, 55, 65)
-                pygame.draw.rect(screen, bg_color, item_rect, border_radius=6)
-                pygame.draw.rect(screen, display.COLOR_BUTTON_BORDER, item_rect, 2, border_radius=6)
+        self.file_list_rects = []
+        for i in range(max_visible):
+            actual_index = self.scroll_offset + i
+            if actual_index >= len(self.save_files):
+                break
+            save_file = self.save_files[actual_index]
 
-                # Filename
-                filename_surf = self.font.render(save_file['filename'], True, display.COLOR_TEXT)
-                screen.blit(filename_surf, (item_rect.x + 10, item_rect.y + 8))
+            item_y    = list_y + i * item_stride + item_gap
+            item_rect = pygame.Rect(list_x + 2, item_y, list_w - 4, item_h)
+            is_selected = actual_index == self.selected_file_index
 
-                # Mission year and timestamp
-                info_text = f"MY {save_file['mission_year']} - {save_file['timestamp'][:16]}"
-                info_surf = self.small_font.render(info_text, True, (180, 180, 180))
-                screen.blit(info_surf, (item_rect.x + 10, item_rect.y + 32))
+            bg_color = (70, 90, 110) if is_selected else (45, 55, 65)
+            pygame.draw.rect(screen, bg_color, item_rect, border_radius=4)
+            pygame.draw.rect(screen, display.COLOR_BUTTON_BORDER, item_rect, 1, border_radius=4)
 
-                self.file_list_rects.append((item_rect, actual_index))
+            filename_surf = self.font.render(save_file['filename'], True, display.COLOR_TEXT)
+            screen.blit(filename_surf, (item_rect.x + 10, item_rect.y + 8))
 
-            # Scroll indicators
-            if len(self.save_files) > max_visible:
-                scroll_info = f"{self.scroll_offset + 1}-{min(self.scroll_offset + max_visible, len(self.save_files))} of {len(self.save_files)}"
-                scroll_surf = self.small_font.render(scroll_info, True, (150, 150, 150))
-                screen.blit(scroll_surf, (dialog_x + dialog_w // 2 - scroll_surf.get_width() // 2, list_y + 360))
+            info_text = f"MY {save_file['mission_year']} - {save_file['timestamp'][:16]}"
+            info_surf = self.small_font.render(info_text, True, (170, 170, 170))
+            screen.blit(info_surf, (item_rect.x + 10, item_rect.y + 34))
 
-        # Buttons
+            self.file_list_rects.append((item_rect, actual_index))
+
+        screen.set_clip(old_clip)
+
+        # ── scrollbar ─────────────────────────────────────────────────────
+        sb_x     = list_x + list_w + 6
+        sb_y     = list_y
+        arrow_h  = 20
+
+        # Track background
+        track_rect = pygame.Rect(sb_x, sb_y, scrollbar_w, list_h)
+        pygame.draw.rect(screen, (28, 36, 44), track_rect, border_radius=4)
+        pygame.draw.rect(screen, display.COLOR_BUTTON_BORDER, track_rect, 1, border_radius=4)
+
+        # Up arrow
+        self.scroll_up_rect = pygame.Rect(sb_x, sb_y, scrollbar_w, arrow_h)
+        up_hover = self.scroll_up_rect.collidepoint(pygame.mouse.get_pos())
+        pygame.draw.rect(screen, display.COLOR_BUTTON_HOVER if up_hover else display.COLOR_BUTTON,
+                         self.scroll_up_rect, border_radius=3)
+        up_surf = self.small_font.render("▲", True, display.COLOR_TEXT)
+        screen.blit(up_surf, (self.scroll_up_rect.centerx - up_surf.get_width() // 2,
+                               self.scroll_up_rect.centery - up_surf.get_height() // 2))
+
+        # Down arrow
+        self.scroll_down_rect = pygame.Rect(sb_x, sb_y + list_h - arrow_h, scrollbar_w, arrow_h)
+        down_hover = self.scroll_down_rect.collidepoint(pygame.mouse.get_pos())
+        pygame.draw.rect(screen, display.COLOR_BUTTON_HOVER if down_hover else display.COLOR_BUTTON,
+                         self.scroll_down_rect, border_radius=3)
+        down_surf = self.small_font.render("▼", True, display.COLOR_TEXT)
+        screen.blit(down_surf, (self.scroll_down_rect.centerx - down_surf.get_width() // 2,
+                                 self.scroll_down_rect.centery - down_surf.get_height() // 2))
+
+        # Thumb (only when there's something to scroll)
+        if max_scroll > 0:
+            usable_h  = list_h - 2 * arrow_h
+            thumb_h   = max(20, int(usable_h * max_visible / len(self.save_files)))
+            thumb_pos = int((usable_h - thumb_h) * self.scroll_offset / max_scroll)
+            thumb_rect = pygame.Rect(sb_x + 2, sb_y + arrow_h + thumb_pos, scrollbar_w - 4, thumb_h)
+            pygame.draw.rect(screen, (100, 130, 160), thumb_rect, border_radius=3)
+
+        # ── counter label ─────────────────────────────────────────────────
+        count_text = f"{self.scroll_offset + 1}–{min(self.scroll_offset + max_visible, len(self.save_files))} of {len(self.save_files)}"
+        count_surf = self.small_font.render(count_text, True, (130, 130, 130))
+        screen.blit(count_surf, (dialog_x + dialog_w // 2 - count_surf.get_width() // 2,
+                                  list_y + list_h + 6))
+
+        # ── action buttons ────────────────────────────────────────────────
         self._draw_dialog_buttons(screen, dialog_x, dialog_y, dialog_w, dialog_h, "Load")
 
     def _draw_dialog_buttons(self, screen, dialog_x, dialog_y, dialog_w, dialog_h, action_label):
@@ -331,6 +386,12 @@ class SaveLoadDialogManager:
             return self.handle_keydown(event, game)
         elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
             return self.handle_click(event.pos, game)
+        elif event.type == pygame.MOUSEWHEEL and self.mode == 'load':
+            self.scroll_offset = max(0, min(
+                self.scroll_offset - event.y,
+                max(0, len(self.save_files) - 1)
+            ))
+            return True
 
         return True  # Consume all events when dialog is open
 
@@ -379,17 +440,17 @@ class SaveLoadDialogManager:
                 self.mode = None
                 return 'close'
             elif event.key == pygame.K_UP:
-                # Move selection up
                 if self.selected_file_index is not None and self.selected_file_index > 0:
                     self.selected_file_index -= 1
                     if self.selected_file_index < self.scroll_offset:
                         self.scroll_offset = self.selected_file_index
             elif event.key == pygame.K_DOWN:
-                # Move selection down
                 if self.selected_file_index is not None and self.selected_file_index < len(self.save_files) - 1:
                     self.selected_file_index += 1
-                    if self.selected_file_index >= self.scroll_offset + 5:
-                        self.scroll_offset = self.selected_file_index - 4
+                    # Scroll down if selection moves past the visible window
+                    # (page size approximated; draw will clamp anyway)
+                    if self.selected_file_index >= self.scroll_offset + 6:
+                        self.scroll_offset = self.selected_file_index - 5
 
         return True
 
@@ -427,8 +488,14 @@ class SaveLoadDialogManager:
             else:
                 return self._try_load(game)
 
-        # Check file list items (load mode only)
+        # Check scroll arrows and file list items (load mode only)
         if self.mode == 'load':
+            if self.scroll_up_rect and self.scroll_up_rect.collidepoint(pos):
+                self.scroll_offset = max(0, self.scroll_offset - 1)
+                return True
+            if self.scroll_down_rect and self.scroll_down_rect.collidepoint(pos):
+                self.scroll_offset = min(self.scroll_offset + 1, max(0, len(self.save_files) - 1))
+                return True
             for item_rect, file_index in self.file_list_rects:
                 if item_rect.collidepoint(pos):
                     self.selected_file_index = file_index

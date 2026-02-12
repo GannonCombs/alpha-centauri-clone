@@ -16,7 +16,7 @@ Golden Age
 Morale ◐
 Monoliths ◐
 Artifacts ◐
-Fungus/Xenofungus
+Fungus/Xenofungus ◐
 Psi Combat
 Waypoints
 Patrol

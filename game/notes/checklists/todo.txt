@@ -134,7 +134,6 @@ buttons. The text should be visibly highlighted, so that one backspace button de
 5 Production times are off. Merchant Exchange takes 20 turns on Turn 1 for Morgan.
 6 FACTION_DATA contains single quotes and double quotes.
 7 Not all faction bonuses are applied.
-8 Scroll through all saved files.
 9 When I'm surprise attacked, another popup appears for each Pact brother or sister I have, saying, "On behalf of your
  pact, <pactbors> has pronounced on <attacker>!"
 10 Invert the way damage is shown.
