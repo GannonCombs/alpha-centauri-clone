@@ -117,6 +117,7 @@ is not just a bug in display. I'm able to propose treaties and pacts all over ag
  I think.
 
 
+
 ***************************************************************************
 
 ** Known Bugs **
@@ -126,6 +127,7 @@ is not just a bug in display. I'm able to propose treaties and pacts all over ag
 
 
 Note: this is the ONLY section of todo.txt that can be edited by Claude Code, but only to add checkmarks to tasks.
+
 1 Healing should not occur at turn end. It happens in upkeep of the next turn.
 3 Rename button in base view needs to be implemented. A popup with a text box allows us to rename the base. OK and cancel
 buttons. The text should be visibly highlighted, so that one backspace button deletes the entire name.
@@ -141,7 +143,8 @@ If yes, the artifact is consumed and we get a free tech. Linking means a network
 The artifact transports to the title the unit was on.
 11 If an artifact is on the same title as a military unit, and another faction kills that unit, the artifact gets taken
 in similar fashion. Note that if the tile has multiple units on it, the artifact stays put. Only transfers on the last death.
-12 If an artifact moves onto a supply pod, both artifact and pod are consumed. No tech comes of it.
+12 If an artifact moves onto a supply pod, both artifact and pod are consumed. No tech comes of it. Have a popup saying
+the artifact was destroyed. Ok button only.
 13 The first person to discover any of the three techs starting with "Secrets of" get another tech right after.
 14 Healing isn't working correctly. It's applying the bonuses correctly, but when the units are moving. It should only
 be when they've skipped their turn entirely. If a unit has even partially moved or acted that turn, healing doesn't happen
@@ -151,7 +154,6 @@ naturally (movement onto a monolith is the exception.)
 The End Turn button should then blink, not auto-end.
 17 Saw an AI unit on an island tile it couldn't have walked to, before getting a transport. They were on the bottom row
 of the map; are there invisible tiles there that are playable?
-
 
 
 

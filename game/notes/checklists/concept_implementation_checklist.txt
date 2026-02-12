@@ -31,7 +31,7 @@ Inefficiency (Basic) ✓
 Ecology (Basic)
 Planetary Council ◐
 Planetary Governor ◐
-Commerce (Basic) ◐
+Commerce (Basic) ✓
 Victory and Defeat
 Territory/Borders ◐
 Might
@@ -46,7 +46,7 @@ Council Proposals ◐
 Nutrients
 Minerals
 Energy ◐
-Economy ◐
+Economy ✓
 Labs
 Energy Reserves ◐
 Specialists
@@ -60,7 +60,7 @@ Advanced Concepts:
 Unit Cost (Advanced)
 Inefficiency (Advanced) ◐ (Needs Children's Creche piece)
 Ecology (Advanced)
-Commerce (Advanced) ◐
+Commerce (Advanced) ◐ (planetary governor, global pact pieces)
 Score
 Victory (Diplomatic)
 Victory (Conquest)
