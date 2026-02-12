@@ -192,7 +192,7 @@ class BattleUIManager:
             # Attacker modifiers (left side)
             att_modifiers = game.combat.get_combat_modifiers(attacker, is_defender=False, vs_unit=defender)
             for mod in att_modifiers:
-                mod_text = self.small_font.render(mod['display'], True, (150, 255, 150))
+                mod_text = self.small_font.render(f"{mod['name']}: {mod['display']}", True, (150, 255, 150))
                 screen.blit(mod_text, (panel_x + 10, mod_y))
                 mod_y += 15
 
@@ -200,7 +200,7 @@ class BattleUIManager:
             mod_y = panel_y + 90
             def_modifiers = game.combat.get_combat_modifiers(defender, is_defender=True, vs_unit=attacker)
             for mod in def_modifiers:
-                mod_text = self.small_font.render(mod['display'], True, (150, 255, 150))
+                mod_text = self.small_font.render(f"{mod['name']}: {mod['display']}", True, (150, 255, 150))
                 mod_text_rect = mod_text.get_rect(right=panel_x + panel_w - 10, top=mod_y)
                 screen.blit(mod_text, mod_text_rect)
                 mod_y += 15

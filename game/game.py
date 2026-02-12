@@ -2822,6 +2822,10 @@ class Game:
         game.ai_current_unit_index = 0
         game.center_camera_on_selected = True  # Center on selected unit when loading
         game.center_camera_on_tile = None
+        game.tile_cursor_mode = False
+        game.cursor_x = 0
+        game.cursor_y = 0
+        game.last_unit_action = None
         game.pending_commlink_requests = []
         game.pending_faction_eliminations = []
         game.all_contacts_obtained = False

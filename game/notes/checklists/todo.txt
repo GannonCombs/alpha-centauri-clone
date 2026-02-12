@@ -127,35 +127,27 @@ Note: this is the ONLY section of todo.txt that can be edited by Claude Code, bu
 1 Healing should not occur at turn end. It happens in upkeep of the next turn.
 2 My diplomatic statuses have disappeared as turns pass. It now shows nothing. Speaking to the factions, it's clear this
 is not just a bug in display. I'm able to propose treaties and pacts all over again. Obv, these should persist.
-3 The base title name is too high, overlapping on the governor button. There is no space for it between this button and
-the mini-map, so move the mini-map down so there is space.
-4 Rename button in base view needs to be implemented. A popup with a text box allows us to rename the base. OK and cancel
+3 Rename button in base view needs to be implemented. A popup with a text box allows us to rename the base. OK and cancel
 buttons. The text should be visibly highlighted, so that one backspace button deletes the entire name.
-5 Production times are off. Merchant Exchange takes 20 turns on Turn 1 for Morgan.
-6 FACTION_DATA contains single quotes and double quotes.
-7 Not all faction bonuses are applied.
-9 When I'm surprise attacked, another popup appears for each Pact brother or sister I have, saying, "On behalf of your
+4 Production times are off. Merchant Exchange takes 20 turns on Turn 1 for Morgan.
+5 FACTION_DATA contains single quotes and double quotes.
+6 Not all faction bonuses are applied.
+7 When I'm surprise attacked, another popup appears for each Pact brother or sister I have, saying, "On behalf of your
  pact, <pactbors> has pronounced on <attacker>!"
-10 Invert the way damage is shown.
-11 If an artifact is held in a base with an unlinked Network Node, a popup occurs, asking if we'd like to link it.
+8 Invert the way damage is shown.
+9 If an artifact is held in a base with an unlinked Network Node, a popup occurs, asking if we'd like to link it.
 If yes, the artifact is consumed and we get a free tech. Linking means a network node can only consume one artifact ever.
-12 If an artifact walks onto a square that is adjacent to an enemy, a popup occurs that the artifact was stolen. Ok button.
+10 If an artifact walks onto a square that is adjacent to an enemy, a popup occurs that the artifact was stolen. Ok button.
 The artifact transports to the title the unit was on.
-13 If an artifact is on the same title as a military unit, and another faction kills that unit, the artifact gets taken
+11 If an artifact is on the same title as a military unit, and another faction kills that unit, the artifact gets taken
 in similar fashion. Note that if the tile has multiple units on it, the artifact stays put. Only transfers on the last death.
-14 If an artifact moves onto a supply pod, both artifact and pod are consumed. No tech comes of it.
-15 The first person to discover any of the three techs starting with "Secrets of" get another tech right after.
-16 Healing isn't working correctly. It's applying the bonuses correctly, but when the units are moving. It should only
+12 If an artifact moves onto a supply pod, both artifact and pod are consumed. No tech comes of it.
+13 The first person to discover any of the three techs starting with "Secrets of" get another tech right after.
+14 Healing isn't working correctly. It's applying the bonuses correctly, but when the units are moving. It should only
 be when they've skipped their turn entirely. If a unit has even partially moved or acted that turn, healing doesn't happen
 naturally (movement onto a monolith is the exception.)
-18 Combat showed a bonus of 12% without any descriptor. Was this a morale boost? If so, display it as <morale level>: +<x>%
-19 Combat should take one movement of a unit. For some reason, it seems to end the turn of a scout patrol, but take zero
-turns off a speeder. It can take additional if the unit is sufficiently wounded. The math there: if the unit has a fraction
-of their health gone equal to the number of moves they have, they lose a move. For example, if a speeder starts the turn
-with 50% damage, it has 1 move. If it starts the turn with combat, and in the process loses 50% health, it's turn is over
-(lost 1 move to battle, 1 to health).
-20 If I click on an enemy base, its base view should still pop up. To the right of the base name, it should say (<faction>)
-21 Got a diplomatic milestone popup when missing commlinks.
+15 If I click on an enemy base, its base view should still pop up. To the right of the base name, it should say (<faction>)
+16 Got a diplomatic milestone popup when missing commlinks.
 
 
 ***************************************************************************

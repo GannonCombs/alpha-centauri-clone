@@ -334,11 +334,18 @@ class BaseScreenManager:
 
         screen.blit(gov_text, (self.governor_button_rect.centerx - gov_text.get_width() // 2, self.governor_button_rect.centery - 8))
 
+        # Base name title — sits between the top bar and the mini-map
+        base_title_font = pygame.font.Font(None, 32)
+        base_title_surf = base_title_font.render(base.name, True, COLOR_TEXT)
+        base_title_y = top_bar_y + top_bar_h + 6
+        screen.blit(base_title_surf,
+                    (screen_w // 2 - base_title_surf.get_width() // 2, base_title_y))
+
         # TOP CENTER: Zoomed map view — fat cross domain (5×5 minus corners)
         map_view_w = 220
         map_view_h = 220
         map_view_x = (screen_w - map_view_w) // 2
-        map_view_y = top_bar_y + top_bar_h + 20
+        map_view_y = top_bar_y + top_bar_h + 38  # room for title above
         map_view_rect = pygame.Rect(map_view_x, map_view_y, map_view_w, map_view_h)
         pygame.draw.rect(screen, (25, 35, 40), map_view_rect)
         pygame.draw.rect(screen, COLOR_UI_BORDER, map_view_rect, 2)
@@ -886,9 +893,7 @@ class BaseScreenManager:
             support_text = self.small_font.render(f"0 units supported", True, (120, 140, 160))
             screen.blit(support_text, (support_x + 15, support_y + 40))
 
-        # Base name title at top
-        base_title = pygame.font.Font(None, 36).render(base.name, True, COLOR_TEXT)
-        screen.blit(base_title, (content_x + content_w // 2 - base_title.get_width() // 2, nutrients_y - 50))
+        # Base name title is drawn above the mini-map (see earlier in this function)
 
         # Rename and OK buttons at bottom center
         button_w = 150

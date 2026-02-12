@@ -374,7 +374,9 @@ class Combat:
             'current_round': 0,
             'round_timer': 0,
             'round_delay': 750,  # 0.75 seconds between hits in milliseconds
-            'complete': False
+            'complete': False,
+            'original_attacker_hp': original_attacker_hp,
+            'original_defender_hp': original_defender_hp,
         }
 
         # Get modifiers (calculated once at battle start, pass opponent for mode bonuses)
@@ -453,6 +455,29 @@ class Combat:
         else:
             self.active_battle['victor'] = 'attacker'
 
+    def _apply_combat_movement_cost(self, unit, original_hp):
+        """Consume movement points for a unit that survived combat.
+
+        Always costs 1 move. Additionally, if the health fraction lost during
+        combat is >= 1/max_moves, the unit loses one more move (e.g. a Speeder
+        that loses 50%+ HP in a fight loses its second move too).
+
+        Args:
+            unit: The surviving unit
+            original_hp: Unit's HP at the start of this combat
+        """
+        # Base cost: 1 move for engaging in combat
+        unit.moves_remaining = max(0, unit.moves_remaining - 1)
+
+        # Extra move loss based on health damage taken this combat
+        max_moves = unit.max_moves()
+        if max_moves > 0:
+            health_lost = original_hp - unit.current_health
+            fraction_lost = health_lost / unit.max_health if unit.max_health > 0 else 0
+            threshold = 1.0 / max_moves
+            if fraction_lost >= threshold:
+                unit.moves_remaining = max(0, unit.moves_remaining - 1)
+
     def finish_battle(self):
         """Clean up after battle completes and apply results to game state."""
         if not self.active_battle:
@@ -500,19 +525,21 @@ class Combat:
             return
 
         # Remove destroyed unit and award experience
+        original_attacker_hp = self.active_battle.get('original_attacker_hp', attacker.max_health)
+        original_defender_hp = self.active_battle.get('original_defender_hp', defender.max_health)
+
         if victor == 'defender':
             # Attacker destroyed
             self.game._remove_unit(attacker)
-            # Defender records kill and gains experience
             defender.record_kill()
-            # Attacker consumed their move/turn
-            # (already happened when they initiated attack)
+            # Defender survives — costs 1 move, plus extra if badly hurt
+            self._apply_combat_movement_cost(defender, original_defender_hp)
         else:
             # Defender destroyed
             self.game._remove_unit(defender)
-            # Attacker records kill and gains experience
             attacker.record_kill()
-            # Attacker consumed their move/turn
+            # Attacker survives — costs 1 move, plus extra if badly hurt
+            self._apply_combat_movement_cost(attacker, original_attacker_hp)
 
         # Clear battle state
         self.active_battle = None
