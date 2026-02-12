@@ -135,7 +135,7 @@ If there is a unit in a fungus square, another unit with at least one movement w
 
 +1 Nutrient production in fungus:
 
-Centauri Ecologyand Centauri Psi.
+Centauri Ecology and Centauri Psi.
 
 +1 Mineral production in fungus:
 
@@ -967,11 +967,6 @@ Energy Grid #
 Progenitor factions do not engage in commerce with humans. However, their experience with recycling does provide them with an Energy Grid at each base. Each Progenitor base facility is connected to this grid; every two base facilities generate one energy added to the base total, rounded up. Every two Secret Projects generate five energy added to the base total.
 
 Nerve Stapling causes widespread disaffection among Progenitor citizens, resulting in the shutdown of the Grid for a limited time.
-
-Victory (Progenitor) #
-The two Progenitor factions can achieve victory by calling in reinforcements from their respective homeworlds. To broadcast the hidden location of the Manifold to their leaders offworld, either Progenitor faction can construct a Resonance Communicator. The Communicator consists of six Subspace Generators, which must be built in bases of size ten or greater.
-
-Players who build the Resonance Communicator are awarded 2000 points minus 2 for every game turn elapsed. No cooperative victory is possible for this victory condition; if either Progenitor faction succeeds in the completion of such a Communicator, it heralds the end of human habitation on Planet.
 
 Ecology (Revised) #
 The Revised Eco-Formula:

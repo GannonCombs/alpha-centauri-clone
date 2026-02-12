@@ -689,9 +689,10 @@ class Game:
     def _collect_supply_pod(self, tile, unit):
         """Handle unit collecting a supply pod.
 
-        Outcomes (40 / 30 / 15 / 15):
+        Outcomes (40 / 15 / 15 / 15 / 15):
           40% — free tech (random researchable tech the faction could have studied)
-          30% — Alien Artifact spawned on the tile
+          15% — Alien Artifact spawned on the tile
+          15% — Commlink to a faction not yet contacted
           15% — 500 energy credits
           15% — River spawns from this tile
 
@@ -732,7 +733,7 @@ class Game:
                 else:
                     print(f"AI collected supply pod at ({tile.x}, {tile.y}): fallback credits")
 
-        elif roll < 0.70:
+        elif roll < 0.55:
             # --- Alien Artifact ---
             from game.unit import Unit
             artifact = Unit(
@@ -754,6 +755,35 @@ class Game:
                 print(f"Artifact found at ({tile.x}, {tile.y})")
             else:
                 print(f"AI found artifact at ({tile.x}, {tile.y})")
+
+        elif roll < 0.70:
+            # --- Commlink to an uncontacted faction ---
+            if unit.owner == self.player_faction_id:
+                from game.data.data import FACTION_DATA
+                uncontacted = [
+                    fid for fid in range(7)
+                    if fid != self.player_faction_id
+                    and fid not in self.faction_contacts
+                    and fid not in self.eliminated_factions
+                    and fid in self.factions
+                ]
+                if uncontacted:
+                    new_faction_id = random.choice(uncontacted)
+                    faction_name = FACTION_DATA[new_faction_id]['name'] if new_faction_id < len(FACTION_DATA) else f"Faction {new_faction_id}"
+                    self.supply_pod_message = f"Supply Pod discovered! Commlink frequencies for {faction_name} recovered from ancient datalinks!"
+                    self.add_faction_contact(new_faction_id)
+                    self.pending_commlink_requests.append({
+                        'other_faction_id': new_faction_id,
+                        'player_faction_id': self.player_faction_id
+                    })
+                    print(f"Supply pod commlink: player gained contact with faction {new_faction_id}")
+                else:
+                    # Already know everyone — fall back to credits
+                    self.energy_credits += 500
+                    self.supply_pod_message = "Supply Pod discovered! You gain 500 energy credits."
+                    print(f"Supply pod commlink fallback (all known) at ({tile.x}, {tile.y}): +500 credits")
+            else:
+                print(f"AI collected supply pod (commlink) at ({tile.x}, {tile.y})")
 
         elif roll < 0.85:
             # --- 500 energy credits ---
