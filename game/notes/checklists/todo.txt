@@ -20,7 +20,7 @@ Use it to test the following issues, but also test debug mode along the way.
   - Adjustable slider/percentage allocation ✅
 
   3. Psych, Drones, and Talents System
-  - Drones = unhappy citizens (appear based on difficulty and base size)
+  - Drones = unhappy citizens (appear based on difficulty and base size) ✅
   - Talents = happy citizens (created via Psych allocation or facilities)
   - Drone Riots occur when Drones > Talents (production stops)
   - Facilities like Recreation Commons reduce drones
@@ -154,6 +154,8 @@ be when they've skipped their turn entirely. If a unit has even partially moved 
 naturally (movement onto a monolith is the exception.)
 10 Turn auto-ends when the last unit moves into contact with a new faction. End turn needs to wait for diplomacy to finish.
 The End Turn button should then blink, not auto-end.
+11 When opening an enemy's base, none of it should be alterable. Right now, I can choose tiles worked, and pick specialists.
+It should be read-only, so to speak.
 
 
 
@@ -165,11 +167,11 @@ The End Turn button should then blink, not auto-end.
 
 
 
-Art
-Sounds
-Terraforming
-Fog of war
-Advanced unit movement (G command, J command, drag path)
-Isometric
-Diplomacy trees
-Datalinks concepts
+1 Art
+2 Sounds
+3 Terraforming
+4 Fog of war
+5 Advanced unit movement (G command, J command, drag path)
+6 Isometric
+7 Diplomacy trees
+8 Datalinks concepts

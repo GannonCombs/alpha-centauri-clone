@@ -94,6 +94,7 @@ class Base:
         self.drones = 0             # Unhappy citizens
         self.talents = 0            # Happy citizens
         self.drone_riot = False     # Riot status
+        self.specialists = []       # List of specialist IDs assigned by the player
 
         # Production management
         self.hurried_this_turn = False  # Track if base has used hurry this turn
@@ -114,6 +115,9 @@ class Base:
         # Manual tile assignment overrides
         self.manual_include_coords = set()  # player explicitly wants these worked
         self.manual_exclude_coords = set()  # player explicitly doesn't want these worked
+
+        # Initialise happiness so the citizens bar is correct before the first upkeep
+        self.calculate_population_happiness()
 
     def _get_fat_cross_domain(self, game_map):
         """Return list of (tile, (nx, ny)) for all domain tiles in the fat cross.
@@ -159,7 +163,9 @@ class Base:
             return []
 
         worked = [base_tile]
-        slots = self.population  # base tile is free; each citizen works one additional tile
+        # Specialists don't work tiles — reduce available slots accordingly
+        num_specialists = len(getattr(self, 'specialists', []))
+        slots = max(0, self.population - num_specialists)
         if slots <= 0:
             return worked
 
@@ -503,13 +509,11 @@ class Base:
             energy_allocation['labs'],
             energy_allocation['psych']
         )
+        self.apply_specialist_bonuses()
 
         # Increment turns since capture (for disloyal citizens)
         if self.turns_since_capture is not None:
             self.turns_since_capture += 1
-
-        # Calculate population happiness
-        self.calculate_population_happiness()
 
         # Calculate resources from all worked tiles (base tile + workers' tiles).
         if game is not None:
@@ -529,6 +533,9 @@ class Base:
 
         # Update growth turns remaining
         self.growth_turns_remaining = self._calculate_growth_turns()
+
+        # Calculate population happiness after growth so icon counts match population
+        self.calculate_population_happiness()
 
         # Calculate unit support cost
         self.calculate_support_cost()
@@ -653,13 +660,40 @@ class Base:
         # Convert psych to talents (2 psych = 1 talent)
         base_talents = self.psych_output // 2
 
+        # Faction bonus: Lal (Peacekeepers, ID 6) gets 1 free talent per 4 citizens
+        # Citizens 1, 5, 9, 13, ... are always talents — formula: (pop + 3) // 4
+        if self.owner == 6:
+            base_talents += (self.population + 3) // 4
+
+        # Specialists occupy citizen slots that would otherwise be workers
+        num_specialists = len(self.specialists)
+        # If drone/talent growth has squeezed out worker slots, trim excess specialists
+        available_for_specialists = max(0, self.population - base_drones - base_talents)
+        if num_specialists > available_for_specialists:
+            self.specialists = self.specialists[:available_for_specialists]
+            num_specialists = available_for_specialists
+
         # Final population breakdown
         self.drones = base_drones
         self.talents = base_talents
-        self.workers = max(0, self.population - self.drones - self.talents)
+        self.workers = max(0, self.population - self.drones - self.talents - num_specialists)
 
         # Check for drone riot
         self.check_drone_riot()
+
+    def apply_specialist_bonuses(self):
+        """Add fixed specialist output on top of tile-based energy allocation.
+
+        Called after allocate_energy() so specialist bonuses are included in
+        the totals shown to the player and used by calculate_population_happiness.
+        """
+        from game.data.unit_data import SPECIALISTS
+        spec_map = {s['id']: s for s in SPECIALISTS}
+        for spec_id in self.specialists:
+            spec = spec_map.get(spec_id, {})
+            self.economy_output += spec.get('economy', 0)
+            self.labs_output    += spec.get('labs', 0)
+            self.psych_output   += spec.get('psych', 0)
 
     def check_drone_riot(self):
         """Check if drones outnumber talents, causing a riot."""
@@ -748,6 +782,7 @@ class Base:
             'workers': self.workers,
             'drones': self.drones,
             'talents': self.talents,
+            'specialists': list(self.specialists),
             'drone_riot': self.drone_riot,
             'free_support': self.free_support,
             'support_cost_paid': self.support_cost_paid,
@@ -796,6 +831,7 @@ class Base:
         base.workers = data.get('workers', base.population)
         base.drones = data.get('drones', 0)
         base.talents = data.get('talents', 0)
+        base.specialists = data.get('specialists', [])
         base.drone_riot = data.get('drone_riot', False)
         base.free_support = data.get('free_support', 2)
         base.support_cost_paid = data.get('support_cost_paid', 0)

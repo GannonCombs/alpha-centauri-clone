@@ -43,13 +43,13 @@ Talents
 Psych
 Landmarks, Volcanos, etc.
 Council Proposals ◐
-Nutrients
-Minerals
+Nutrients ◐
+Minerals ◐
 Energy ◐
 Economy ✓
 Labs
 Energy Reserves ◐
-Specialists
+Specialists ✓
 Diplomatic Relations ◐
 Base Conquest ◐
 Unity Pods ◐

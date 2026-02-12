@@ -1,11 +1,249 @@
 """Base-related screens (naming and management)."""
 
+import math
 import pygame
 from game.data import display
 from game import facilities
 from game.data.display import (COLOR_TEXT, COLOR_BUTTON, COLOR_BUTTON_HOVER,
                                  COLOR_BUTTON_BORDER, COLOR_BUTTON_HIGHLIGHT,
                                  COLOR_UI_BORDER, COLOR_BLACK)
+
+
+# ---------------------------------------------------------------------------
+# Citizen icon helpers
+# Each takes (screen, cx, cy, size) where (cx, cy) is the centre of the icon
+# and size is the diameter.  All icons are designed for size=40 but scale OK.
+# ---------------------------------------------------------------------------
+
+def draw_worker_icon(screen, cx, cy, size):
+    """Standard worker: warm tan, no mouth."""
+    r = size // 2
+    pygame.draw.circle(screen, (200, 180, 140), (cx, cy), r)
+    pygame.draw.circle(screen, (100, 90, 70), (cx, cy), r, 2)
+    eye_y = cy - size // 8
+    eye_dx = size // 5
+    pygame.draw.circle(screen, COLOR_BLACK, (cx - eye_dx, eye_y), max(2, size // 13))
+    pygame.draw.circle(screen, COLOR_BLACK, (cx + eye_dx, eye_y), max(2, size // 13))
+
+
+def draw_drone_icon(screen, cx, cy, size):
+    """Drone: red skin, frowny face."""
+    r = size // 2
+    pygame.draw.circle(screen, (210, 80, 80), (cx, cy), r)
+    pygame.draw.circle(screen, (130, 40, 40), (cx, cy), r, 2)
+    eye_y = cy - size // 8
+    eye_dx = size // 5
+    pygame.draw.circle(screen, COLOR_BLACK, (cx - eye_dx, eye_y), max(2, size // 13))
+    pygame.draw.circle(screen, COLOR_BLACK, (cx + eye_dx, eye_y), max(2, size // 13))
+    # Frown: bottom arc drawn as the top half of a small ellipse
+    mouth_w = size // 3
+    mouth_h = size // 7
+    mouth_rect = pygame.Rect(cx - mouth_w // 2, cy + size // 12, mouth_w, mouth_h)
+    pygame.draw.arc(screen, COLOR_BLACK, mouth_rect, 0, math.pi, max(1, size // 20))
+
+
+def draw_talent_icon(screen, cx, cy, size):
+    """Talent: lavender skin, glasses, slight smile."""
+    r = size // 2
+    pygame.draw.circle(screen, (195, 175, 225), (cx, cy), r)
+    pygame.draw.circle(screen, (110, 90, 140), (cx, cy), r, 2)
+    eye_y = cy - size // 8
+    eye_dx = size // 5
+    # Eyes (small dots behind glasses)
+    pygame.draw.circle(screen, COLOR_BLACK, (cx - eye_dx, eye_y), max(2, size // 15))
+    pygame.draw.circle(screen, COLOR_BLACK, (cx + eye_dx, eye_y), max(2, size // 15))
+    # Glasses: two small rounded rects + bridge
+    g = max(2, size // 20)
+    gr = size // 7
+    left_lens  = pygame.Rect(cx - eye_dx - gr, eye_y - gr, gr * 2, gr * 2)
+    right_lens = pygame.Rect(cx + eye_dx - gr, eye_y - gr, gr * 2, gr * 2)
+    pygame.draw.rect(screen, (60, 50, 80), left_lens,  g, border_radius=3)
+    pygame.draw.rect(screen, (60, 50, 80), right_lens, g, border_radius=3)
+    bridge_y = eye_y
+    pygame.draw.line(screen, (60, 50, 80),
+                     (left_lens.right, bridge_y), (right_lens.left, bridge_y), g)
+
+
+def draw_doctor_icon(screen, cx, cy, size):
+    """Doctor: pale skin, surgical mask with red cross."""
+    r = size // 2
+    pygame.draw.circle(screen, (240, 235, 225), (cx, cy), r)
+    pygame.draw.circle(screen, (160, 155, 145), (cx, cy), r, 2)
+    eye_y = cy - size // 6
+    eye_dx = size // 5
+    pygame.draw.circle(screen, COLOR_BLACK, (cx - eye_dx, eye_y), max(2, size // 14))
+    pygame.draw.circle(screen, COLOR_BLACK, (cx + eye_dx, eye_y), max(2, size // 14))
+    # Surgical mask on lower face
+    mask_w = r * 3 // 2
+    mask_h = r * 3 // 5
+    mask_rect = pygame.Rect(cx - mask_w // 2, cy - r // 6, mask_w, mask_h)
+    pygame.draw.rect(screen, (210, 225, 248), mask_rect, border_radius=4)
+    pygame.draw.rect(screen, (148, 170, 200), mask_rect, max(1, size // 22), border_radius=4)
+    # Red cross on mask
+    cs = max(2, size // 9)
+    mc = (mask_rect.centerx, mask_rect.centery)
+    lw = max(2, size // 18)
+    pygame.draw.line(screen, (210, 50, 50), (mc[0] - cs, mc[1]), (mc[0] + cs, mc[1]), lw)
+    pygame.draw.line(screen, (210, 50, 50), (mc[0], mc[1] - cs), (mc[0], mc[1] + cs), lw)
+
+
+def draw_technician_icon(screen, cx, cy, size):
+    """Technician: warm skin, yellow hard hat."""
+    r = size // 2
+    pygame.draw.circle(screen, (200, 170, 110), (cx, cy), r)
+    pygame.draw.circle(screen, (130, 105, 65), (cx, cy), r, 2)
+    eye_y = cy - size // 8
+    eye_dx = size // 5
+    pygame.draw.circle(screen, COLOR_BLACK, (cx - eye_dx, eye_y), max(2, size // 13))
+    pygame.draw.circle(screen, COLOR_BLACK, (cx + eye_dx, eye_y), max(2, size // 13))
+    # Hard hat dome sitting on top of head
+    hat_w = r * 7 // 4
+    hat_h = r // 2
+    brim_y = cy - r + r // 5
+    hat_rect = pygame.Rect(cx - hat_w // 2, brim_y - hat_h, hat_w, hat_h + r // 4)
+    pygame.draw.ellipse(screen, (230, 185, 45), hat_rect)
+    pygame.draw.ellipse(screen, (165, 128, 22), hat_rect, max(1, size // 20))
+    pygame.draw.line(screen, (165, 128, 22),
+                     (cx - hat_w // 2 - 2, brim_y), (cx + hat_w // 2 + 2, brim_y),
+                     max(2, size // 16))
+
+
+def draw_librarian_icon(screen, cx, cy, size):
+    """Librarian: cool gray-purple skin, thick scholarly glasses."""
+    r = size // 2
+    pygame.draw.circle(screen, (175, 165, 190), (cx, cy), r)
+    pygame.draw.circle(screen, (105, 95, 125), (cx, cy), r, 2)
+    eye_y = cy - size // 8
+    eye_dx = size // 5
+    pygame.draw.circle(screen, COLOR_BLACK, (cx - eye_dx, eye_y), max(2, size // 15))
+    pygame.draw.circle(screen, COLOR_BLACK, (cx + eye_dx, eye_y), max(2, size // 15))
+    # Thick frames (heavier than talent's slim glasses)
+    g = max(3, size // 11)
+    gr = size // 5
+    left_lens  = pygame.Rect(cx - eye_dx - gr, eye_y - gr, gr * 2, gr * 2)
+    right_lens = pygame.Rect(cx + eye_dx - gr, eye_y - gr, gr * 2, gr * 2)
+    pygame.draw.rect(screen, (45, 30, 70), left_lens,  g, border_radius=2)
+    pygame.draw.rect(screen, (45, 30, 70), right_lens, g, border_radius=2)
+    pygame.draw.line(screen, (45, 30, 70),
+                     (left_lens.right, eye_y), (right_lens.left, eye_y), g)
+
+
+def draw_empath_icon(screen, cx, cy, size):
+    """Empath: ghostly pale skin, violet eyes, ESP rays from top of head."""
+    r = size // 2
+    pygame.draw.circle(screen, (238, 238, 248), (cx, cy), r)
+    pygame.draw.circle(screen, (148, 138, 178), (cx, cy), r, 2)
+    eye_y = cy - size // 8
+    eye_dx = size // 5
+    pygame.draw.circle(screen, (88, 62, 140), (cx - eye_dx, eye_y), max(2, size // 13))
+    pygame.draw.circle(screen, (88, 62, 140), (cx + eye_dx, eye_y), max(2, size // 13))
+    # Psychic rays fanning from the upper arc of the head outward
+    ray_len = size * 2 // 5
+    ray_w = max(1, size // 22)
+    for i in range(5):
+        angle = math.radians(75 + i * 15)   # 75°→135°, top-left to top-right
+        sx = cx + int(math.cos(angle) * (r - 1))
+        sy = cy - int(math.sin(angle) * (r - 1))
+        ex = cx + int(math.cos(angle) * (r + ray_len))
+        ey = cy - int(math.sin(angle) * (r + ray_len))
+        pygame.draw.line(screen, (185, 145, 255), (sx, sy), (ex, ey), ray_w)
+
+
+def draw_engineer_icon(screen, cx, cy, size):
+    """Engineer: weathered skin, big gray beard."""
+    r = size // 2
+    pygame.draw.circle(screen, (190, 165, 135), (cx, cy), r)
+    pygame.draw.circle(screen, (110, 85, 60), (cx, cy), r, 2)
+    eye_y = cy - size // 8
+    eye_dx = size // 5
+    pygame.draw.circle(screen, COLOR_BLACK, (cx - eye_dx, eye_y), max(2, size // 13))
+    pygame.draw.circle(screen, COLOR_BLACK, (cx + eye_dx, eye_y), max(2, size // 13))
+    # Gray beard covering lower chin
+    beard_w = r * 7 // 5
+    beard_h = r * 4 // 5
+    beard_rect = pygame.Rect(cx - beard_w // 2, cy + r // 8, beard_w, beard_h)
+    pygame.draw.ellipse(screen, (165, 160, 158), beard_rect)
+    pygame.draw.ellipse(screen, (112, 108, 106), beard_rect, max(1, size // 20))
+
+
+def draw_thinker_icon(screen, cx, cy, size):
+    """Thinker: cool teal skin, furrowed brow."""
+    r = size // 2
+    pygame.draw.circle(screen, (155, 195, 205), (cx, cy), r)
+    pygame.draw.circle(screen, (85, 135, 148), (cx, cy), r, 2)
+    eye_y = cy - size // 8
+    eye_dx = size // 5
+    pygame.draw.circle(screen, COLOR_BLACK, (cx - eye_dx, eye_y), max(2, size // 13))
+    pygame.draw.circle(screen, COLOR_BLACK, (cx + eye_dx, eye_y), max(2, size // 13))
+    # Furrowed brow: lines angling down toward centre
+    brow_y = eye_y - max(3, size // 9)
+    bw = max(2, size // 16)
+    indent = max(2, size // 12)
+    pygame.draw.line(screen, (58, 100, 118),
+                     (cx - eye_dx - indent, brow_y),
+                     (cx - eye_dx + indent // 2, brow_y + indent), bw)
+    pygame.draw.line(screen, (58, 100, 118),
+                     (cx + eye_dx - indent // 2, brow_y + indent),
+                     (cx + eye_dx + indent, brow_y), bw)
+
+
+def draw_transcend_icon(screen, cx, cy, size):
+    """Transcend: golden glowing skin, sunburst rays, bright eyes."""
+    r = size // 2
+    # Alternating long/short sunburst rays drawn first (behind head)
+    ray_long  = size * 3 // 5
+    ray_short = size * 2 // 5
+    ray_w = max(2, size // 14)
+    for i in range(8):
+        angle = math.radians(i * 45)
+        length = ray_long if i % 2 == 0 else ray_short
+        ex = cx + int(math.cos(angle) * (r + length))
+        ey = cy + int(math.sin(angle) * (r + length))
+        pygame.draw.line(screen, (255, 200, 40), (cx, cy), (ex, ey), ray_w)
+    # Head drawn on top of rays
+    pygame.draw.circle(screen, (255, 225, 88), (cx, cy), r)
+    pygame.draw.circle(screen, (192, 148, 22), (cx, cy), r, 2)
+    eye_y = cy - size // 8
+    eye_dx = size // 5
+    # Glowing eyes with bright core
+    pygame.draw.circle(screen, (255, 255, 205), (cx - eye_dx, eye_y), max(3, size // 10))
+    pygame.draw.circle(screen, (255, 255, 205), (cx + eye_dx, eye_y), max(3, size // 10))
+    pygame.draw.circle(screen, (255, 195, 45), (cx - eye_dx, eye_y), max(1, size // 17))
+    pygame.draw.circle(screen, (255, 195, 45), (cx + eye_dx, eye_y), max(1, size // 17))
+
+
+# Map specialist/citizen type strings to their draw functions
+_CITIZEN_ICON_FUNCS = {
+    'worker':     draw_worker_icon,
+    'drone':      draw_drone_icon,
+    'talent':     draw_talent_icon,
+    'doctor':     draw_doctor_icon,
+    'technician': draw_technician_icon,
+    'librarian':  draw_librarian_icon,
+    'empath':     draw_empath_icon,
+    'engineer':   draw_engineer_icon,
+    'thinker':    draw_thinker_icon,
+    'transcend':  draw_transcend_icon,
+}
+
+
+def draw_citizen_icon(screen, cx, cy, size, ctype):
+    """Dispatch to the correct icon function by citizen/specialist type."""
+    _CITIZEN_ICON_FUNCS.get(ctype, draw_worker_icon)(screen, cx, cy, size)
+
+
+def _get_available_specialists(tech_tree, population):
+    """Return list of specialist dicts the player can currently assign."""
+    from game.data.unit_data import SPECIALISTS
+    available = []
+    for spec in SPECIALISTS:
+        prereq = spec['prereq']
+        if prereq is not None and not tech_tree.has_tech(prereq):
+            continue
+        if population < spec.get('min_pop', 1):
+            continue
+        available.append(spec)
+    return available
 
 
 class BaseScreenManager:
@@ -40,6 +278,15 @@ class BaseScreenManager:
         self.garrison_context_menu_y = 0
         self.garrison_activate_rect = None
         self.garrison_unit_rects = []  # List of (rect, unit) tuples
+        self.civ_icon_rects = []       # List of (rect, ctype, spec_idx) for citizen right-clicks
+
+        # Citizen specialist context menu
+        self.citizen_context_open = False
+        self.citizen_context_menu_x = 0
+        self.citizen_context_menu_y = 0
+        self.citizen_context_type = None    # 'worker' or a specialist id string
+        self.citizen_context_spec_idx = None  # index into base.specialists, or None
+        self.citizen_context_item_rects = []  # list of (rect, action, data)
 
         # UI elements
         self.base_naming_ok_rect = None
@@ -82,6 +329,7 @@ class BaseScreenManager:
         self.production_selection_open = False
         self.selected_production_item = None
         self.queue_management_open = False
+        self.citizen_context_open = False
 
     def draw_base_naming(self, screen):
         """Draw the base naming dialog."""
@@ -491,8 +739,16 @@ class BaseScreenManager:
         nut_intake = getattr(base, 'nutrients_per_turn', 0)
         nut_consumption = base.population * 2
         nut_surplus = nut_intake - nut_consumption
-        nut_values = self.small_font.render(f"{nut_intake} - {nut_consumption} = {nut_surplus}", True, (180, 200, 180))
-        screen.blit(nut_values, (resource_rows_x + resource_rows_w - nut_values.get_width(), nut_row_y))
+        if nut_surplus < 0:
+            seg_nut_main = self.small_font.render(f"{nut_intake} - {nut_consumption} = ", True, (180, 200, 180))
+            seg_nut_surp = self.small_font.render(str(nut_surplus), True, (210, 70, 70))
+            nut_total_w = seg_nut_main.get_width() + seg_nut_surp.get_width()
+            nut_blit_x = resource_rows_x + resource_rows_w - nut_total_w
+            screen.blit(seg_nut_main, (nut_blit_x, nut_row_y))
+            screen.blit(seg_nut_surp, (nut_blit_x + seg_nut_main.get_width(), nut_row_y))
+        else:
+            nut_values = self.small_font.render(f"{nut_intake} - {nut_consumption} = {nut_surplus}", True, (180, 200, 180))
+            screen.blit(nut_values, (resource_rows_x + resource_rows_w - nut_values.get_width(), nut_row_y))
 
         # Minerals row
         min_row_y = nut_row_y + row_h
@@ -527,22 +783,30 @@ class BaseScreenManager:
             seg_ene = self.small_font.render(f"{ene_intake} - {ene_consumption} = {ene_surplus}", True, ene_color)
             screen.blit(seg_ene, (resource_rows_x + resource_rows_w - seg_ene.get_width(), ene_row_y))
 
-        # Explainer row: form changes depending on whether inefficiency is present
+        # Explainer row: form changes depending on whether inefficiency is present and/or nutrient shortfall
         exp_row_y = ene_row_y + row_h + 5
         exp_color = (140, 140, 160)
         exp_red = (210, 70, 70)
+        surplus_label = "SHORTFALL" if nut_surplus < 0 else "SURPLUS"
+        surplus_label_color = exp_red if nut_surplus < 0 else exp_color
         if ene_ineff > 0:
             seg_exp1 = self.small_font.render("INTAKE - (CONSUMPTION + ", True, exp_color)
             seg_exp_ineff = self.small_font.render("INEFFICIENCY", True, exp_red)
-            seg_exp2 = self.small_font.render(") = SURPLUS", True, exp_color)
-            exp_total_w = seg_exp1.get_width() + seg_exp_ineff.get_width() + seg_exp2.get_width()
+            seg_exp2 = self.small_font.render(") = ", True, exp_color)
+            seg_exp_surp = self.small_font.render(surplus_label, True, surplus_label_color)
+            exp_total_w = seg_exp1.get_width() + seg_exp_ineff.get_width() + seg_exp2.get_width() + seg_exp_surp.get_width()
             exp_blit_x = resource_rows_x + resource_rows_w // 2 - exp_total_w // 2
             screen.blit(seg_exp1, (exp_blit_x, exp_row_y))
             screen.blit(seg_exp_ineff, (exp_blit_x + seg_exp1.get_width(), exp_row_y))
             screen.blit(seg_exp2, (exp_blit_x + seg_exp1.get_width() + seg_exp_ineff.get_width(), exp_row_y))
+            screen.blit(seg_exp_surp, (exp_blit_x + seg_exp1.get_width() + seg_exp_ineff.get_width() + seg_exp2.get_width(), exp_row_y))
         else:
-            exp_text = self.small_font.render("INTAKE - CONSUMPTION = SURPLUS", True, exp_color)
-            screen.blit(exp_text, (resource_rows_x + resource_rows_w // 2 - exp_text.get_width() // 2, exp_row_y))
+            seg_exp_main = self.small_font.render("INTAKE - CONSUMPTION = ", True, exp_color)
+            seg_exp_surp = self.small_font.render(surplus_label, True, surplus_label_color)
+            exp_total_w = seg_exp_main.get_width() + seg_exp_surp.get_width()
+            exp_blit_x = resource_rows_x + resource_rows_w // 2 - exp_total_w // 2
+            screen.blit(seg_exp_main, (exp_blit_x, exp_row_y))
+            screen.blit(seg_exp_surp, (exp_blit_x + seg_exp_main.get_width(), exp_row_y))
 
         # Define content area (full width for layout)
         content_x = 20
@@ -574,8 +838,11 @@ class BaseScreenManager:
         progress_text = self.small_font.render(f"{base.nutrients_accumulated}/{base.nutrients_needed}", True, COLOR_TEXT)
         screen.blit(progress_text, (progress_rect.centerx - progress_text.get_width() // 2, progress_rect.centery - 8))
 
-        # Turns until growth
-        growth_text = self.small_font.render(f"Growth in {base.growth_turns_remaining} turns", True, (180, 220, 180))
+        # Turns until growth (or hunger warning if net negative nutrients)
+        if nut_surplus < 0:
+            growth_text = self.small_font.render("Hunger!", True, (210, 70, 70))
+        else:
+            growth_text = self.small_font.render(f"Growth in {base.growth_turns_remaining} turns", True, (180, 220, 180))
         screen.blit(growth_text, (nutrients_x + 10, nutrients_y + 70))
 
         pop_display = self.small_font.render(f"Population: {base.population}", True, COLOR_TEXT)
@@ -736,22 +1003,36 @@ class BaseScreenManager:
         civ_label = self.small_font.render("CITIZENS", True, COLOR_TEXT)
         screen.blit(civ_label, (civilian_bar_x + civilian_bar_w // 2 - civ_label.get_width() // 2, civilian_y - 25))
 
-        # Draw citizen icons inside the bar
+        # Draw citizen icons inside the bar — talents | specialists | workers | drones
         civ_icon_size = 40
         civ_spacing = 10
         total_civ_w = base.population * (civ_icon_size + civ_spacing) - civ_spacing
         civ_start_x = civilian_bar_x + (civilian_bar_w - total_civ_w) // 2
+        civ_cy = civilian_y + civilian_h // 2
 
-        for i in range(base.population):
-            civ_x = civ_start_x + i * (civ_icon_size + civ_spacing)
-            civ_y = civilian_y + (civilian_h - civ_icon_size) // 2
-            civ_rect = pygame.Rect(civ_x, civ_y, civ_icon_size, civ_icon_size)
-            pygame.draw.circle(screen, (200, 180, 140), civ_rect.center, civ_icon_size // 2)
-            pygame.draw.circle(screen, (100, 90, 70), civ_rect.center, civ_icon_size // 2, 2)
-            # Draw simple face
-            eye_y = civ_rect.centery - 5
-            pygame.draw.circle(screen, COLOR_BLACK, (civ_rect.centerx - 8, eye_y), 3)
-            pygame.draw.circle(screen, COLOR_BLACK, (civ_rect.centerx + 8, eye_y), 3)
+        # Build ordered list of (ctype, spec_idx) tuples, capped to population slots
+        # ctype is a citizen/specialist type string; spec_idx is index into base.specialists or None
+        citizen_list = []
+        for _ in range(min(base.talents, base.population)):
+            citizen_list.append(('talent', None))
+        for idx, spec_id in enumerate(getattr(base, 'specialists', [])):
+            if len(citizen_list) < base.population:
+                citizen_list.append((spec_id, idx))
+        remaining = base.population - len(citizen_list)
+        for _ in range(min(base.workers, remaining)):
+            citizen_list.append(('worker', None))
+        remaining = base.population - len(citizen_list)
+        for _ in range(min(base.drones, remaining)):
+            citizen_list.append(('drone', None))
+
+        self.civ_icon_rects = []
+        for i, (ctype, spec_idx) in enumerate(citizen_list):
+            cx = civ_start_x + i * (civ_icon_size + civ_spacing) + civ_icon_size // 2
+            rect = pygame.Rect(cx - civ_icon_size // 2,
+                               civ_cy - civ_icon_size // 2,
+                               civ_icon_size, civ_icon_size)
+            draw_citizen_icon(screen, cx, civ_cy, civ_icon_size, ctype)
+            self.civ_icon_rects.append((rect, ctype, spec_idx))
 
         # GARRISON BAR: Units in base (always show bar like citizens panel)
         garrison_y = civilian_y + civilian_h + 30  # Increased spacing to avoid overlap
@@ -813,6 +1094,10 @@ class BaseScreenManager:
             activate_text = self.small_font.render("Activate", True, COLOR_TEXT)
             screen.blit(activate_text, (self.garrison_activate_rect.centerx - activate_text.get_width() // 2,
                                        self.garrison_activate_rect.centery - activate_text.get_height() // 2))
+
+        # Draw citizen specialist context menu if open
+        if self.citizen_context_open:
+            self._draw_citizen_context_menu(screen, game)
 
         # BOTTOM LEFT: Current Production (expanded)
         prod_x = content_x
@@ -1420,6 +1705,50 @@ class BaseScreenManager:
         close_surf = self.small_font.render("Close", True, COLOR_TEXT)
         screen.blit(close_surf, (close_rect.centerx - close_surf.get_width() // 2, close_rect.centery - 8))
 
+    def _draw_citizen_context_menu(self, screen, game):
+        """Draw the specialist assignment context menu."""
+        base = self.viewing_base
+        if not base:
+            return
+
+        faction = game.factions[base.owner]
+        available = _get_available_specialists(faction.tech_tree, base.population)
+
+        # Build item list
+        items = []
+        if self.citizen_context_type == 'worker':
+            for spec in available:
+                items.append((spec['id'], spec['name']))
+        else:
+            # It's a specialist — offer revert + switch to other specialists
+            items.append(('__revert__', 'Revert to Auto'))
+            for spec in available:
+                if spec['id'] != self.citizen_context_type:
+                    items.append((spec['id'], spec['name']))
+
+        item_h = 30
+        menu_w = 160
+        menu_h = len(items) * item_h + 8
+        mx = min(self.citizen_context_menu_x, display.SCREEN_WIDTH - menu_w - 4)
+        my = min(self.citizen_context_menu_y, display.SCREEN_HEIGHT - menu_h - 4)
+
+        pygame.draw.rect(screen, (45, 45, 52), pygame.Rect(mx, my, menu_w, menu_h), border_radius=4)
+        pygame.draw.rect(screen, (120, 120, 135), pygame.Rect(mx, my, menu_w, menu_h), 2, border_radius=4)
+
+        self.citizen_context_item_rects = []
+        mouse_pos = pygame.mouse.get_pos()
+        for i, (action, label) in enumerate(items):
+            item_rect = pygame.Rect(mx + 4, my + 4 + i * item_h, menu_w - 8, item_h - 2)
+            hover = item_rect.collidepoint(mouse_pos)
+            if hover:
+                pygame.draw.rect(screen, (70, 70, 90), item_rect, border_radius=3)
+            if action != '__revert__':
+                draw_citizen_icon(screen, item_rect.x + 16, item_rect.centery, 22, action)
+            label_surf = self.small_font.render(label, True, (220, 215, 200) if hover else COLOR_TEXT)
+            screen.blit(label_surf, (item_rect.x + (34 if action != '__revert__' else 8),
+                                     item_rect.centery - label_surf.get_height() // 2))
+            self.citizen_context_item_rects.append((item_rect, action))
+
     def handle_base_view_right_click(self, pos, game):
         """Handle right-clicks in the base view screen (for garrison context menu)."""
         # Check if right-clicking on a garrison unit
@@ -1439,6 +1768,29 @@ class BaseScreenManager:
                 self.garrison_context_menu_y = min(pos[1], screen_h - menu_h)
 
                 return True
+
+        # Check citizen icons — only for player's own base
+        base = self.viewing_base
+        if base and base.owner == game.player_faction_id:
+            for rect, ctype, spec_idx in self.civ_icon_rects:
+                if rect.collidepoint(pos):
+                    if ctype == 'worker':
+                        self.citizen_context_open = True
+                        self.citizen_context_type = 'worker'
+                        self.citizen_context_spec_idx = None
+                        self.citizen_context_menu_x = pos[0]
+                        self.citizen_context_menu_y = pos[1]
+                        self.garrison_context_menu_open = False
+                        return True
+                    elif ctype not in ('talent', 'drone'):
+                        # It's a specialist
+                        self.citizen_context_open = True
+                        self.citizen_context_type = ctype
+                        self.citizen_context_spec_idx = spec_idx
+                        self.citizen_context_menu_x = pos[0]
+                        self.citizen_context_menu_y = pos[1]
+                        self.garrison_context_menu_open = False
+                        return True
         return False
 
     def handle_base_view_click(self, pos, game):
@@ -1463,6 +1815,36 @@ class BaseScreenManager:
             # Close menu on any other click
             self.garrison_context_menu_open = False
             self.garrison_context_unit = None
+            return None
+
+        # Citizen specialist context menu
+        if self.citizen_context_open:
+            for item_rect, action in self.citizen_context_item_rects:
+                if item_rect.collidepoint(pos):
+                    if action == '__revert__':
+                        # Remove this specialist; recalculate will reassign as worker/talent/drone
+                        if self.citizen_context_spec_idx is not None:
+                            base.specialists.pop(self.citizen_context_spec_idx)
+                        base.calculate_population_happiness()
+                        base.calculate_resource_output(game.game_map)
+                        base.growth_turns_remaining = base._calculate_growth_turns()
+                        game.set_status_message("Specialist reverted to auto citizen")
+                    else:
+                        # Assign worker as specialist, or replace existing specialist
+                        if self.citizen_context_type == 'worker':
+                            base.specialists.append(action)
+                        elif self.citizen_context_spec_idx is not None:
+                            base.specialists[self.citizen_context_spec_idx] = action
+                        base.calculate_population_happiness()
+                        base.calculate_resource_output(game.game_map)
+                        base.growth_turns_remaining = base._calculate_growth_turns()
+                        from game.data.unit_data import SPECIALISTS
+                        name = next((s['name'] for s in SPECIALISTS if s['id'] == action), action)
+                        game.set_status_message(f"Citizen assigned as {name}")
+                    self.citizen_context_open = False
+                    return None
+            # Click outside menu closes it
+            self.citizen_context_open = False
             return None
 
         # If queue management popup is open, handle its clicks first
