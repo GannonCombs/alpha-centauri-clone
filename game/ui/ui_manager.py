@@ -1293,7 +1293,7 @@ class UIManager:
         screen.blit(overlay, (0, 0))
 
         # Event popup box
-        box_w, box_h = 600, 300
+        box_w, box_h = 600, 360
         box_x = display.SCREEN_WIDTH // 2 - box_w // 2
         box_y = display.SCREEN_HEIGHT // 2 - box_h // 2
 
@@ -1334,8 +1334,30 @@ class UIManager:
                 f"",
                 f"{event['tech_name']}",
                 f"",
-                "New units and facilities may be available."
             ]
+            # Build unlock lines from tech data
+            tech_id = event.get('tech_id')
+            if tech_id:
+                from game.data.unit_data import CHASSIS, WEAPONS, ARMOR, REACTORS, SPECIAL_ABILITIES
+                from game.data.facility_data import FACILITIES, SECRET_PROJECTS
+                unit_types = []
+                for item in CHASSIS + WEAPONS + ARMOR + REACTORS:
+                    if item.get('prereq') == tech_id:
+                        unit_types.append(item['name'])
+                abilities = [a['name'] for a in SPECIAL_ABILITIES
+                             if a.get('prereq') == tech_id and a['id'] != 'none']
+                facilities = [f['name'] for f in FACILITIES + SECRET_PROJECTS
+                              if f.get('prereq') == tech_id]
+                if unit_types:
+                    msg_lines.append(f"Units: {', '.join(unit_types)}")
+                if abilities:
+                    msg_lines.append(f"Abilities: {', '.join(abilities)}")
+                if facilities:
+                    msg_lines.append(f"Facilities: {', '.join(facilities)}")
+                if not unit_types and not abilities and not facilities:
+                    msg_lines.append("No new units or facilities.")
+            else:
+                msg_lines.append("New units and facilities may be available.")
         elif event['type'] == 'all_contacts':
             msg_lines = [
                 "You have established contact with",

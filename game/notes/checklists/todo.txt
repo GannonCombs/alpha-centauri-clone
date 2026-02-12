@@ -148,12 +148,13 @@ naturally (movement onto a monolith is the exception.)
 15 Got a diplomatic milestone popup when missing commlinks.
 16 Turn auto-ends when the last unit moves into contact with a new faction. End turn needs to wait for diplomacy to finish.
 The End Turn button should then blink, not auto-end.
-17 New tech screen says "New units may be available" or something. This should list the exact perks, just like the tech
-tree does.
+17 Saw an AI unit on an island tile it couldn't have walked to, before getting a transport. They were on the bottom row
+of the map; are there invisible tiles there that are playable?
 18 After pressing the V button, the garrison and player panes in the console should update, including if the tile has no
 units in it.
 19 New unit design on better unit tech is still not popping up, at least not consistently. Is the pattern that chassis and
  armor upgrade, but weapons don't? Edit: on Centauri Ecology, Terraformers are not popping up. They should!
+20 The first turn, research says 5 years left. In the next turns, it says 9,8,7...this countdown is accurate.
 
 ***************************************************************************
 

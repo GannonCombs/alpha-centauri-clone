@@ -266,7 +266,7 @@ class DesignWorkshopScreen:
                 best_weapon = max(combat_weapons, key=lambda w: w['attack']) if combat_weapons else None
                 if best_weapon:
                     armor_to_use = self._get_armor_for_chassis(chassis, best_armor, min_armor_obj)
-                    design_name = generate_unit_name(best_weapon['id'], chassis['id'], armor_to_use['id'])
+                    design_name = generate_unit_name(best_weapon['id'], chassis['id'], armor_to_use['id'], 'fission', 'none', 'none')
                     if design_name not in existing_names:
                         new_designs.append({
                             "chassis": chassis['id'],
