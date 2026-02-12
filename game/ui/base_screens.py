@@ -269,9 +269,13 @@ class BaseScreenManager:
             base.calculate_resource_output(game.game_map)
             base.energy_production = base.energy_per_turn  # sync for allocate_energy
             base.growth_turns_remaining = base._calculate_growth_turns()
-            # Refresh energy allocation so economy/labs/psych values are current
-            # TODO: pull percentages from social engineering when implemented
-            base.allocate_energy(50, 50, 0)
+            # Apply inefficiency before splitting so economy/labs reflect true net
+            if hasattr(game, '_calc_inefficiency_loss'):
+                ineff = game._calc_inefficiency_loss(base, base.owner)
+                base.inefficiency_loss = min(base.energy_production, max(0, ineff))
+                base.energy_production = max(0, base.energy_production - base.inefficiency_loss)
+            alloc = getattr(game, 'global_energy_allocation', {'economy': 50, 'labs': 50, 'psych': 0})
+            base.allocate_energy(alloc['economy'], alloc['labs'], alloc['psych'])
 
         # Fill background
         screen.fill((15, 20, 25))
@@ -467,7 +471,7 @@ class BaseScreenManager:
         ene_label = self.small_font.render("Energy:", True, (220, 220, 100))
         screen.blit(ene_label, (resource_rows_x, ene_row_y))
         ene_intake = getattr(base, 'energy_per_turn', base.energy_production)
-        ene_ineff = 0       # placeholder — will be wired to inefficiency formula later
+        ene_ineff = getattr(base, 'inefficiency_loss', 0)
         ene_consumption = 0  # placeholder — inefficiency is the only energy consumption
         ene_surplus = ene_intake - ene_ineff
         ene_color = (200, 200, 120)

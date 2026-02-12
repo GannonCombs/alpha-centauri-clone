@@ -148,7 +148,14 @@ be when they've skipped their turn entirely. If a unit has even partially moved 
 naturally (movement onto a monolith is the exception.)
 15 If I click on an enemy base, its base view should still pop up. To the right of the base name, it should say (<faction>)
 16 Got a diplomatic milestone popup when missing commlinks.
-
+17 Turn auto-ends when the last unit moves into contact with a new faction. End turn needs to wait for diplomacy to finish.
+The End Turn button should then blink, not auto-end.
+18 New tech screen says "New units may be available" or something. This should list the exact perks, just like the tech
+tree does.
+19 After pressing the V button, the garrison and player panes in the console should update, including if the tile has no
+units in it.
+20 1-1-1 is called Scout Squad, not Scout Patrol.
+21 Worse, Scout Patrol is hardcoded on base start. We should NEVER be able to make units that aren't a saved design!
 
 ***************************************************************************
 

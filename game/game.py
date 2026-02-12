@@ -1612,6 +1612,61 @@ class Game:
                 return True
         return False
 
+    def _get_hq_base(self, faction_id):
+        """Return the Headquarters base for a faction, or None if none exists."""
+        for base in self.bases:
+            if base.owner == faction_id and 'headquarters' in base.facilities:
+                return base
+        return None
+
+    def _calc_inefficiency_loss(self, base, faction_id):
+        """Calculate energy lost to inefficiency for a base.
+
+        Formula: Energy * Distance / (64 - (4 - Efficiency) * 8)
+        Capped at Energy (can't lose more than you produce).
+        Distance = Manhattan distance to HQ (16 if no HQ).
+
+        Args:
+            base: Base instance to calculate for
+            faction_id (int): Owner faction ID
+
+        Returns:
+            int: Energy units lost to inefficiency
+        """
+        from game.social_engineering import calculate_se_effects
+
+        energy = base.energy_production
+        if energy <= 0:
+            return 0
+
+        # Get EFFIC SE rating for this faction
+        if faction_id == self.player_faction_id:
+            efficiency = calculate_se_effects(self.se_selections).get('EFFIC', 0)
+        else:
+            efficiency = 0  # AI uses default SE (no choices implemented yet)
+
+        # TODO: Children's Creche adds +2 to efficiency for this base
+        # if 'childrens_creche' in base.facilities:
+        #     efficiency += 2
+
+        # Manhattan distance to HQ (with east-west map wrapping)
+        hq = self._get_hq_base(faction_id)
+        if hq is None:
+            distance = 16
+        else:
+            dx = abs(base.x - hq.x)
+            if dx > self.game_map.width // 2:
+                dx = self.game_map.width - dx
+            dy = abs(base.y - hq.y)
+            distance = dx + dy
+
+        denominator = 64 - (4 - efficiency) * 8
+        if denominator <= 0:
+            return energy  # All energy lost (very negative EFFIC)
+
+        loss = energy * distance // denominator
+        return min(energy, loss)
+
     def get_planet_rating(self, faction_id):
         """Return the PLANET social engineering rating for a faction.
 
@@ -2100,7 +2155,11 @@ class Game:
                 self.ai_unit_queue = [u for u in self.units
                                      if u.owner == ai_player.player_id and u.moves_remaining > 0]
                 self.ai_current_unit_index = 0
-                return True
+                if self.ai_unit_queue:
+                    return True
+                # No units - break out so the completion block below handles
+                # base processing and advances current_ai_index
+                break
 
             # If we get here, all AI players are done (or eliminated)
             else:
@@ -2115,7 +2174,8 @@ class Game:
                         # Reset hurry flag at start of turn
                         base.hurried_this_turn = False
                         player_faction = self.factions[self.player_faction_id]
-                        completed_item = base.process_turn(self.global_energy_allocation, player_faction, self)
+                        ineff_loss = self._calc_inefficiency_loss(base, self.player_faction_id)
+                        completed_item = base.process_turn(self.global_energy_allocation, player_faction, self, inefficiency_loss=ineff_loss)
                         if completed_item:
                             # Store for spawning at start of next turn (after upkeep)
                             self.pending_production.append((base, completed_item))
@@ -2220,7 +2280,8 @@ class Game:
                     # Reset hurry flag at start of AI turn
                     base.hurried_this_turn = False
                     ai_faction = self.factions[ai_player.player_id]
-                    completed_item = base.process_turn(ai_energy_allocation, ai_faction, self)
+                    ineff_loss = self._calc_inefficiency_loss(base, ai_player.player_id)
+                    completed_item = base.process_turn(ai_energy_allocation, ai_faction, self, inefficiency_loss=ineff_loss)
                     if completed_item:
                         # Store for spawning at start of next turn (after upkeep)
                         self.pending_production.append((base, completed_item))

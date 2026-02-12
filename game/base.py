@@ -76,6 +76,7 @@ class Base:
         self.labs_output = 0        # Energy to research
         self.psych_output = 0       # Energy to happiness
         self.commerce_income = 0    # Bonus energy from commerce (set by commerce system)
+        self.inefficiency_loss = 0  # Energy lost to inefficiency this turn (for display)
 
         # Population happiness (for psych system)
         self.workers = 1            # Working citizens
@@ -461,7 +462,7 @@ class Base:
 
         return penalty
 
-    def process_turn(self, energy_allocation=None, faction=None, game=None):
+    def process_turn(self, energy_allocation=None, faction=None, game=None, inefficiency_loss=0):
         """Process end of turn for this base.
 
         Adds nutrients, checks for population growth, handles production,
@@ -484,6 +485,8 @@ class Base:
 
         # Calculate energy production and allocate it
         self.calculate_energy_output(game)
+        self.inefficiency_loss = min(self.energy_production, max(0, inefficiency_loss))
+        self.energy_production = max(0, self.energy_production - self.inefficiency_loss)
         self.allocate_energy(
             energy_allocation['economy'],
             energy_allocation['labs'],

@@ -27,7 +27,7 @@ Conquer (Governor) ◐
 Damage and Repair ✓
 Prototypes
 Unit Cost (Basic)
-Inefficiency (Basic)
+Inefficiency (Basic) ✓
 Ecology (Basic)
 Planetary Council ◐
 Planetary Governor ◐
@@ -58,7 +58,7 @@ Random Events
 Advanced Concepts:
 
 Unit Cost (Advanced)
-Inefficiency (Advanced)
+Inefficiency (Advanced) ◐ (Needs Children's Creche piece)
 Ecology (Advanced)
 Commerce (Advanced) ◐
 Score
