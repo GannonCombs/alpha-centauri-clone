@@ -12,6 +12,7 @@ This module contains the main Game class that manages all game state including:
 The Game class coordinates all major game systems and handles turn processing,
 unit movement, combat, and AI behavior.
 """
+import random
 import pygame
 from game.data import display
 from game import facilities
@@ -29,7 +30,7 @@ from game.debug import DebugManager  # DEBUG: Remove for release
 class Game:
     """Main game state manager."""
 
-    def __init__(self, player_faction_id=0, player_name=None, ocean_percentage=None, map_width=None, map_height=None, cloud_cover=None, erosive_forces=None):
+    def __init__(self, player_faction_id=0, player_name=None, ocean_percentage=None, map_width=None, map_height=None, cloud_cover=None, erosive_forces=None, native_life=None):
         """Initialize a new game.
 
         Args:
@@ -44,7 +45,7 @@ class Game:
         self.map_width = map_width
         self.map_height = map_height
 
-        self.game_map = GameMap(map_width, map_height, ocean_percentage, cloud_cover, erosive_forces)
+        self.game_map = GameMap(map_width, map_height, ocean_percentage, cloud_cover, erosive_forces, native_life)
         self.turn = 1
         self.running = True
         self.player_faction_id = player_faction_id  # Which faction the player chose
@@ -221,7 +222,7 @@ class Game:
         for y in range(1, self.game_map.height - 1):
             for x in range(self.game_map.width):
                 tile = self.game_map.get_tile(x, y)
-                if tile.is_land() and not tile.supply_pod and getattr(tile, 'rockiness', 0) != 2:
+                if tile.is_land() and not tile.supply_pod and getattr(tile, 'rockiness', 0) != 2 and not getattr(tile, 'fungus', False):
                     land_tiles.append((x, y))
                 elif not tile.is_land():
                     ocean_tiles.append((x, y))
@@ -556,6 +557,25 @@ class Game:
         # Rocky terrain costs an extra movement point (2 total per tile)
         if target_tile.is_land() and getattr(target_tile, 'rockiness', 0) == 2:
             unit.moves_remaining = max(0, unit.moves_remaining - 1)
+
+        # Fungus movement costs
+        if getattr(target_tile, 'fungus', False):
+            if target_tile.is_land():
+                # Land fungus: probabilistic movement drain.
+                # Exception: if any unit is already on the tile, entry is always free
+                # (only costs the normal 1 move that was already spent).
+                tile_already_occupied = len(target_tile.units) > 1  # >1 because unit was just added
+                if not tile_already_occupied:
+                    # Probability all remaining moves are consumed:
+                    # Base 50%, reduced 10% per PLANET SE point (min 0%).
+                    # Xenoempathy Dome (TODO) will grant an additional -30%.
+                    planet_rating = self.get_planet_rating(unit.owner)
+                    consume_chance = max(0.0, 0.50 - planet_rating * 0.10)
+                    if consume_chance > 0 and random.random() < consume_chance:
+                        unit.moves_remaining = 0
+            else:
+                # Sea fungus: flat 3 movement cost (subtract 2 extra on top of base 1)
+                unit.moves_remaining = max(0, unit.moves_remaining - 2)
 
         # If unit was held, unheld it when manually moved
         if hasattr(unit, 'held') and unit.held:
@@ -1409,6 +1429,10 @@ class Game:
         if tile and getattr(tile, 'rockiness', 0) == 2:
             return False, "Cannot found base on rocky terrain"
 
+        # Cannot found on xenofungus
+        if tile and getattr(tile, 'fungus', False):
+            return False, "Cannot found base on xenofungus"
+
         # Check for adjacent bases (including diagonals, with wrapping)
         for dx in [-1, 0, 1]:
             for dy in [-1, 0, 1]:
@@ -1587,6 +1611,22 @@ class Game:
             if base.x == unit.x and base.y == unit.y and base.owner == unit.owner:
                 return True
         return False
+
+    def get_planet_rating(self, faction_id):
+        """Return the PLANET social engineering rating for a faction.
+
+        Returns 0 until SE is implemented. When SE is added, this method
+        should return the faction's effective PLANET rating (base + modifiers).
+        Xenoempathy Dome will add +3 here.
+
+        Args:
+            faction_id (int): Faction ID
+
+        Returns:
+            int: PLANET rating (typically -2 to +4)
+        """
+        # TODO: wire up to SE system when implemented
+        return 0
 
     def has_pact_with(self, faction_id1, faction_id2):
         """Check if two factions have a pact.

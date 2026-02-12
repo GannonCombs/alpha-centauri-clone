@@ -420,11 +420,11 @@ class IntroScreenManager:
         title_surf = self.title_font.render(title_text, True, (100, 200, 255))
         screen.blit(title_surf, (screen_width // 2 - title_surf.get_width() // 2, 150))
 
-        # Alien life options (only first one enabled)
+        # Alien life options — all enabled, with pink swatches indicating fungus density
         alien_options = [
-            ('abundant', 'Abundant', True),  # Only this is enabled
-            ('average', 'Average', False),
-            ('rare', 'Rare', False)
+            ('abundant', 'Abundant', (210, 80, 180)),   # Deep pink — lots of fungus
+            ('average',  'Average',  (200, 140, 190)),  # Medium pink
+            ('rare',     'Rare',     (200, 180, 205)),  # Pale pink — little fungus
         ]
 
         button_w = 400
@@ -434,7 +434,7 @@ class IntroScreenManager:
 
         self.alien_life_button_rects = []
 
-        for i, (alien_id, alien_name, enabled) in enumerate(alien_options):
+        for i, (alien_id, alien_name, swatch) in enumerate(alien_options):
             button_y = start_y + i * (button_h + button_spacing)
             button_rect = pygame.Rect(
                 screen_width // 2 - button_w // 2,
@@ -443,24 +443,22 @@ class IntroScreenManager:
                 button_h
             )
 
-            if enabled:
-                is_hover = button_rect.collidepoint(pygame.mouse.get_pos())
-                bg_color = (70, 90, 110) if is_hover else (45, 55, 65)
-                border_color = (120, 180, 200)
-                text_color = (220, 230, 240)
-            else:
-                bg_color = (30, 35, 40)
-                border_color = (80, 90, 100)
-                text_color = (100, 110, 120)
+            is_hover = button_rect.collidepoint(pygame.mouse.get_pos())
+            bg_color = (70, 90, 110) if is_hover else (45, 55, 65)
 
             pygame.draw.rect(screen, bg_color, button_rect, border_radius=8)
-            pygame.draw.rect(screen, border_color, button_rect, 3 if enabled else 1, border_radius=8)
+            pygame.draw.rect(screen, (120, 180, 200), button_rect, 3, border_radius=8)
 
-            text_surf = self.font.render(alien_name, True, text_color)
+            # Color swatch on the left showing fungus density color
+            swatch_rect = pygame.Rect(button_rect.x + 12, button_rect.centery - 12, 24, 24)
+            pygame.draw.rect(screen, swatch, swatch_rect, border_radius=3)
+            pygame.draw.rect(screen, (180, 190, 200), swatch_rect, 1, border_radius=3)
+
+            text_surf = self.font.render(alien_name, True, (220, 230, 240))
             screen.blit(text_surf, (button_rect.centerx - text_surf.get_width() // 2,
-                                   button_rect.centery - 10))
+                                   button_rect.centery - text_surf.get_height() // 2))
 
-            self.alien_life_button_rects.append((button_rect, alien_id, enabled))
+            self.alien_life_button_rects.append((button_rect, alien_id))
 
     def _draw_skill_level(self, screen, screen_width, screen_height):
         """Draw skill level selection screen."""
@@ -909,8 +907,8 @@ class IntroScreenManager:
     def _handle_alien_life_event(self, event):
         """Handle alien life form prominence selection events."""
         if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
-            for button_rect, alien_id, enabled in self.alien_life_button_rects:
-                if enabled and button_rect.collidepoint(event.pos):
+            for button_rect, alien_id in self.alien_life_button_rects:
+                if button_rect.collidepoint(event.pos):
                     self.selected_alien_life = alien_id
                     # Proceed to skill level
                     self.mode = 'skill_level'
@@ -970,7 +968,7 @@ class IntroScreenManager:
             elif event.key == pygame.K_RETURN:
                 # Start game
                 if self.player_name_input.strip():
-                    return 'start_game', self.selected_faction_id, self.player_name_input.strip(), self.selected_ocean_percentage, self.selected_cloud_cover, self.selected_erosive_forces
+                    return 'start_game', self.selected_faction_id, self.player_name_input.strip(), self.selected_ocean_percentage, self.selected_cloud_cover, self.selected_erosive_forces, self.selected_alien_life
             elif len(self.player_name_input) < 50:
                 # Add character
                 char = event.unicode
@@ -985,7 +983,7 @@ class IntroScreenManager:
             elif self.ok_button_rect and self.ok_button_rect.collidepoint(event.pos):
                 # Start game
                 if self.player_name_input.strip():
-                    return ('start_game', self.selected_faction_id, self.player_name_input.strip(), self.selected_ocean_percentage, self.selected_cloud_cover, self.selected_erosive_forces)
+                    return ('start_game', self.selected_faction_id, self.player_name_input.strip(), self.selected_ocean_percentage, self.selected_cloud_cover, self.selected_erosive_forces, self.selected_alien_life)
             elif self.cancel_button_rect and self.cancel_button_rect.collidepoint(event.pos):
                 # Back to faction select
                 self.mode = 'faction_select'

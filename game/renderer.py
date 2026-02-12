@@ -175,9 +175,16 @@ class Renderer:
 
         rect = pygame.Rect(screen_x, screen_y, TILE_SIZE, TILE_SIZE)
         pygame.draw.rect(self.screen, self._tile_color(tile), rect)
+
+        # Draw fungus base color (before border and rocks so they render on top)
+        if getattr(tile, 'fungus', False):
+            color = (200, 50, 120) if tile.is_land() else (80, 130, 210)
+            pygame.draw.rect(self.screen, color, rect)
+
+        # Grid border always on top of tile fill
         pygame.draw.rect(self.screen, COLOR_GRID, rect, 1)
 
-        # Draw rock shapes on rocky tiles
+        # Draw rock shapes on rocky tiles (visible through fungus)
         if tile.is_land() and getattr(tile, 'rockiness', 0) == 2:
             self._draw_rocks(screen_x, screen_y, tile.x, tile.y)
 

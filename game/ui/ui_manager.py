@@ -889,7 +889,7 @@ class UIManager:
             terrain_x = 1080
             terrain_y = display.UI_PANEL_Y + 20
             terrain_box_w = 200
-            terrain_box_h = 168
+            terrain_box_h = 185
             terrain_box = pygame.Rect(terrain_x - 10, terrain_y - 5, terrain_box_w, terrain_box_h)
             pygame.draw.rect(screen, (30, 40, 35), terrain_box)
             pygame.draw.rect(screen, COLOR_BUTTON_BORDER, terrain_box, 2)
@@ -949,6 +949,11 @@ class UIManager:
                 energy = tile_base_energy(tile)
                 ene_text = self.small_font.render(f"Energy: {energy}", True, (220, 220, 100))
                 screen.blit(ene_text, (terrain_x, terrain_y + 128))
+
+                # Xenofungus
+                if getattr(tile, 'fungus', False):
+                    xeno_text = self.small_font.render("Xenofungus", True, (255, 0, 200))
+                    screen.blit(xeno_text, (terrain_x, terrain_y + 148))
 
         # Layer 4a: Main Menu Drop-up
         if self.main_menu_open and self.active_screen == "GAME":

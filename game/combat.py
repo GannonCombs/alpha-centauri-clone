@@ -68,6 +68,17 @@ class Combat:
                     'display': '+50%'
                 })
 
+            # Xenofungus defense bonus (+50%) — land fungus only, outside a base,
+            # vs human/Progenitor factions (native life not yet implemented so always applies)
+            if (tile and not tile.base and tile.is_land()
+                    and getattr(tile, 'fungus', False)
+                    and vs_unit is not None):
+                modifiers.append({
+                    'name': 'Xenofungus',
+                    'multiplier': 1.50,
+                    'display': '+50%'
+                })
+
             # Base defense bonus
             if tile and tile.base:
                 modifiers.append({

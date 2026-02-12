@@ -77,6 +77,7 @@ class Tile:
         self.altitude = 0  # Exact altitude in meters: -3000 to 3500
         self.rainfall = 1  # 0=arid, 1=moderate, 2=rainy (land only; ocean is always 1)
         self.rockiness = 0  # 0=flat, 1=rolling, 2=rocky (land only; ocean is always 0)
+        self.fungus = False  # Xenofungus present on this tile
 
     def is_land(self):
         """Check if this tile is land terrain."""
@@ -90,7 +91,7 @@ class Tile:
 class GameMap:
     """Handles map generation and tile management."""
 
-    def __init__(self, width, height, ocean_percentage=None, cloud_cover=None, erosive_forces=None):
+    def __init__(self, width, height, ocean_percentage=None, cloud_cover=None, erosive_forces=None, native_life=None):
         """Initialize map with specified dimensions and ocean percentage.
 
         Args:
@@ -98,6 +99,7 @@ class GameMap:
             height (int): Map height in tiles
             ocean_percentage (int): Percentage of ocean tiles (30-90), None for default
             cloud_cover (str): 'arid', 'moderate', or 'rainy'; None picks randomly
+            native_life (str): 'abundant', 'average', or 'rare'; None picks randomly
         """
         self.width = width
         self.height = height
@@ -119,6 +121,10 @@ class GameMap:
         if erosive_forces is None:
             erosive_forces = random.uniform(0.10, 0.30)
         self.erosive_forces = erosive_forces
+
+        if native_life is None:
+            native_life = random.choice(['abundant', 'average', 'rare'])
+        self.native_life = native_life
 
         self.generate_random_map()
 
@@ -174,6 +180,9 @@ class GameMap:
         # Place monoliths on 1% of land tiles
         self._place_monoliths()
 
+        # Generate xenofungus based on native life setting
+        self._generate_fungus(self.native_life)
+
     def _place_supply_pods(self):
         """Place supply pods randomly on 3% of tiles (excluding edge rows)."""
         total_tiles = self.width * self.height
@@ -220,6 +229,83 @@ class GameMap:
             attempts += 1
 
         print(f"Placed {placed} monoliths on the map")
+
+    def _generate_fungus(self, native_life):
+        """Generate xenofungus across the map.
+
+        Uses independent noise with one smoothing pass to create clustered
+        fungal regions. Land and ocean tiles are classified separately with
+        different target densities per native_life setting.
+
+        Land fungus appears as pink overlay; sea fungus as lighter blue.
+        Both impose movement penalties (see game.py try_move_unit).
+
+        Args:
+            native_life (str): 'abundant', 'average', or 'rare'
+        """
+        print(f"\n=== GENERATING FUNGUS (native_life={native_life}) ===")
+
+        # Target fraction of each terrain type that becomes fungus
+        targets = {
+            'abundant': (0.22, 0.15),  # (land_fraction, sea_fraction)
+            'average':  (0.12, 0.08),
+            'rare':     (0.04, 0.03),
+        }
+        land_frac, sea_frac = targets.get(native_life, targets['average'])
+
+        # Step 1: Generate independent noise
+        noise = [[random.random() for _ in range(self.width)] for _ in range(self.height)]
+
+        # Step 2: One smoothing pass for geographic clustering
+        smoothed = [row[:] for row in noise]
+        for y in range(self.height):
+            for x in range(self.width):
+                neighbors = []
+                for dy in [-1, 0, 1]:
+                    for dx in [-1, 0, 1]:
+                        if dx == 0 and dy == 0:
+                            continue
+                        nx = (x + dx) % self.width
+                        ny = y + dy
+                        if 0 <= ny < self.height:
+                            neighbors.append(noise[ny][nx])
+                if neighbors:
+                    smoothed[y][x] = noise[y][x] * 0.6 + (sum(neighbors) / len(neighbors)) * 0.4
+
+        # Step 3: Separate percentile classification for land and sea
+        land_scores = sorted(
+            smoothed[y][x]
+            for y in range(self.height)
+            for x in range(self.width)
+            if self.tiles[y][x].is_land()
+        )
+        sea_scores = sorted(
+            smoothed[y][x]
+            for y in range(self.height)
+            for x in range(self.width)
+            if self.tiles[y][x].is_ocean()
+        )
+
+        n_land = len(land_scores)
+        n_sea = len(sea_scores)
+
+        land_threshold = land_scores[max(0, int(n_land * (1.0 - land_frac)) - 1)] if n_land > 0 else 1.1
+        sea_threshold = sea_scores[max(0, int(n_sea * (1.0 - sea_frac)) - 1)] if n_sea > 0 else 1.1
+
+        land_fungus_count = sea_fungus_count = 0
+        for y in range(self.height):
+            for x in range(self.width):
+                tile = self.tiles[y][x]
+                s = smoothed[y][x]
+                if tile.is_land() and s >= land_threshold:
+                    tile.fungus = True
+                    land_fungus_count += 1
+                elif tile.is_ocean() and s >= sea_threshold:
+                    tile.fungus = True
+                    sea_fungus_count += 1
+
+        print(f"  Land fungus: {land_fungus_count} tiles  Sea fungus: {sea_fungus_count} tiles")
+        print("=== FUNGUS GENERATION COMPLETE ===\n")
 
     def _generate_altitudes(self, noise_values):
         """Generate exact altitude values for all tiles using noise and constraint enforcement.
@@ -618,7 +704,8 @@ class GameMap:
                     'monolith': tile.monolith,
                     'altitude': tile.altitude,
                     'rainfall': tile.rainfall,
-                    'rockiness': tile.rockiness
+                    'rockiness': tile.rockiness,
+                    'fungus': tile.fungus
                 })
             tiles_data.append(row_data)
 
@@ -653,6 +740,7 @@ class GameMap:
                 tile.altitude = tile_data.get('altitude', 0)    # Default to 0 for old saves
                 tile.rainfall = tile_data.get('rainfall', 1)    # Default to moderate for old saves
                 tile.rockiness = tile_data.get('rockiness', 0)  # Default to flat for old saves
+                tile.fungus = tile_data.get('fungus', False)    # Default to no fungus for old saves
                 row.append(tile)
             game_map.tiles.append(row)
 
