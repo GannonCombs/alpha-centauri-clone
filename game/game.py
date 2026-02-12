@@ -88,6 +88,8 @@ class Game:
 
         # Supply pod message
         self.supply_pod_message = None
+        self.supply_pod_tech_event = None  # Tech event to show immediately after pod message
+        self.mid_turn_upkeep = False  # True when upkeep phase triggered mid-turn (skip _start_new_turn)
 
         # Battle system
         self.combat = Combat(self)
@@ -720,8 +722,14 @@ class Game:
                     tech_tree.current_research = None
                     tech_tree.research_points = 0
                 if unit.owner == self.player_faction_id:
-                    self.supply_pod_message = f"Supply Pod discovered! Ancient datalinks yield the secrets of {tech_name}!"
+                    self.supply_pod_message = "Supply Pod discovered! Ancient datalinks contain a technological blueprint!"
                     self._auto_generate_unit_designs(tech_id)
+                    # Store a tech_complete event to show immediately after the pod message
+                    self.supply_pod_tech_event = {
+                        'type': 'tech_complete',
+                        'tech_id': tech_id,
+                        'tech_name': tech_name,
+                    }
                     print(f"Supply pod tech at ({tile.x}, {tile.y}): {tech_name}")
                 else:
                     print(f"AI faction {unit.owner} gained tech '{tech_name}' from supply pod")
@@ -857,6 +865,17 @@ class Game:
             if unit.owner == self.player_faction_id:
                 self.set_status_message(f"{unit.name} upgraded to {morale_name} at Monolith!")
                 print(f"Unit upgraded at monolith: ({unit.x}, {unit.y}) -> {morale_name}")
+
+            # 1/32 chance the monolith disappears permanently after granting an upgrade
+            import random
+            if random.randint(1, 32) == 1:
+                tile = self.game_map.get_tile(unit.x, unit.y)
+                if tile:
+                    tile.monolith = False
+                    if unit.owner == self.player_faction_id:
+                        self.set_status_message(f"{unit.name} upgraded at Monolith! The Monolith crumbles to dust.")
+                    print(f"Monolith at ({unit.x}, {unit.y}) disappeared after use")
+
         elif not unit.monolith_upgrade:
             # Already at max morale, mark as upgraded so they don't try again
             unit.monolith_upgrade = True
@@ -1525,6 +1544,10 @@ class Game:
         # Cannot found on xenofungus
         if tile and getattr(tile, 'fungus', False):
             return False, "Cannot found base on xenofungus"
+
+        # Cannot found on a monolith
+        if tile and getattr(tile, 'monolith', False):
+            return False, "Cannot found base on a Monolith"
 
         # Check for adjacent bases (including diagonals, with wrapping)
         for dx in [-1, 0, 1]:
@@ -2609,7 +2632,11 @@ class Game:
                 self.new_designs_available = True
                 self.pending_new_designs_flag = False
 
-            self._start_new_turn()
+            if self.mid_turn_upkeep:
+                # Mid-turn popup (e.g. supply pod tech): just close, don't start a new turn
+                self.mid_turn_upkeep = False
+            else:
+                self._start_new_turn()
 
     def get_current_upkeep_event(self):
         """Get the current upkeep event to display.
@@ -2806,6 +2833,8 @@ class Game:
         self.status_message = ""
         self.status_message_timer = 0
         self.supply_pod_message = None
+        self.supply_pod_tech_event = None
+        self.mid_turn_upkeep = False
         self.pending_battle = None
         self.active_battle = None
         self.game_over = False

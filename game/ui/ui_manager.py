@@ -606,6 +606,13 @@ class UIManager:
             if game.supply_pod_message and not self.commlink_request_active and self.active_screen != "DIPLOMACY":
                 if self.dialogs.handle_supply_pod_click(event.pos):
                     game.supply_pod_message = None
+                    # If a tech was gained, immediately show the tech breakthrough popup
+                    if game.supply_pod_tech_event:
+                        game.upkeep_events = [game.supply_pod_tech_event]
+                        game.supply_pod_tech_event = None
+                        game.current_upkeep_event_index = 0
+                        game.upkeep_phase_active = True
+                        game.mid_turn_upkeep = True
                     return True
                 # Block all other clicks when message is showing
                 return True

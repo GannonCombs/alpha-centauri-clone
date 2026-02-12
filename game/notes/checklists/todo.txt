@@ -175,6 +175,10 @@ The End Turn button should then blink, not auto-end.
 6 When certain non-combat units are on the same tile as military units, and another faction destroys all the military units,
 the non-military units automatically die. This is true for probe teams, and all versions of colony pods. (And artifacts,
 but they are captured, not killed. We've implemented this.) A note at the bottom should say We <killed or lost> x units.
+7 AI colony pod keeps trying to build a base on a monolith, and gets denied, every turn. Needs an updated algo.
+8 Free tech popups from supply pod are not showing correct procession of popups. Should be 1) Supply pod popup with generic
+free tech text, 2) the traditional tech popup, 3) (if applicable) the new units popup. Claude is having a hard time with
+this one; may need to do myself.
 
 
 

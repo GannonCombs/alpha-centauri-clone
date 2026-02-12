@@ -14,7 +14,7 @@ Atrocities
 Drone Riots
 Golden Age
 Morale ◐
-Monoliths ◐
+Monoliths ✓
 Artifacts ◐
 Fungus/Xenofungus ◐
 Psi Combat

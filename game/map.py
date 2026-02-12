@@ -18,7 +18,10 @@ def tile_base_nutrients(tile):
 
     Land yield is determined by rainfall (0=arid, 1=moderate, 2=rainy).
     Ocean always yields 1 nutrient.
+    Monoliths always yield 2 nutrients.
     """
+    if getattr(tile, 'monolith', False):
+        return 2
     if tile.is_ocean():
         return 1
     return tile.rainfall  # 0 / 1 / 2
@@ -33,7 +36,10 @@ def tile_base_energy(tile):
         2000-2999m → 3
         3000m+   → 4
     Ocean yields 0 without a Tidal Harness.
+    Monoliths always yield 2 energy.
     """
+    if getattr(tile, 'monolith', False):
+        return 2
     if tile.is_ocean():
         return 0
     alt = tile.altitude
@@ -53,7 +59,10 @@ def tile_base_minerals(tile):
     Ocean and flat land yield 0 unimproved minerals.
     Rolling and rocky land both yield 1 unimproved mineral
     (rocky can reach 4 with mine+road, rolling can reach 2 with mine).
+    Monoliths always yield 2 minerals.
     """
+    if getattr(tile, 'monolith', False):
+        return 2
     if tile.is_ocean():
         return 0
     return 1 if getattr(tile, 'rockiness', 0) >= 1 else 0
@@ -72,7 +81,9 @@ class Tile:
         self.units = []  # Changed from single unit to list for stacking
         self.base = None
         self.supply_pod = False  # Unity supply pods
-        self.monolith = False  # Alien monolith
+        self.monolith = False  # Alien monolith — yields 2/2/2; no base founding allowed
+        # Terraforming restriction (when implemented): only roads/mag tubes, fungus, or rivers
+        # may be added to a monolith square.
         self.displayed_unit_index = 0  # Which unit in stack to display
         self.altitude = 0  # Exact altitude in meters: -3000 to 3500
         self.rainfall = 1  # 0=arid, 1=moderate, 2=rainy (land only; ocean is always 1)
