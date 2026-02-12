@@ -871,18 +871,18 @@ class UIManager:
 
             # Health percentage with color coding
             health_pct = unit.get_health_percentage()
-            health_percent_display = int(health_pct * 100)
+            damage_percent_display = (unit.max_health - unit.current_health) * 100 // unit.max_health if unit.max_health > 0 else 0
 
-            # Color based on health percentage
-            if health_pct >= 0.8:
-                health_color = (50, 255, 50)  # Green
-            elif health_pct >= 0.5:
-                health_color = (255, 255, 50)  # Yellow
-            else:
-                health_color = (255, 50, 50)  # Red
+            if damage_percent_display > 0:
+                if health_pct >= 0.8:
+                    health_color = (50, 255, 50)  # Green
+                elif health_pct >= 0.5:
+                    health_color = (255, 255, 50)  # Yellow
+                else:
+                    health_color = (255, 50, 50)  # Red
 
-            health_text = self.small_font.render(f"Health: {health_percent_display}%", True, health_color)
-            screen.blit(health_text, (info_x, info_y + 90))
+                health_text = self.small_font.render(f"Damage: {damage_percent_display}%", True, health_color)
+                screen.blit(health_text, (info_x, info_y + 90))
 
             # Morale level
             morale_name = unit.get_morale_name()
@@ -920,7 +920,7 @@ class UIManager:
                     rainfall_labels = {0: "Arid", 1: "Moderate", 2: "Rainy"}
                     rainfall_colors = {0: (200, 170, 110), 1: (160, 200, 130), 2: (100, 210, 100)}
                     rain_text = self.small_font.render(
-                        f"Rainfall: {rainfall_labels[tile.rainfall]}",
+                        f"{rainfall_labels[tile.rainfall]}",
                         True, rainfall_colors[tile.rainfall])
                 else:
                     rain_text = self.small_font.render("Rainfall: \u2014", True, (120, 150, 180))
@@ -932,7 +932,7 @@ class UIManager:
                     rock_labels = {0: "Flat", 1: "Rolling", 2: "Rocky"}
                     rock_colors = {0: (170, 180, 160), 1: (180, 160, 130), 2: (160, 140, 110)}
                     rock_text = self.small_font.render(
-                        f"Rockiness: {rock_labels[rock_val]}",
+                        f"{rock_labels[rock_val]}",
                         True, rock_colors[rock_val])
                 else:
                     rock_text = self.small_font.render("Rockiness: \u2014", True, (120, 150, 180))

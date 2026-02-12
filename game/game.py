@@ -598,11 +598,22 @@ class Game:
 
         # Check for supply pod (air units cannot collect supply pods)
         if target_tile.supply_pod and unit.type != 'air':
+            if unit.weapon == 'artifact':
+                #If an artifact lands on a supply pod, both are destroyed.
+                target_tile.supply_pod = False
+                self._remove_unit(unit)
+                if unit.owner == self.player_faction_id:
+                    self.supply_pod_message = "The Artifact was destroyed when it encountered the Supply Pod!"
+                return True
             self._collect_supply_pod(target_tile, unit)
 
         # Check for monolith
         if target_tile.monolith:
             self._apply_monolith_effects(unit)
+
+        # Artifacts adjacent to enemy units get stolen
+        if unit.weapon == 'artifact':
+            self._check_artifact_stolen_by_proximity(unit)
 
         # Check for base capture (enemy base with no garrison)
         if target_tile.base:
@@ -719,6 +730,32 @@ class Game:
             else:
                 # AI collected it
                 print(f"AI collected supply pod at ({tile.x}, {tile.y})")
+
+    def _check_artifact_stolen_by_proximity(self, artifact):
+        """If an artifact moves adjacent to an enemy unit, the enemy steals it.
+
+        The artifact teleports to the tile of the enemy unit that triggered the steal.
+        Shows a popup if the player owns the artifact.
+        """
+        directions = [(-1,-1),(-1,0),(-1,1),(0,-1),(0,1),(1,-1),(1,0),(1,1)]
+        for dx, dy in directions:
+            nx, ny = artifact.x + dx, artifact.y + dy
+            adj_tile = self.game_map.get_tile(nx, ny)
+            if not adj_tile or not adj_tile.units:
+                continue
+            for adj_unit in adj_tile.units:
+                if adj_unit.owner != artifact.owner and adj_unit.weapon != 'artifact':
+                    # Enemy unit found — steal the artifact
+                    old_owner = artifact.owner
+                    self.game_map.remove_unit_at(artifact.x, artifact.y, artifact)
+                    artifact.move_to(nx, ny)
+                    artifact.owner = adj_unit.owner
+                    self.game_map.add_unit_at(nx, ny, artifact)
+                    if old_owner == self.player_faction_id:
+                        thief_faction = self.factions.get(adj_unit.owner, {})
+                        thief_name = thief_faction.get('name', 'an enemy') if isinstance(thief_faction, dict) else getattr(thief_faction, 'name', 'an enemy')
+                        self.supply_pod_message = f"Your Alien Artifact was stolen by {thief_name}!"
+                    return  # Only one steal per move
 
     def _apply_monolith_effects(self, unit):
         """Apply monolith effects to a unit.
@@ -874,11 +911,12 @@ class Game:
         # No safe tiles found - stay in place
         return None
 
-    def _remove_unit(self, unit):
+    def _remove_unit(self, unit, killer=None):
         """Remove a unit from the game completely.
 
         Args:
             unit (Unit): Unit to remove
+            killer (Unit): Optional — the unit that killed this one (for artifact transfer)
         """
         # If this is a transport with loaded units, destroy them too
         if hasattr(unit, 'loaded_units') and unit.loaded_units:
@@ -907,6 +945,25 @@ class Game:
         if hasattr(unit, 'home_base') and unit.home_base:
             if unit in unit.home_base.supported_units:
                 unit.home_base.supported_units.remove(unit)
+
+        # If all military unit(s) on a tile die and leave an artifact alone on the tile,
+        # it automatically becomes the enemy's.
+        if killer and tile and unit.weapon != 'artifact':
+            remaining = [u for u in tile.units if u.weapon != 'artifact']
+            artifacts_here = [u for u in tile.units if u.weapon == 'artifact']
+            if not remaining and artifacts_here:
+                for artifact in artifacts_here:
+                    old_owner = artifact.owner
+                    self.game_map.remove_unit_at(artifact.x, artifact.y, artifact)
+                    artifact.move_to(killer.x, killer.y)
+                    artifact.owner = killer.owner
+                    self.game_map.add_unit_at(killer.x, killer.y, artifact)
+                    if old_owner == self.player_faction_id:
+                        killer_faction = self.factions.get(killer.owner, {})
+                        killer_name = killer_faction.get('name', 'an enemy') if isinstance(killer_faction, dict) else getattr(killer_faction, 'name', 'an enemy')
+                        self.supply_pod_message = f"Your Alien Artifact was captured by {killer_name}!"
+                    elif killer.owner == self.player_faction_id:
+                        self.supply_pod_message = "You captured an Alien Artifact!"
 
         # Deselect if this was the selected unit
         if self.selected_unit == unit:

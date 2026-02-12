@@ -112,9 +112,14 @@ Use it to test the following issues, but also test debug mode along the way.
 that they like. Examples: remove atrocity prohibitions if their faction is warlike, elect governor if they are a candidate, etc.
 3 My diplomatic statuses have disappeared as turns pass. It now shows nothing. Speaking to the factions, it's clear this
 is not just a bug in display. I'm able to propose treaties and pacts all over again. Obv, these should persist.
-18 New unit design on better unit tech is still not popping up, at least not consistently. Is the pattern that chassis and
- armor upgrade, but weapons don't? Edit: on Centauri Ecology, Terraformers are not popping up. They should! Edit2: Fixed
- I think.
+4 ✅ New unit design on better unit tech is still not popping up, at least not consistently. Is the pattern that chassis and
+ armor upgrade, but weapons don't? Edit: on Centauri Ecology, Terraformers are not popping up. They should!
+5 ✅ If an artifact walks onto a square that is adjacent to an enemy, a popup occurs that the artifact was stolen. Ok button.
+The artifact transports to the title the unit was on.
+6 ✅ If an artifact is on the same title as a military unit, and another faction kills that unit, the artifact gets taken
+in similar fashion. Note that if the tile has multiple units on it, the artifact stays put. Only transfers on the last death.
+7 ✅ If an artifact moves onto a supply pod, both artifact and pod are consumed. No tech comes of it. Have a popup saying
+the artifact was destroyed. Ok button only.
 
 
 
@@ -129,31 +134,27 @@ is not just a bug in display. I'm able to propose treaties and pacts all over ag
 Note: this is the ONLY section of todo.txt that can be edited by Claude Code, but only to add checkmarks to tasks.
 
 1 Healing should not occur at turn end. It happens in upkeep of the next turn.
-3 Rename button in base view needs to be implemented. A popup with a text box allows us to rename the base. OK and cancel
+2 Rename button in base view needs to be implemented. A popup with a text box allows us to rename the base. OK and cancel
 buttons. The text should be visibly highlighted, so that one backspace button deletes the entire name.
-4 Production times are off. Merchant Exchange takes 20 turns on Turn 1 for Morgan.
-5 FACTION_DATA contains single quotes and double quotes.
-6 Not all faction bonuses are applied.
-7 When I'm surprise attacked, another popup appears for each Pact brother or sister I have, saying, "On behalf of your
+3 Production times are off. Merchant Exchange takes 20 turns on Turn 1 for Morgan.
+4 FACTION_DATA contains single quotes and double quotes.
+5 Not all faction bonuses are applied.
+6 When I'm surprise attacked, another popup appears for each Pact brother or sister I have, saying, "On behalf of your
  pact, <pactbors> has pronounced on <attacker>!"
-8 Invert the way damage is shown.
-9 If an artifact is held in a base with an unlinked Network Node, a popup occurs, asking if we'd like to link it.
+7 ✅ Invert the way damage is shown.
+8 If an artifact is held in a base with an unlinked Network Node, a popup occurs, asking if we'd like to link it.
 If yes, the artifact is consumed and we get a free tech. Linking means a network node can only consume one artifact ever.
-10 If an artifact walks onto a square that is adjacent to an enemy, a popup occurs that the artifact was stolen. Ok button.
-The artifact transports to the title the unit was on.
-11 If an artifact is on the same title as a military unit, and another faction kills that unit, the artifact gets taken
-in similar fashion. Note that if the tile has multiple units on it, the artifact stays put. Only transfers on the last death.
-12 If an artifact moves onto a supply pod, both artifact and pod are consumed. No tech comes of it. Have a popup saying
-the artifact was destroyed. Ok button only.
-13 The first person to discover any of the three techs starting with "Secrets of" get another tech right after.
-14 Healing isn't working correctly. It's applying the bonuses correctly, but when the units are moving. It should only
+9 The first person to discover any of the three techs starting with "Secrets of" get another tech right after.
+10 Healing isn't working correctly. It's applying the bonuses correctly, but when the units are moving. It should only
 be when they've skipped their turn entirely. If a unit has even partially moved or acted that turn, healing doesn't happen
 naturally (movement onto a monolith is the exception.)
-15 Got a diplomatic milestone popup when missing commlinks.
-16 Turn auto-ends when the last unit moves into contact with a new faction. End turn needs to wait for diplomacy to finish.
+11 Got a diplomatic milestone popup when missing commlinks.
+12 Turn auto-ends when the last unit moves into contact with a new faction. End turn needs to wait for diplomacy to finish.
 The End Turn button should then blink, not auto-end.
-17 Saw an AI unit on an island tile it couldn't have walked to, before getting a transport. They were on the bottom row
+13 Saw an AI unit on an island tile it couldn't have walked to, before getting a transport. They were on the bottom row
 of the map; are there invisible tiles there that are playable?
+14 A scout patrol attacked and won. The next turn, he was still Already Moved. This should never happen.
+15 A scout rover took a base and wasn't healed. Any unit taking a base automatically fully heals.
 
 
 

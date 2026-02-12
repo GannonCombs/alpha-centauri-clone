@@ -530,13 +530,13 @@ class Combat:
 
         if victor == 'defender':
             # Attacker destroyed
-            self.game._remove_unit(attacker)
+            self.game._remove_unit(attacker, killer=defender)
             defender.record_kill()
             # Defender survives — costs 1 move, plus extra if badly hurt
             self._apply_combat_movement_cost(defender, original_defender_hp)
         else:
             # Defender destroyed
-            self.game._remove_unit(defender)
+            self.game._remove_unit(defender, killer=attacker)
             attacker.record_kill()
             # Attacker survives — costs 1 move, plus extra if badly hurt
             self._apply_combat_movement_cost(attacker, original_attacker_hp)
