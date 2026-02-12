@@ -66,6 +66,7 @@ class Unit:
         self.ability1 = ability1
         self.ability2 = ability2
         self.has_moved = False
+        self.heal_eligible = True  # True if unit skipped its turn entirely (eligible for natural healing)
         self.held = False  # If True, unit won't be auto-cycled for actions
 
         # Derive reactor level from component data
@@ -457,6 +458,9 @@ class Unit:
 
     def end_turn(self):
         """Reset movement points and flags for a new turn."""
+        # Capture heal eligibility before clearing has_moved: unit must not have
+        # moved or acted at all this turn to qualify for natural healing next upkeep.
+        self.heal_eligible = not self.has_moved
         self.moves_remaining = self.max_moves()
         self.has_moved = False
 

@@ -689,6 +689,12 @@ class Game:
     def _collect_supply_pod(self, tile, unit):
         """Handle unit collecting a supply pod.
 
+        Outcomes (40 / 30 / 15 / 15):
+          40% — free tech (random researchable tech the faction could have studied)
+          30% — Alien Artifact spawned on the tile
+          15% — 500 energy credits
+          15% — River spawns from this tile
+
         Args:
             tile: The tile with the supply pod
             unit: The unit collecting the pod
@@ -698,16 +704,43 @@ class Game:
         # Remove the pod from the tile
         tile.supply_pod = False
 
-        # 25% chance to find an artifact, 75% chance for energy credits
-        if random.random() < 0.25:
-            # Create artifact unit at this location
+        roll = random.random()
+
+        if roll < 0.40:
+            # --- Free technology ---
+            tech_tree = self.factions[unit.owner].tech_tree
+            available = tech_tree.get_available_techs()  # [(tech_id, tech_data), ...]
+            if available:
+                tech_id, tech_data = random.choice(available)
+                tech_name = tech_data.get('name', tech_id)
+                tech_tree.discovered_techs.add(tech_id)
+                # If they were researching this tech, clear it (it's done)
+                if tech_tree.current_research == tech_id:
+                    tech_tree.current_research = None
+                    tech_tree.research_points = 0
+                if unit.owner == self.player_faction_id:
+                    self.supply_pod_message = f"Supply Pod discovered! Ancient datalinks yield the secrets of {tech_name}!"
+                    self._auto_generate_unit_designs(tech_id)
+                    print(f"Supply pod tech at ({tile.x}, {tile.y}): {tech_name}")
+                else:
+                    print(f"AI faction {unit.owner} gained tech '{tech_name}' from supply pod")
+            else:
+                # No researchable techs — fall back to credits
+                if unit.owner == self.player_faction_id:
+                    self.energy_credits += 500
+                    self.supply_pod_message = "Supply Pod discovered! You gain 500 energy credits."
+                else:
+                    print(f"AI collected supply pod at ({tile.x}, {tile.y}): fallback credits")
+
+        elif roll < 0.70:
+            # --- Alien Artifact ---
             from game.unit import Unit
             artifact = Unit(
                 x=tile.x, y=tile.y,
                 chassis='infantry',
                 owner=unit.owner,
                 name="Alien Artifact",
-                weapon='artifact',  # Use new artifact weapon
+                weapon='artifact',
                 armor='no_armor',
                 reactor='fission'
             )
@@ -721,15 +754,22 @@ class Game:
                 print(f"Artifact found at ({tile.x}, {tile.y})")
             else:
                 print(f"AI found artifact at ({tile.x}, {tile.y})")
-        else:
-            # Grant 500 energy credits
+
+        elif roll < 0.85:
+            # --- 500 energy credits ---
             if unit.owner == self.player_faction_id:
                 self.energy_credits += 500
                 self.supply_pod_message = "Supply Pod discovered! You gain 500 energy credits."
                 print(f"Supply pod collected at ({tile.x}, {tile.y}): +500 credits")
             else:
-                # AI collected it
                 print(f"AI collected supply pod at ({tile.x}, {tile.y})")
+
+        else:
+            # --- River spawns from this tile ---
+            self.game_map.generate_river_from(tile.x, tile.y)
+            if unit.owner == self.player_faction_id:
+                self.supply_pod_message = "Supply Pod discovered! A river springs from the ground!"
+                print(f"Supply pod river at ({tile.x}, {tile.y})")
 
     def _check_artifact_stolen_by_proximity(self, artifact):
         """If an artifact moves adjacent to an enemy unit, the enemy steals it.
@@ -2121,10 +2161,8 @@ class Game:
         # Refuel air units at bases and check for crashes
         self._process_air_unit_fuel(self.player_faction_id)
 
-        # Heal player units
-        self._process_unit_healing(self.player_faction_id)
-
         # Note: Player base processing moved to upkeep phase (after AI turns)
+        # Note: Healing moved to _start_new_turn so it fires during upkeep, not here
         # This ensures production, growth, and credits are shown during upkeep
 
         # Update mission year
@@ -2238,6 +2276,9 @@ class Game:
                     # Auto-generate new unit designs based on newly unlocked components
                     self._auto_generate_unit_designs(completed_tech)
 
+                    # 'Secrets of' techs grant an immediate bonus tech
+                    self._grant_secrets_bonus(completed_tech, player_tech_tree, self.player_faction_id)
+
                 # Calculate commerce for all factions (distributes to player and AI energy_credits)
                 # Initialize commerce system if not present (for old saves)
                 if not hasattr(self, 'commerce'):
@@ -2321,7 +2362,11 @@ class Game:
             # Process AI tech research with labs output
             ai_tech_tree = self.factions[ai_player.player_id].tech_tree
             ai_tech_tree.add_research(total_labs)
-            ai_tech_tree.process_turn()
+            ai_completed_tech = ai_tech_tree.process_turn()
+
+            # 'Secrets of' techs grant an immediate bonus tech
+            if ai_completed_tech:
+                self._grant_secrets_bonus(ai_completed_tech, ai_tech_tree, ai_player.player_id)
 
             # Check if AI wants to call a council
             if hasattr(self, 'council_manager'):
@@ -2486,6 +2531,9 @@ class Game:
         # Reset auto-end turn tracking
         self.last_unit_action = None
 
+        # Heal player units (upkeep phase — only units that skipped last turn)
+        self._process_unit_healing(self.player_faction_id)
+
         self.turn += 1
         print(f"Turn {self.turn} started!")
 
@@ -2546,6 +2594,43 @@ class Game:
             return self.upkeep_events[self.current_upkeep_event_index]
 
         return None
+
+    # Tech IDs whose discoverer immediately receives a second random tech
+    SECRETS_TECHS = {'Brain', 'AlphCen', 'Create'}
+
+    def _grant_secrets_bonus(self, completed_tech_id, tech_tree, faction_id):
+        """If the completed tech is a 'Secrets of' tech, grant a free bonus tech.
+
+        The bonus tech is chosen randomly from techs the faction could research
+        next (prereqs met, not yet discovered, not the same tech).
+        """
+        if completed_tech_id not in self.SECRETS_TECHS:
+            return
+
+        import random
+        available = [tid for tid, _ in tech_tree.get_available_techs() if tid != completed_tech_id]
+        if not available:
+            return
+
+        bonus_id = random.choice(available)
+        bonus_name = tech_tree.technologies[bonus_id]['name']
+        tech_tree.discovered_techs.add(bonus_id)
+        if tech_tree.current_research == bonus_id:
+            tech_tree.current_research = None
+            tech_tree.research_points = 0
+
+        if faction_id == self.player_faction_id:
+            secrets_name = tech_tree.technologies[completed_tech_id]['name']
+            self.upkeep_events.append({
+                'type': 'tech_complete',
+                'tech_id': bonus_id,
+                'tech_name': bonus_name,
+                'subtitle': f'Bonus from {secrets_name}'
+            })
+            self._auto_generate_unit_designs(bonus_id)
+            print(f"Secrets bonus: player received '{bonus_name}'")
+        else:
+            print(f"AI faction {faction_id} received Secrets bonus tech '{bonus_name}'")
 
     def _auto_generate_unit_designs(self, completed_tech_id):
         """Check if tech unlocks components and generate smart unit designs.

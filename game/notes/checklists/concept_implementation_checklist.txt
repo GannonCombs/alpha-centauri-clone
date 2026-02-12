@@ -38,8 +38,8 @@ Might
 Disengage ◐
 Zone of Control ◐
 Bombardment ◐
-Drones
-Talents
+Drones ✓
+Talents ✓
 Psych
 Landmarks, Volcanos, etc.
 Council Proposals ◐

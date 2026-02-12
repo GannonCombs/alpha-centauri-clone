@@ -27,9 +27,9 @@ def calculate_healing(unit, game):
     if unit.current_health >= unit.max_health:
         return (False, 0, "Already at full health", False)
 
-    # Can't heal if unit moved this turn
-    if unit.has_moved:
-        return (False, 0, "Unit has moved this turn", False)
+    # Can't heal unless the unit skipped its entire previous turn
+    if not getattr(unit, 'heal_eligible', True):
+        return (False, 0, "Unit moved or acted this turn", False)
 
     # Get tile info
     tile = game.game_map.get_tile(unit.x, unit.y)

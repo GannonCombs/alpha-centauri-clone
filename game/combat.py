@@ -198,6 +198,17 @@ class Combat:
                     'display': '-50%'
                 })
 
+            # Faction attack bonus (e.g. Miriam: +25% when attacking)
+            from game.data.data import FACTION_DATA
+            faction_bonuses = FACTION_DATA[unit.owner].get('bonuses', {}) if unit.owner < len(FACTION_DATA) else {}
+            attack_bonus_pct = faction_bonuses.get('attack_bonus', 0)
+            if attack_bonus_pct:
+                modifiers.append({
+                    'name': 'Faction Bonus',
+                    'multiplier': 1.0 + attack_bonus_pct / 100.0,
+                    'display': f'+{attack_bonus_pct}%'
+                })
+
             # Comm Jammer reduces enemy defense (-50% to defender's effective armor)
             if getattr(unit, 'has_comm_jammer', False):
                 modifiers.append({

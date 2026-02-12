@@ -123,6 +123,9 @@ class Renderer:
         if territory:
             self.draw_territory_borders(territory, game_map)
 
+        # Draw rivers (above terrain, below units/structures)
+        self.draw_rivers(game_map)
+
         # Draw supply pods
         self.draw_supply_pods(game_map)
 
@@ -755,6 +758,59 @@ class Renderer:
 
                     pygame.draw.circle(self.screen, (150, 150, 150), (center_x, center_y), radius)
                     pygame.draw.circle(self.screen, (80, 80, 80), (center_x, center_y), radius, 2)
+
+    def draw_rivers(self, game_map):
+        """Draw rivers as thin blue lines through tiles with river_edges set.
+
+        For each tile the river enters/exits through up to 2 edges.  A line is
+        drawn from the midpoint of each edge to the tile centre, then from the
+        centre to the next edge midpoint — producing a connected, cornered path.
+        """
+        RIVER_COLOR = (100, 160, 220)
+        RIVER_WIDTH = 2
+
+        half = TILE_SIZE // 2
+        visible_tiles_x = (display.SCREEN_WIDTH // TILE_SIZE) + 2
+        visible_tiles_y = display.MAP_AREA_HEIGHT // TILE_SIZE
+
+        # Edge midpoint offsets relative to tile top-left
+        edge_mid = {
+            'N': (half,       0),
+            'S': (half,       TILE_SIZE),
+            'E': (TILE_SIZE,  half),
+            'W': (0,          half),
+        }
+
+        for screen_y_idx in range(visible_tiles_y):
+            map_y = self.camera_offset_y + screen_y_idx
+            if map_y >= game_map.height:
+                continue
+            for screen_x_idx in range(visible_tiles_x):
+                map_x = (self.camera_offset_x + screen_x_idx) % game_map.width
+                tile = game_map.get_tile(map_x, map_y)
+                if not tile or not getattr(tile, 'river_edges', None):
+                    continue
+
+                screen_x = (screen_x_idx * TILE_SIZE) + self.base_offset_x
+                screen_y = screen_y_idx * TILE_SIZE
+
+                if screen_x < -TILE_SIZE or screen_x > display.SCREEN_WIDTH:
+                    continue
+                if screen_y < 0 or screen_y >= display.MAP_AREA_HEIGHT:
+                    continue
+
+                cx = screen_x + half
+                cy = screen_y + half
+
+                # Draw a segment from the tile centre to each river edge midpoint
+                for edge in tile.river_edges:
+                    ex, ey = edge_mid[edge]
+                    pygame.draw.line(
+                        self.screen, RIVER_COLOR,
+                        (cx, cy),
+                        (screen_x + ex, screen_y + ey),
+                        RIVER_WIDTH
+                    )
 
     def draw_monoliths(self, game_map):
         """Draw monoliths on the map (brown towers)."""

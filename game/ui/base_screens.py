@@ -1793,7 +1793,7 @@ class BaseScreenManager:
                         return True
         return False
 
-    def handle_base_view_click(self, pos, game):
+    def handle_base_view_click(self, pos, game, is_enemy=False):
         """Handle clicks in the base view screen. Returns 'close' if should exit, None otherwise."""
         base = self.viewing_base
         is_enemy_base = base and base.owner != game.player_faction_id
@@ -2008,8 +2008,8 @@ class BaseScreenManager:
             self._reset_base_popups()  # Reset all popups when closing
             return 'close'
 
-        # Check Rename button
-        if hasattr(self, 'base_view_rename_rect') and self.base_view_rename_rect and self.base_view_rename_rect.collidepoint(pos):
+        # Check Rename button (player's own bases only)
+        if not is_enemy_base and hasattr(self, 'base_view_rename_rect') and self.base_view_rename_rect and self.base_view_rename_rect.collidepoint(pos):
             if base:
                 self.rename_base_target = base
                 self.base_name_input = base.name

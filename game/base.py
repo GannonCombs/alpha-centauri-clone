@@ -266,11 +266,18 @@ class Base:
             tuple: (nutrients_per_turn, minerals_per_turn, energy_per_turn)
         """
         from game.map import tile_base_nutrients, tile_base_minerals, tile_base_energy
+        from game.data.data import FACTION_DATA
+        bonuses = FACTION_DATA[self.owner].get('bonuses', {}) if self.owner < len(FACTION_DATA) else {}
+        fungus_nut_bonus = bonuses.get('fungus_nutrients', 0)
 
         worked = self.get_worked_tiles(game_map)
         n = sum(tile_base_nutrients(t) for t in worked)
         m = sum(tile_base_minerals(t) for t in worked)
         e = sum(tile_base_energy(t) for t in worked)
+
+        # Deirdre: +1 nutrient per fungus tile worked (including base tile)
+        if fungus_nut_bonus:
+            n += sum(fungus_nut_bonus for t in worked if getattr(t, 'fungus', False))
 
         self.nutrients_per_turn = n
         self.minerals_per_turn = m
@@ -295,12 +302,23 @@ class Base:
         return [u for u in tile.units if u.owner == self.owner]
 
     def _get_max_pop(self):
-        """Return the population cap for this base based on facilities."""
+        """Return the population cap for this base based on facilities and faction bonuses."""
+        from game.data.data import FACTION_DATA
+        bonuses = FACTION_DATA[self.owner].get('bonuses', {}) if self.owner < len(FACTION_DATA) else {}
+
+        # Base hard cap from facilities
         if 'habitation_dome' in self.facilities:
             return 999
-        elif 'hab_complex' in self.facilities:
-            return 14
-        return 7
+
+        # Base limit without hab complex (faction-specific)
+        base_limit = bonuses.get('hab_complex_limit', 7)
+
+        if 'hab_complex' in self.facilities:
+            # Hab complex raises cap to 14; faction bonus raises that further
+            return 14 + bonuses.get('hab_complex_bonus', 0)
+
+        # No hab complex: use faction base limit
+        return base_limit + bonuses.get('hab_complex_bonus', 0)
 
     def _get_growth_rating(self, faction, game):
         """Return the effective GROWTH SE rating for this base's faction.
@@ -407,7 +425,8 @@ class Base:
     def _calculate_production_turns(self):
         """Calculate turns remaining until production completes.
 
-        Assumes base produces minerals based on population (for now, 1 mineral per turn).
+        Uses actual minerals from worked tiles minus support costs, matching
+        what process_turn actually applies each turn.
 
         Returns:
             int: Number of turns until production completes
@@ -416,9 +435,8 @@ class Base:
             return 0
 
         remaining = self.production_cost - self.production_progress
-        minerals_per_turn = self.population  # Simple: 1 mineral per citizen
-        if minerals_per_turn == 0:
-            return 999
+        # Mirror the exact formula used in process_turn
+        minerals_per_turn = max(1, getattr(self, 'minerals_per_turn', 0) - getattr(self, 'support_cost_paid', 0))
 
         return (remaining + minerals_per_turn - 1) // minerals_per_turn  # Ceiling division
 
@@ -700,6 +718,12 @@ class Base:
         base_drones = 0
         if self.population > 3:
             base_drones = (self.population - 3) // 4
+
+        # Zakharov (University, id 2): +1 extra drone per 4 citizens
+        from game.data.data import FACTION_DATA
+        bonuses = FACTION_DATA[self.owner].get('bonuses', {}) if self.owner < len(FACTION_DATA) else {}
+        if bonuses.get('extra_drone_per_4'):
+            base_drones += self.population // 4
 
         # Add disloyal citizens (for conquered bases)
         if self.turns_since_capture is not None and self.turns_since_capture < 50:

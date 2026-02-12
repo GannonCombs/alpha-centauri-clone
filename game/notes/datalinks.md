@@ -71,8 +71,6 @@ If you commit a Simple Atrocity, the other factions will likely impose commerce 
 
 If you commit a Major Atrocity, you will be expelled from the Planetary Council and all factions will pronounce Vendetta against you.
 
-Simple atrocities committed between factions of different species (i.e., the Progenitors and humans) do not invoke the wrath of other faction leaders.
-
 Drone Riots #
 Drone Riots occur when the number of Drones at a base exceeds the number of Talents. During Riots, citizens will continue to feed themselves, but no production will take place and no surplus energy will be produced. To end the Drone Riots, you will have to restore the balance of Drones and Talents.
 
@@ -131,7 +129,7 @@ Xenofungus or Fungus is a form of plant life native to Alpha Centauri. It has a 
 
 If there is a unit in a fungus square, another unit with at least one movement will always be able to enter that square.
 
-(2) Fungus has a defensive (+50%) value when defending against other human or Progenitor factions. Against native Mind Worms, however, Fungus has negative value.
+(2) Fungus has a defensive (+50%) value when defending against other factions. Against native Mind Worms, however, Fungus has negative value.
 
 (3) Fungus squares can be tapped for resources; the resource level provided by a fungus square is determined by the number of Centauri technologies you have discovered. These are:
 
@@ -225,7 +223,7 @@ Inefficiency can be mitigated at all of your bases by making social engineering 
 Inefficiency can be mitigated at a particular base by building a Children's Creche there.
 
 Ecology (Basic) #
-As humans or Progenitors expand and build colonies on Planet, they inevitably begin to cause ecological damage. Ecological damage can provoke the native life forms and cause other unexpected effects.
+As humans expand and build colonies on Planet, they inevitably begin to cause ecological damage. Ecological damage can provoke the native life forms and cause other unexpected effects.
 
 The red ecological damage number represents a percentage chance, per turn, of an ecological accident happening in the base's territory.
 
@@ -539,7 +537,7 @@ Seething
 
 *Submissive is a special case of Magnanimous,
 
-encountered when the faction is hoplessly overmatched.
+encountered when the faction is hopelessly overmatched.
 
 Base Conquest #
 If the last combat unit defending a base (or non-combat if no combat units are present) is defeated, then population of a base is reduced by one (unless a Perimeter defense is present and all non-combat units are destroyed too.

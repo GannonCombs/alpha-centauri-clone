@@ -375,9 +375,11 @@ class UIManager:
         # 2. Mouse Logic
         # Right-click handling (for context menus)
         if event.type == pygame.MOUSEBUTTONDOWN and event.button == 3:
-            # Handle garrison context menu in base view
+            # Handle garrison context menu in base view (read-only for enemy bases)
             if self.active_screen == "BASE_VIEW":
-                if self.base_screens.handle_base_view_right_click(event.pos, game):
+                _vb = self.base_screens.viewing_base
+                _is_enemy = _vb and _vb.owner != game.player_faction_id
+                if not _is_enemy and self.base_screens.handle_base_view_right_click(event.pos, game):
                     return True
 
         if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
@@ -624,7 +626,9 @@ class UIManager:
                     self.active_screen = "GAME"
                 return True
             elif self.active_screen == "BASE_VIEW":
-                result = self.base_screens.handle_base_view_click(event.pos, game)
+                _vb = self.base_screens.viewing_base
+                _is_enemy = bool(_vb and _vb.owner != game.player_faction_id)
+                result = self.base_screens.handle_base_view_click(event.pos, game, is_enemy=_is_enemy)
                 if result == 'close':
                     self.active_screen = "GAME"
                 elif result == 'rename':

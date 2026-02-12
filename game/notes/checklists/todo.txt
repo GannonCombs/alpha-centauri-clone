@@ -93,9 +93,28 @@ Use it to test the following issues, but also test debug mode along the way.
   - Economic: 50k credits + Economic Victory project
   - Transcendence: Complete Ascent to Transcendence
 
-  Feature x: Artillery
+  Feature 27: Artillery
   - Right click
   - Some hot key also activates
+
+  Feature 28: Remaining Faction bonuses to test
+  Faction: Deirdre
+  Bonus: fungus_nutrients: 1 — +1 nut per worked fungus tile
+  Location: calculate_resource_output
+  ────────────────────────────────────────
+  Faction: Zakharov
+  Bonus: extra_drone_per_4 — +floor(pop/4) extra drones
+  Location: calculate_population_happiness
+  ────────────────────────────────────────
+  Faction: Morgan
+  Bonus: hab_complex_limit: 4 — can't exceed pop 4 without hab complex
+  Location: _get_max_pop
+  ────────────────────────────────────────
+  Faction: Lal
+  Bonus: hab_complex_bonus: 2 — +2 to all population caps
+  Location: _get_max_pop
+  The _get_max_pop now reads both hab_complex_limit (replaces default 7) and hab_complex_bonus
+  (additive to all tiers), so Morgan caps at 4 / 14, and Lal caps at 9 / 16.
 
 
 
@@ -125,6 +144,12 @@ the artifact was destroyed. Ok button only.
 10 Saw an AI unit on an island tile it couldn't have walked to, before getting a transport. They were on the bottom row
 of the map; are there invisible tiles there that are playable?
 11 Got a diplomatic milestone popup when missing commlinks.
+12 Healing should not occur at turn end. It happens in upkeep of the next turn.
+13 Production times are off. Merchant Exchange takes 20 turns on Turn 1 for Morgan.
+14 Healing isn't working correctly. It's applying the bonuses correctly, but when the units are moving. It should only
+be when they've skipped their turn entirely. If a unit has even partially moved or acted that turn, healing doesn't happen
+naturally (movement onto a monolith is the exception.)
+15 The first person to discover any of the three techs starting with "Secrets of" get another tech right after.
 
 
 
@@ -138,27 +163,19 @@ of the map; are there invisible tiles there that are playable?
 
 Note: this is the ONLY section of todo.txt that can be edited by Claude Code, but only to add checkmarks to tasks.
 
-1 Healing should not occur at turn end. It happens in upkeep of the next turn.
-2 Got a drone riot popup. Zoom to base did not popup the base view. Also no drone icons (do we have any?)
-buttons. The text should be visibly highlighted, so that one backspace button deletes the entire name.
-3 Production times are off. Merchant Exchange takes 20 turns on Turn 1 for Morgan.
-4 FACTION_DATA contains single quotes and double quotes.
-5 Not all faction bonuses are applied.
-6 When I'm surprise attacked, another popup appears for each Pact brother or sister I have, saying, "On behalf of your
+
+1 Got a drone riot popup. Zoom to base did not popup the base view.
+2 FACTION_DATA contains single quotes and double quotes.
+3 When I'm surprise attacked, another popup appears for each Pact brother or sister I have, saying, "On behalf of your
  pact, <pactbors> has pronounced on <attacker>!"
-7 If an artifact is held in a base with an unlinked Network Node, a popup occurs, asking if we'd like to link it.
+4 If an artifact is held in a base with an unlinked Network Node, a popup occurs, asking if we'd like to link it.
 If yes, the artifact is consumed and we get a free tech. Linking means a network node can only consume one artifact ever.
-8 The first person to discover any of the three techs starting with "Secrets of" get another tech right after.
-9 Healing isn't working correctly. It's applying the bonuses correctly, but when the units are moving. It should only
-be when they've skipped their turn entirely. If a unit has even partially moved or acted that turn, healing doesn't happen
-naturally (movement onto a monolith is the exception.)
-10 Turn auto-ends when the last unit moves into contact with a new faction. End turn needs to wait for diplomacy to finish.
+5 Turn auto-ends when the last unit moves into contact with a new faction. End turn needs to wait for diplomacy to finish.
 The End Turn button should then blink, not auto-end.
-11 When opening an enemy's base, none of it should be alterable. Right now, I can choose tiles worked, and pick specialists.
-It should be read-only, so to speak.
-12 When certain non-combat units are on the same tile as military units, and another faction destroys all the military units,
+6 When certain non-combat units are on the same tile as military units, and another faction destroys all the military units,
 the non-military units automatically die. This is true for probe teams, and all versions of colony pods. (And artifacts,
-but they are captured, not killed. We've implemented this.)
+but they are captured, not killed. We've implemented this.) A note at the bottom should say We <killed or lost> x units.
+
 
 
 ***************************************************************************
@@ -176,4 +193,5 @@ but they are captured, not killed. We've implemented this.)
 5 Advanced unit movement (G command, J command, drag path)
 6 Isometric
 7 Diplomacy trees
-8 Datalinks concepts
+8 Secret Project view
+9 Datalinks concepts

@@ -79,6 +79,7 @@ class Tile:
         self.rockiness = 0  # 0=flat, 1=rolling, 2=rocky (land only; ocean is always 0)
         self.fungus = False  # Xenofungus present on this tile
         self.void = False  # True for edge rows — not part of the playable map
+        self.river_edges = set()  # Directions {'N','S','E','W'} where a river crosses this tile's edge
 
     def is_land(self):
         """Check if this tile is land terrain."""
@@ -187,6 +188,75 @@ class GameMap:
 
         # Generate xenofungus based on native life setting
         self._generate_fungus(self.native_life)
+
+        # Generate 1-2 rivers on land
+        self._generate_rivers()
+
+    def _generate_rivers(self):
+        """Place 1-2 rivers on the map.  Each river walks 3-10 land tiles,
+        moving only cardinally (N/S/E/W), with occasional 90-degree turns.
+        """
+        import random
+        num_rivers = random.randint(1, 2)
+        land_tiles = [
+            self.tiles[y][x]
+            for y in range(1, self.height - 1)
+            for x in range(self.width)
+            if self.tiles[y][x].is_land()
+        ]
+        if not land_tiles:
+            return
+        for _ in range(num_rivers):
+            start = random.choice(land_tiles)
+            self.generate_river_from(start.x, start.y)
+
+    def generate_river_from(self, start_x, start_y):
+        """Walk a river starting at (start_x, start_y) for 3-10 land tiles.
+
+        The path moves only cardinally.  At each step there is a 30% chance
+        of a 90-degree turn (left or right with equal probability).
+        River edges are written onto the tiles so the renderer can draw them.
+
+        Args:
+            start_x (int): Starting tile X coordinate
+            start_y (int): Starting tile Y coordinate
+        """
+        import random
+        OPPOSITE = {'N': 'S', 'S': 'N', 'E': 'W', 'W': 'E'}
+        PERP = {
+            'N': ['E', 'W'], 'S': ['E', 'W'],
+            'E': ['N', 'S'], 'W': ['N', 'S'],
+        }
+        STEP = {'N': (0, -1), 'S': (0, 1), 'E': (1, 0), 'W': (-1, 0)}
+
+        length = random.randint(3, 10)
+        direction = random.choice(['N', 'S', 'E', 'W'])
+        x, y = start_x, start_y
+
+        for _ in range(length):
+            tile = self.get_tile(x, y)
+            if tile is None or not tile.is_land():
+                break
+
+            # Possibly turn 90 degrees
+            if random.random() < 0.30:
+                direction = random.choice(PERP[direction])
+
+            dx, dy = STEP[direction]
+            nx, ny = (x + dx) % self.width, y + dy
+            if not (0 <= ny < self.height):
+                break
+            next_tile = self.get_tile(nx, ny)
+            if next_tile is None or not next_tile.is_land():
+                break
+
+            # Mark the shared edge on both tiles
+            tile.river_edges.add(direction)
+            next_tile.river_edges.add(OPPOSITE[direction])
+
+            x, y = nx, ny
+
+        print(f"River generated from ({start_x},{start_y})")
 
     def _place_supply_pods(self):
         """Place supply pods randomly on 3% of tiles (excluding edge rows)."""
@@ -710,7 +780,8 @@ class GameMap:
                     'altitude': tile.altitude,
                     'rainfall': tile.rainfall,
                     'rockiness': tile.rockiness,
-                    'fungus': tile.fungus
+                    'fungus': tile.fungus,
+                    'river_edges': list(tile.river_edges)
                 })
             tiles_data.append(row_data)
 
@@ -746,6 +817,7 @@ class GameMap:
                 tile.rainfall = tile_data.get('rainfall', 1)    # Default to moderate for old saves
                 tile.rockiness = tile_data.get('rockiness', 0)  # Default to flat for old saves
                 tile.fungus = tile_data.get('fungus', False)    # Default to no fungus for old saves
+                tile.river_edges = set(tile_data.get('river_edges', []))
                 row.append(tile)
             game_map.tiles.append(row)
 
