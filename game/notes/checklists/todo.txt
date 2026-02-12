@@ -14,7 +14,7 @@ Use it to test the following issues, but also test debug mode along the way.
 
  2. Energy Allocation System
   - Split energy production between Economy, Labs, and Psych ✅
-  - Economy → Energy reserves (treasury)
+  - Economy → Energy reserves (treasury) ✅
   - Labs → Research speed
   - Psych → Talent creation (happiness)
   - Adjustable slider/percentage allocation ✅
@@ -112,7 +112,9 @@ Use it to test the following issues, but also test debug mode along the way.
 that they like. Examples: remove atrocity prohibitions if their faction is warlike, elect governor if they are a candidate, etc.
 3 My diplomatic statuses have disappeared as turns pass. It now shows nothing. Speaking to the factions, it's clear this
 is not just a bug in display. I'm able to propose treaties and pacts all over again. Obv, these should persist.
-
+18 New unit design on better unit tech is still not popping up, at least not consistently. Is the pattern that chassis and
+ armor upgrade, but weapons don't? Edit: on Centauri Ecology, Terraformers are not popping up. They should! Edit2: Fixed
+ I think.
 
 
 ***************************************************************************
@@ -122,10 +124,9 @@ is not just a bug in display. I'm able to propose treaties and pacts all over ag
 ***************************************************************************
 
 
+
 Note: this is the ONLY section of todo.txt that can be edited by Claude Code, but only to add checkmarks to tasks.
-
 1 Healing should not occur at turn end. It happens in upkeep of the next turn.
-
 3 Rename button in base view needs to be implemented. A popup with a text box allows us to rename the base. OK and cancel
 buttons. The text should be visibly highlighted, so that one backspace button deletes the entire name.
 4 Production times are off. Merchant Exchange takes 20 turns on Turn 1 for Morgan.
@@ -150,8 +151,7 @@ naturally (movement onto a monolith is the exception.)
 The End Turn button should then blink, not auto-end.
 17 Saw an AI unit on an island tile it couldn't have walked to, before getting a transport. They were on the bottom row
 of the map; are there invisible tiles there that are playable?
-18 New unit design on better unit tech is still not popping up, at least not consistently. Is the pattern that chassis and
- armor upgrade, but weapons don't? Edit: on Centauri Ecology, Terraformers are not popping up. They should!
+
 
 
 

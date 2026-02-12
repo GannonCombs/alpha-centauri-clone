@@ -209,7 +209,7 @@ class DesignWorkshopScreen:
             new_weapons = [w for w in available_weapons if w['prereq'] == completed_tech_id]
             new_armor = [a for a in available_armor if a['prereq'] == completed_tech_id]
 
-            # New weapon unlocked: create min-max variants
+            # New weapon unlocked: create variants
             for weapon in new_weapons:
                 if weapon['attack'] > 0:  # Combat weapon
                     for chassis in available_chassis:
@@ -218,7 +218,7 @@ class DesignWorkshopScreen:
 
                         # Min-armor variant (glass cannon)
                         if armor_to_use != min_armor_obj:  # Only if not air unit
-                            design_name = generate_unit_name(weapon['id'], chassis['id'], min_armor_obj['id'])
+                            design_name = generate_unit_name(weapon['id'], chassis['id'], min_armor_obj['id'], best_reactor['id'], 'none', 'none')
                             if design_name not in existing_names:
                                 new_designs.append({
                                     "chassis": chassis['id'],
@@ -231,7 +231,7 @@ class DesignWorkshopScreen:
 
                         # Max-armor variant (tank) - only for ground units
                         if chassis['type'] in ['land', 'sea'] and best_armor:
-                            design_name = generate_unit_name(weapon['id'], chassis['id'], best_armor['id'])
+                            design_name = generate_unit_name(weapon['id'], chassis['id'], best_armor['id'], best_reactor['id'], 'none', 'none')
                             if design_name not in existing_names:
                                 new_designs.append({
                                     "chassis": chassis['id'],
@@ -241,6 +241,20 @@ class DesignWorkshopScreen:
                                     "ability1": "none",
                                     "ability2": "none"
                                 })
+                elif weapon['id'] != 'artifact':  # Non-combat weapon (terraform, colony_pod, probe, etc.)
+                    for chassis in available_chassis:
+                        if chassis['id'] == 'missile':
+                            continue
+                        design_name = generate_unit_name(weapon['id'], chassis['id'], 'no_armor', best_reactor['id'], 'none', 'none')
+                        if design_name not in existing_names:
+                            new_designs.append({
+                                "chassis": chassis['id'],
+                                "weapon": weapon['id'],
+                                "armor": "no_armor",
+                                "reactor": best_reactor['id'],
+                                "ability1": "none",
+                                "ability2": "none"
+                            })
 
             # New armor unlocked: create units with best weapon
             for armor in new_armor:
@@ -250,7 +264,7 @@ class DesignWorkshopScreen:
                         for chassis in available_chassis:
                             # Only for chassis that use armor
                             if chassis['type'] in ['land', 'sea']:
-                                design_name = generate_unit_name(best_weapon['id'], chassis['id'], armor['id'])
+                                design_name = generate_unit_name(best_weapon['id'], chassis['id'], armor['id'], best_reactor['id'], 'none', 'none')
                                 if design_name not in existing_names:
                                     new_designs.append({
                                         "chassis": chassis['id'],
@@ -266,7 +280,7 @@ class DesignWorkshopScreen:
                 best_weapon = max(combat_weapons, key=lambda w: w['attack']) if combat_weapons else None
                 if best_weapon:
                     armor_to_use = self._get_armor_for_chassis(chassis, best_armor, min_armor_obj)
-                    design_name = generate_unit_name(best_weapon['id'], chassis['id'], armor_to_use['id'], 'fission', 'none', 'none')
+                    design_name = generate_unit_name(best_weapon['id'], chassis['id'], armor_to_use['id'], best_reactor['id'], 'none', 'none')
                     if design_name not in existing_names:
                         new_designs.append({
                             "chassis": chassis['id'],
@@ -280,7 +294,7 @@ class DesignWorkshopScreen:
                 # Also create colony pod version if available
                 colony_weapon = next((w for w in noncombat_weapons if w['id'] == 'colony_pod'), None)
                 if colony_weapon and chassis['id'] != 'missile':
-                    design_name = generate_unit_name('colony_pod', chassis['id'])
+                    design_name = generate_unit_name('colony_pod', chassis['id'], 'no_armor', best_reactor['id'], 'none', 'none')
                     if design_name not in existing_names:
                         new_designs.append({
                             "chassis": chassis['id'],
