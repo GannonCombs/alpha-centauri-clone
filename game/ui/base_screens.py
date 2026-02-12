@@ -52,6 +52,7 @@ class BaseScreenManager:
         self.hurry_all_rect = None
         self.governor_button_rect = None
         self.mode_button_rects = []  # List of (rect, mode_name) tuples
+        self.map_tile_rects = []     # List of (rect, map_x, map_y) for domain tile clicks
         self.hurry_error_message = ""
         self.hurry_error_time = 0
         self.prod_select_ok_rect = None
@@ -263,6 +264,15 @@ class BaseScreenManager:
         if not base:
             return
 
+        # Refresh resource output from worked tiles so display is always current
+        if hasattr(game, 'game_map'):
+            base.calculate_resource_output(game.game_map)
+            base.energy_production = base.energy_per_turn  # sync for allocate_energy
+            base.growth_turns_remaining = base._calculate_growth_turns()
+            # Refresh energy allocation so economy/labs/psych values are current
+            # TODO: pull percentages from social engineering when implemented
+            base.allocate_energy(50, 50, 0)
+
         # Fill background
         screen.fill((15, 20, 25))
 
@@ -324,52 +334,100 @@ class BaseScreenManager:
 
         screen.blit(gov_text, (self.governor_button_rect.centerx - gov_text.get_width() // 2, self.governor_button_rect.centery - 8))
 
-        # TOP CENTER: Zoomed map view (below automation buttons)
-        map_view_w = 200
-        map_view_h = 200
+        # TOP CENTER: Zoomed map view — fat cross domain (5×5 minus corners)
+        map_view_w = 220
+        map_view_h = 220
         map_view_x = (screen_w - map_view_w) // 2
         map_view_y = top_bar_y + top_bar_h + 20
         map_view_rect = pygame.Rect(map_view_x, map_view_y, map_view_w, map_view_h)
         pygame.draw.rect(screen, (25, 35, 40), map_view_rect)
         pygame.draw.rect(screen, COLOR_UI_BORDER, map_view_rect, 2)
 
-        # Show base and surrounding tiles as a grid (actual terrain)
-        tile_size = 60
-        start_tile_x = map_view_rect.centerx - (tile_size * 3) // 2
-        start_tile_y = map_view_rect.centery - (tile_size * 3) // 2
-        for dy in range(3):
-            for dx in range(3):
-                # Calculate actual map coordinates
-                map_x = base.x - 1 + dx
-                map_y = base.y - 1 + dy
+        from game.map import tile_base_nutrients, tile_base_minerals, tile_base_energy
+        from game.data.data import FACTION_DATA
 
-                tile_rect = pygame.Rect(start_tile_x + dx * tile_size, start_tile_y + dy * tile_size, tile_size, tile_size)
+        tile_size = 44  # 5 × 44 = 220
+        start_tile_x = map_view_x
+        start_tile_y = map_view_y
 
-                # Check if tile is within map bounds
-                if game.game_map.is_valid_position(map_x, map_y):
-                    actual_tile = game.game_map.get_tile(map_x, map_y)
-                    # Draw actual terrain color
-                    if actual_tile.is_land():
-                        terrain_color = display.COLOR_LAND
-                    else:
-                        terrain_color = display.COLOR_OCEAN
+        # Build set of currently-worked tile coords for highlighting
+        worked_tiles = base.get_worked_tiles(game.game_map)
+        worked_coords = {(t.x, t.y) for t in worked_tiles}
 
-                    # Center tile is the base
-                    if dx == 1 and dy == 1:
-                        # Use faction color for base square
-                        from game.data.data import FACTION_DATA
-                        base_color = (255, 255, 255)  # Default to white
-                        faction_index = base.owner  # owner IS faction_id
-                        if faction_index < len(FACTION_DATA):
-                            base_color = FACTION_DATA[faction_index]['color']
-                        pygame.draw.rect(screen, base_color, tile_rect, border_radius=4)
-                    else:
-                        pygame.draw.rect(screen, terrain_color, tile_rect)
-                else:
-                    # Outside map bounds - draw black
+        # Resource colors
+        COLOR_NUT = (100, 220, 100)       # green
+        COLOR_MIN = (100, 160, 210)       # steel blue
+        COLOR_ENE = (230, 220, 80)        # yellow
+
+        self.map_tile_rects = []
+
+        for grid_dy in range(5):
+            for grid_dx in range(5):
+                tdx = grid_dx - 2  # offset from base: -2 to +2
+                tdy = grid_dy - 2
+                is_corner = abs(tdx) == 2 and abs(tdy) == 2
+                is_base = tdx == 0 and tdy == 0
+
+                map_x = (base.x + tdx) % game.game_map.width
+                map_y = base.y + tdy
+
+                tile_rect = pygame.Rect(
+                    start_tile_x + grid_dx * tile_size,
+                    start_tile_y + grid_dy * tile_size,
+                    tile_size, tile_size
+                )
+
+                if not (0 <= map_y < game.game_map.height):
                     pygame.draw.rect(screen, COLOR_BLACK, tile_rect)
+                    pygame.draw.rect(screen, (40, 40, 40), tile_rect, 1)
+                    continue
 
-                pygame.draw.rect(screen, (60, 60, 60), tile_rect, 1)
+                actual_tile = game.game_map.get_tile(map_x, map_y)
+                if actual_tile is None:
+                    pygame.draw.rect(screen, COLOR_BLACK, tile_rect)
+                    continue
+
+                # Terrain base color
+                terrain_color = display.COLOR_LAND if actual_tile.is_land() else display.COLOR_OCEAN
+
+                if is_base:
+                    # Base tile: faction color background
+                    base_color = (255, 255, 255)
+                    if base.owner < len(FACTION_DATA):
+                        base_color = FACTION_DATA[base.owner]['color']
+                    pygame.draw.rect(screen, base_color, tile_rect, border_radius=3)
+                elif is_corner:
+                    # Outside domain: pure black
+                    pygame.draw.rect(screen, COLOR_BLACK, tile_rect)
+                else:
+                    pygame.draw.rect(screen, terrain_color, tile_rect)
+                    # Store rect for click detection (domain tiles only, not base)
+                    self.map_tile_rects.append((pygame.Rect(tile_rect), map_x, map_y))
+
+                # Border: bright if worked, dim if unworked domain, faint if corner/out
+                coord = (map_x, map_y)
+                if is_base:
+                    pygame.draw.rect(screen, (255, 255, 255), tile_rect, 2, border_radius=3)
+                elif is_corner:
+                    pygame.draw.rect(screen, (40, 40, 40), tile_rect, 1)
+                elif coord in worked_coords:
+                    pygame.draw.rect(screen, (200, 200, 200), tile_rect, 2)
+                else:
+                    pygame.draw.rect(screen, (55, 65, 55), tile_rect, 1)
+
+                # Resource number overlays for worked tiles (including base tile)
+                if coord in worked_coords:
+                    nut = tile_base_nutrients(actual_tile)
+                    min_ = tile_base_minerals(actual_tile)
+                    ene = tile_base_energy(actual_tile)
+
+                    # Draw small colored numbers at bottom of tile, left to right
+                    num_x = tile_rect.x + 2
+                    num_y = tile_rect.bottom - 12
+                    for val, color in ((nut, COLOR_NUT), (min_, COLOR_MIN), (ene, COLOR_ENE)):
+                        num_surf = self.small_font.render(str(val), True, color)
+                        screen.blit(num_surf, (num_x, num_y))
+                        num_x += num_surf.get_width() + 3
 
         # RESOURCE ROWS: Below map inset
         resource_rows_y = map_view_y + map_view_h + 10
@@ -381,27 +439,61 @@ class BaseScreenManager:
         nut_row_y = resource_rows_y
         nut_label = self.small_font.render("Nutrients:", True, (150, 220, 150))
         screen.blit(nut_label, (resource_rows_x, nut_row_y))
-        nut_values = self.small_font.render("5 - 2 = 3", True, (180, 200, 180))
+        nut_intake = getattr(base, 'nutrients_per_turn', 0)
+        nut_consumption = base.population * 2
+        nut_surplus = nut_intake - nut_consumption
+        nut_values = self.small_font.render(f"{nut_intake} - {nut_consumption} = {nut_surplus}", True, (180, 200, 180))
         screen.blit(nut_values, (resource_rows_x + resource_rows_w - nut_values.get_width(), nut_row_y))
 
         # Minerals row
         min_row_y = nut_row_y + row_h
         min_label = self.small_font.render("Minerals:", True, (200, 180, 140))
         screen.blit(min_label, (resource_rows_x, min_row_y))
-        min_values = self.small_font.render("4 - 1 = 3", True, (180, 180, 160))
+        min_intake = getattr(base, 'minerals_per_turn', 0)
+        min_consumption = getattr(base, 'support_cost_paid', 0)
+        min_surplus = min_intake - min_consumption
+        min_values = self.small_font.render(f"{min_intake} - {min_consumption} = {min_surplus}", True, (180, 180, 160))
         screen.blit(min_values, (resource_rows_x + resource_rows_w - min_values.get_width(), min_row_y))
 
-        # Energy row
+        # Energy row (multi-color: inefficiency shown in red when non-zero)
         ene_row_y = min_row_y + row_h
         ene_label = self.small_font.render("Energy:", True, (220, 220, 100))
         screen.blit(ene_label, (resource_rows_x, ene_row_y))
-        ene_values = self.small_font.render("6 - 3 = 3", True, (200, 200, 120))
-        screen.blit(ene_values, (resource_rows_x + resource_rows_w - ene_values.get_width(), ene_row_y))
+        ene_intake = getattr(base, 'energy_per_turn', base.energy_production)
+        ene_ineff = 0       # placeholder — will be wired to inefficiency formula later
+        ene_consumption = 0  # placeholder — inefficiency is the only energy consumption
+        ene_surplus = ene_intake - ene_ineff
+        ene_color = (200, 200, 120)
+        ene_red = (210, 70, 70)
+        if ene_ineff > 0:
+            seg_ene_main = self.small_font.render(f"{ene_intake} - {ene_consumption}", True, ene_color)
+            seg_ene_ineff_surf = self.small_font.render(f" (-{ene_ineff})", True, ene_red)
+            seg_ene_eq = self.small_font.render(f" = {ene_surplus}", True, ene_color)
+            ene_total_w = seg_ene_main.get_width() + seg_ene_ineff_surf.get_width() + seg_ene_eq.get_width()
+            ene_blit_x = resource_rows_x + resource_rows_w - ene_total_w
+            screen.blit(seg_ene_main, (ene_blit_x, ene_row_y))
+            screen.blit(seg_ene_ineff_surf, (ene_blit_x + seg_ene_main.get_width(), ene_row_y))
+            screen.blit(seg_ene_eq, (ene_blit_x + seg_ene_main.get_width() + seg_ene_ineff_surf.get_width(), ene_row_y))
+        else:
+            seg_ene = self.small_font.render(f"{ene_intake} - {ene_consumption} = {ene_surplus}", True, ene_color)
+            screen.blit(seg_ene, (resource_rows_x + resource_rows_w - seg_ene.get_width(), ene_row_y))
 
-        # Explainer row
+        # Explainer row: form changes depending on whether inefficiency is present
         exp_row_y = ene_row_y + row_h + 5
-        exp_text = self.small_font.render("INTAKE - CONSUMPTION = SURPLUS", True, (140, 140, 160))
-        screen.blit(exp_text, (resource_rows_x + resource_rows_w // 2 - exp_text.get_width() // 2, exp_row_y))
+        exp_color = (140, 140, 160)
+        exp_red = (210, 70, 70)
+        if ene_ineff > 0:
+            seg_exp1 = self.small_font.render("INTAKE - (CONSUMPTION + ", True, exp_color)
+            seg_exp_ineff = self.small_font.render("INEFFICIENCY", True, exp_red)
+            seg_exp2 = self.small_font.render(") = SURPLUS", True, exp_color)
+            exp_total_w = seg_exp1.get_width() + seg_exp_ineff.get_width() + seg_exp2.get_width()
+            exp_blit_x = resource_rows_x + resource_rows_w // 2 - exp_total_w // 2
+            screen.blit(seg_exp1, (exp_blit_x, exp_row_y))
+            screen.blit(seg_exp_ineff, (exp_blit_x + seg_exp1.get_width(), exp_row_y))
+            screen.blit(seg_exp2, (exp_blit_x + seg_exp1.get_width() + seg_exp_ineff.get_width(), exp_row_y))
+        else:
+            exp_text = self.small_font.render("INTAKE - CONSUMPTION = SURPLUS", True, exp_color)
+            screen.blit(exp_text, (resource_rows_x + resource_rows_w // 2 - exp_text.get_width() // 2, exp_row_y))
 
         # Define content area (full width for layout)
         content_x = 20
@@ -543,11 +635,18 @@ class BaseScreenManager:
         energy_title = self.small_font.render("ENERGY ALLOCATION", True, (200, 220, 180))
         screen.blit(energy_title, (energy_alloc_x + energy_alloc_w // 2 - energy_title.get_width() // 2, energy_alloc_y + 8))
 
-        # Get energy allocation percentages from social engineering (default: Economy 50%, Labs 50%, Psych 0%)
-        # TODO: Get these from game.social_engineering when implemented
+        # Get energy allocation percentages (TODO: from social engineering)
         economy_pct = 50
         psych_pct = 0
         labs_pct = 50
+
+        # Real values from base (freshly calculated in refresh above)
+        econ_energy = base.economy_output
+        labs_energy = base.labs_output
+        psych_energy = base.psych_output
+        econ_bonus = 0  # TODO: commerce income + faction bonuses
+        labs_bonus = 0  # TODO: research facility bonuses
+        psych_bonus = 0  # TODO: psych facility bonuses
 
         # Three rows: Economy, Psych, Labs
         row_y_start = energy_alloc_y + 35
@@ -556,19 +655,22 @@ class BaseScreenManager:
         # Economy row
         econ_label = self.small_font.render(f"Economy: {economy_pct}%", True, (180, 200, 180))
         screen.blit(econ_label, (energy_alloc_x + 15, row_y_start))
-        econ_calc = self.small_font.render("10 Energy + 5 Bonus = 15", True, (160, 180, 160))
+        econ_calc = self.small_font.render(
+            f"{econ_energy} Energy + {econ_bonus} Bonus = {econ_energy + econ_bonus}", True, (160, 180, 160))
         screen.blit(econ_calc, (energy_alloc_x + 160, row_y_start))
 
         # Psych row
         psych_label = self.small_font.render(f"Psych: {psych_pct}%", True, (200, 180, 200))
         screen.blit(psych_label, (energy_alloc_x + 15, row_y_start + row_spacing))
-        psych_calc = self.small_font.render("0 Energy + 0 Bonus = 0", True, (180, 160, 180))
+        psych_calc = self.small_font.render(
+            f"{psych_energy} Energy + {psych_bonus} Bonus = {psych_energy + psych_bonus}", True, (180, 160, 180))
         screen.blit(psych_calc, (energy_alloc_x + 160, row_y_start + row_spacing))
 
         # Labs row
         labs_label = self.small_font.render(f"Labs: {labs_pct}%", True, (180, 200, 220))
         screen.blit(labs_label, (energy_alloc_x + 15, row_y_start + row_spacing * 2))
-        labs_calc = self.small_font.render("10 Energy + 3 Bonus = 13", True, (160, 180, 200))
+        labs_calc = self.small_font.render(
+            f"{labs_energy} Energy + {labs_bonus} Bonus = {labs_energy + labs_bonus}", True, (160, 180, 200))
         screen.blit(labs_calc, (energy_alloc_x + 160, row_y_start + row_spacing * 2))
 
         # CENTER BOTTOM: Civilian icons in horizontal bar (1 per pop)
@@ -944,7 +1046,8 @@ class BaseScreenManager:
             cost = base._get_production_cost(item_name)
             if cost == 0:
                 return 0
-            minerals_per_turn = base.population
+            minerals_per_turn = max(1, getattr(base, 'minerals_per_turn', base.population)
+                                    - getattr(base, 'support_cost_paid', 0))
             if minerals_per_turn == 0:
                 return 999
             return (cost + minerals_per_turn - 1) // minerals_per_turn  # Ceiling division
@@ -1459,6 +1562,14 @@ class BaseScreenManager:
 
             # Click outside popup closes it
             return None
+
+        # Check map tile clicks (toggle worked/unworked)
+        for tile_rect, map_x, map_y in self.map_tile_rects:
+            if tile_rect.collidepoint(pos):
+                base.toggle_worked_tile(map_x, map_y, game.game_map)
+                base.calculate_resource_output(game.game_map)
+                base.growth_turns_remaining = base._calculate_growth_turns()
+                return None
 
         # Check OK button
         if hasattr(self, 'base_view_ok_rect') and self.base_view_ok_rect.collidepoint(pos):

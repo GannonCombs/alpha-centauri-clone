@@ -3,8 +3,8 @@ Note: only a human can check off any of these.
 Basic Concepts:
 
 Rainfall ✓ (not SMAC formula)
-Rockiness
-Altitude ◐
+Rockiness ✓ (not SMAC formula)
+Altitude ✓
 Pact of Brotherhood ◐
 Treaty of Friendship ◐
 Blood Truce ◐

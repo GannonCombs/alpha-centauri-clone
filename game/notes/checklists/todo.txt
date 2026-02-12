@@ -112,7 +112,6 @@ Use it to test the following issues, but also test debug mode along the way.
 that they like. Examples: remove atrocity prohibitions if their faction is warlike, elect governor if they are a candidate, etc.
 3 New unit design on better unit tech is still not popping up, at least not consistently. Is the pattern that chassis and
  armor upgrade, but weapons don't?
-4 Got a diplomatic milestone popup when missing commlinks.
 
 
 
@@ -157,6 +156,7 @@ of their health gone equal to the number of moves they have, they lose a move. F
 with 50% damage, it has 1 move. If it starts the turn with combat, and in the process loses 50% health, it's turn is over
 (lost 1 move to battle, 1 to health).
 20 If I click on an enemy base, its base view should still pop up. To the right of the base name, it should say (<faction>)
+21 Got a diplomatic milestone popup when missing commlinks.
 
 
 ***************************************************************************

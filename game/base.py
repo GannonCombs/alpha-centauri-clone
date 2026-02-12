@@ -94,6 +94,171 @@ class Base:
         self.turns_since_capture = None  # None = never captured, else turns since capture
         self.disloyal_drones = 0    # Extra drones from disloyal citizens
 
+        # Cached resource output from worked tiles (updated each turn)
+        self.nutrients_per_turn = 0
+        self.minerals_per_turn = 0
+        self.energy_per_turn = 0
+
+        # Manual tile assignment overrides
+        self.manual_include_coords = set()  # player explicitly wants these worked
+        self.manual_exclude_coords = set()  # player explicitly doesn't want these worked
+
+    def _get_fat_cross_domain(self, game_map):
+        """Return list of (tile, (nx, ny)) for all domain tiles in the fat cross.
+
+        Fat cross = 5×5 grid minus the 4 corner tiles where |dx|=2 AND |dy|=2.
+        Does not include the base tile itself.  East-west wraps; top/bottom clamps.
+        """
+        domain = []
+        for dy in range(-2, 3):
+            for dx in range(-2, 3):
+                if dx == 0 and dy == 0:
+                    continue
+                if abs(dx) == 2 and abs(dy) == 2:
+                    continue  # corner — outside domain
+                nx = (self.x + dx) % game_map.width
+                ny = self.y + dy
+                if not (0 <= ny < game_map.height):
+                    continue
+                tile = game_map.get_tile(nx, ny)
+                if tile is not None:
+                    domain.append((tile, (nx, ny)))
+        return domain
+
+    def get_worked_tiles(self, game_map):
+        """Return the list of tiles this base is currently working.
+
+        Domain is the SMAC fat cross (5×5 minus corners = 21 tiles).
+        The base tile is always worked.  Remaining slots (population - 1) are
+        filled first from manually-included tiles, then auto-filled by weighted
+        score (nutrients×4 + minerals×2 + energy×1), skipping manually-excluded
+        tiles.  Ties broken deterministically by map position.
+
+        Args:
+            game_map: GameMap instance
+
+        Returns:
+            list[Tile]: Tiles being worked (base tile first)
+        """
+        from game.map import tile_base_nutrients, tile_base_minerals, tile_base_energy
+
+        base_tile = game_map.get_tile(self.x, self.y)
+        if base_tile is None:
+            return []
+
+        worked = [base_tile]
+        slots = self.population  # base tile is free; each citizen works one additional tile
+        if slots <= 0:
+            return worked
+
+        domain = self._get_fat_cross_domain(game_map)
+        domain_coord_set = {coord for _, coord in domain}
+
+        # 1. Fill manually-included tiles first (in sorted coord order for determinism)
+        for coord in sorted(self.manual_include_coords):
+            if len(worked) - 1 >= slots:
+                break
+            if coord not in domain_coord_set:
+                continue
+            tile = game_map.get_tile(coord[0], coord[1])
+            if tile is not None:
+                worked.append(tile)
+
+        placed_coords = {(t.x, t.y) for t in worked}
+
+        # 2. Auto-fill remaining slots, skipping excluded and already-placed
+        remaining = slots - (len(worked) - 1)
+        if remaining > 0:
+            candidates = []
+            for tile, coord in domain:
+                if coord in self.manual_exclude_coords:
+                    continue
+                if coord in placed_coords:
+                    continue
+                score = (tile_base_nutrients(tile) * 4
+                         + tile_base_minerals(tile) * 2
+                         + tile_base_energy(tile))
+                nx, ny = coord
+                # Adjust dx for east-west wrapping to get true ring distance
+                adx = nx - self.x
+                if adx > game_map.width // 2:
+                    adx -= game_map.width
+                elif adx < -(game_map.width // 2):
+                    adx += game_map.width
+                ady = ny - self.y
+                ring = max(abs(adx), abs(ady))  # 1 = adjacent, 2 = outer ring
+                candidates.append((-score, ring, ady, adx, tile))
+            candidates.sort()
+            for _, _, _, _, tile in candidates[:remaining]:
+                worked.append(tile)
+
+        return worked
+
+    def toggle_worked_tile(self, tx, ty, game_map):
+        """Toggle manual work assignment for a domain tile.
+
+        If currently worked:  exclude it (or un-include if manually included).
+        If currently unworked: include it (or un-exclude if manually excluded).
+        The base tile cannot be toggled.
+
+        Args:
+            tx, ty: Tile coordinates to toggle
+            game_map: GameMap instance
+        """
+        coord = (tx, ty)
+        if coord == (self.x, self.y):
+            return  # base tile is permanent
+
+        # Verify the tile is in the fat cross domain
+        raw_dx = tx - self.x
+        # Adjust for east-west wrapping
+        if raw_dx > game_map.width // 2:
+            raw_dx -= game_map.width
+        elif raw_dx < -(game_map.width // 2):
+            raw_dx += game_map.width
+        dy = ty - self.y
+        if abs(raw_dx) > 2 or abs(dy) > 2 or (abs(raw_dx) == 2 and abs(dy) == 2):
+            return  # outside domain
+
+        current_worked_coords = {(t.x, t.y) for t in self.get_worked_tiles(game_map)}
+
+        if coord in current_worked_coords:
+            # Deselect: remove from manual_include or add to manual_exclude
+            if coord in self.manual_include_coords:
+                self.manual_include_coords.discard(coord)
+            else:
+                self.manual_exclude_coords.add(coord)
+        else:
+            # Select: remove from manual_exclude or add to manual_include
+            if coord in self.manual_exclude_coords:
+                self.manual_exclude_coords.discard(coord)
+            else:
+                self.manual_include_coords.add(coord)
+
+    def calculate_resource_output(self, game_map):
+        """Sum nutrients, minerals, and energy from all worked tiles.
+
+        Updates self.nutrients_per_turn, self.minerals_per_turn, and
+        self.energy_per_turn as a side effect.
+
+        Args:
+            game_map: GameMap instance
+
+        Returns:
+            tuple: (nutrients_per_turn, minerals_per_turn, energy_per_turn)
+        """
+        from game.map import tile_base_nutrients, tile_base_minerals, tile_base_energy
+
+        worked = self.get_worked_tiles(game_map)
+        n = sum(tile_base_nutrients(t) for t in worked)
+        m = sum(tile_base_minerals(t) for t in worked)
+        e = sum(tile_base_energy(t) for t in worked)
+
+        self.nutrients_per_turn = n
+        self.minerals_per_turn = m
+        self.energy_per_turn = e
+        return n, m, e
+
     def get_garrison_units(self, game):
         """Get all units actually garrisoned at this base.
 
@@ -149,8 +314,11 @@ class Base:
             int: Number of turns until next population growth
         """
         remaining = self.nutrients_needed - self.nutrients_accumulated
-        # Assuming 1 nutrient per turn for now
-        return remaining
+        # Surplus = intake - (population * 2 consumption)
+        surplus = getattr(self, 'nutrients_per_turn', 0) - self.population * 2
+        if surplus <= 0:
+            return 999  # No growth (starvation or break-even)
+        return max(1, (remaining + surplus - 1) // surplus)  # ceiling division
 
     def _get_production_cost(self, item_name):
         """Get the mineral/credit cost for producing an item.
@@ -329,14 +497,12 @@ class Base:
         # Calculate population happiness
         self.calculate_population_happiness()
 
-        # Add nutrients from the base tile's rainfall level (0/1/2 for arid/moderate/rainy).
-        # Fall back to 1 if the game map is unavailable (e.g. loading old saves).
+        # Calculate resources from all worked tiles (base tile + workers' tiles).
         if game is not None:
-            from game.map import tile_base_nutrients
-            base_tile = game.game_map.get_tile(self.x, self.y)
-            nutrients_per_turn = tile_base_nutrients(base_tile) if base_tile else 1
+            nutrients_per_turn, minerals_from_tiles, _ = self.calculate_resource_output(game.game_map)
         else:
             nutrients_per_turn = 1
+            minerals_from_tiles = 1
         if self.population < 7:
             self.nutrients_accumulated += nutrients_per_turn
 
@@ -355,8 +521,7 @@ class Base:
 
         # Handle production (halt if drone riot)
         if self.current_production and not self.drone_riot:
-            # Minerals per turn = population - support cost
-            minerals_per_turn = max(1, self.population - self.support_cost_paid)
+            minerals_per_turn = max(1, minerals_from_tiles - self.support_cost_paid)
             self.production_progress += minerals_per_turn
 
             # Check if production completed
@@ -402,20 +567,19 @@ class Base:
     def calculate_energy_output(self, game=None):
         """Calculate total energy production before allocation.
 
-        Uses the base tile's altitude band as the per-citizen energy rate
-        (per SMAC: <1000m→1, 1000-1999m→2, 2000-2999m→3, 3000m+→4).
-        Falls back to 2 per citizen if no game reference is available.
+        Sums energy from all worked tiles (base tile + workers' adjacent tiles).
+        Falls back to 2 if no game reference is available.
 
         Returns:
             int: Total energy production
         """
         if game is not None:
             from game.map import tile_base_energy
-            base_tile = game.game_map.get_tile(self.x, self.y)
-            energy_per_citizen = tile_base_energy(base_tile) if base_tile else 2
+            worked = self.get_worked_tiles(game.game_map)
+            self.energy_production = sum(tile_base_energy(t) for t in worked)
+            self.energy_per_turn = self.energy_production
         else:
-            energy_per_citizen = 2
-        self.energy_production = self.population * energy_per_citizen
+            self.energy_production = 2
         return self.energy_production
 
     def allocate_energy(self, economy_percent, labs_percent, psych_percent):
@@ -578,7 +742,9 @@ class Base:
             'production_queue': list(self.production_queue),
             'hurried_this_turn': self.hurried_this_turn,
             'governor_enabled': self.governor_enabled,
-            'governor_mode': self.governor_mode
+            'governor_mode': self.governor_mode,
+            'manual_include_coords': [list(c) for c in self.manual_include_coords],
+            'manual_exclude_coords': [list(c) for c in self.manual_exclude_coords],
         }
 
     @classmethod
@@ -626,6 +792,8 @@ class Base:
         base.governor_enabled = data.get('governor_enabled', False)
         base.governor_mode = data.get('governor_mode', None)
         base.commerce_income = data.get('commerce_income', 0)
+        base.manual_include_coords = set(tuple(c) for c in data.get('manual_include_coords', []))
+        base.manual_exclude_coords = set(tuple(c) for c in data.get('manual_exclude_coords', []))
 
         # Initialize derived/calculated values
         base.supported_units = []
