@@ -731,7 +731,8 @@ class UIManager:
                     return True
 
             if self.end_turn_button.handle_event(event):
-                game.end_turn()
+                if not game.combat.active_battle:
+                    game.end_turn()
                 return True
 
         # 3. Mouse Button Up (for drag end)

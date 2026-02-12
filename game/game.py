@@ -626,6 +626,9 @@ class Game:
                 # Reduce population by 1
                 base.population -= 1
 
+                # Heal unit to full health whenever it takes or destroys a base
+                unit.current_health = unit.max_health
+
                 # Check if base is destroyed
                 if base.population <= 0:
                     # Base is destroyed
@@ -652,12 +655,6 @@ class Game:
                     # Base captured successfully
                     base.owner = unit.owner
                     base.turns_since_capture = 0  # Mark as newly captured for disloyal citizens
-
-                    # Heal unit to full health when capturing base
-                    if unit.current_health < unit.max_health:
-                        unit.current_health = unit.max_health
-                        if unit.owner == self.player_faction_id:
-                            self.set_status_message(f"{unit.name} healed to full health!")
 
                     # Recalculate production and growth based on new population
                     base.nutrients_needed = base._calculate_nutrients_needed()
@@ -2101,8 +2098,8 @@ class Game:
         - Last action was a hold (signals player might do more)
         - All units are held (player hasn't committed to any actions)
         """
-        # Don't auto-end during AI turn or upkeep
-        if self.processing_ai or self.upkeep_phase_active:
+        # Don't auto-end during AI turn, upkeep, or while a battle is animating
+        if self.processing_ai or self.upkeep_phase_active or self.combat.active_battle:
             return
 
         friendly_units = [u for u in self.units if u.is_friendly(self.player_faction_id)]
