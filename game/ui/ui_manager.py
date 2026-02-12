@@ -838,9 +838,14 @@ class UIManager:
         turn_text = self.font.render(f"Turn: {game.turn}", True, COLOR_TEXT)
         screen.blit(turn_text, (20, display.UI_PANEL_Y + 75))
 
-        # Unit info panel - left-center area (always visible if unit selected)
-        if game.selected_unit:
-            unit = game.selected_unit
+        # Unit info panel - left-center area (selected unit, or first unit at cursor tile)
+        _cursor_unit = None
+        if game.tile_cursor_mode and not game.selected_unit:
+            _cursor_tile = game.game_map.get_tile(game.cursor_x, game.cursor_y)
+            if _cursor_tile and _cursor_tile.units:
+                _cursor_unit = _cursor_tile.units[0]
+        if game.selected_unit or _cursor_unit:
+            unit = game.selected_unit or _cursor_unit
             # Position left of battle panel
             info_x = 370
             info_y = display.UI_PANEL_Y + 20
@@ -1793,13 +1798,15 @@ class UIManager:
         screen.blit(exit_surf, (exit_rect.centerx - exit_surf.get_width() // 2, exit_rect.centery - 10))
 
     def _draw_unit_stack_panel(self, screen, game):
-        """Draw panel showing all units at the selected tile."""
-        if not game.selected_unit:
+        """Draw panel showing all units at the selected tile or cursor tile."""
+        if game.tile_cursor_mode:
+            tile = game.game_map.get_tile(game.cursor_x, game.cursor_y)
+        elif game.selected_unit:
+            tile = game.game_map.get_tile(game.selected_unit.x, game.selected_unit.y)
+        else:
             return
 
-        # Get all units at selected unit's tile
-        tile = game.game_map.get_tile(game.selected_unit.x, game.selected_unit.y)
-        if not tile or len(tile.units) == 0:
+        if not tile:
             return
 
         # Panel dimensions - below battle panel, same width as battle panel
@@ -1819,6 +1826,10 @@ class UIManager:
 
         # Draw unit icons (up to 8 visible at once)
         units_to_show = tile.units
+        if not units_to_show:
+            empty_text = self.small_font.render("No units in tile", True, (120, 130, 140))
+            screen.blit(empty_text, (panel_x + panel_w // 2 - empty_text.get_width() // 2, panel_y + 50))
+            return
         max_visible = 8
         icon_size = 20
         icon_spacing = 40  # Horizontal spacing between icons

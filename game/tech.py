@@ -27,7 +27,7 @@ class TechTree:
         self.discovered_techs = set()
         self.current_research = None  # Player chooses what to research
         self.research_accumulated = 0
-        self.research_per_turn = 2  # Base research rate (will scale with labs)
+        self.research_per_turn = 1  # Set by add_research() during upkeep; 1 is a safe default
 
     def is_available(self, tech_id):
         """Check if a technology is available to be researched.
