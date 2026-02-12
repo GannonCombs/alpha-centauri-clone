@@ -108,7 +108,7 @@ def select_conquer_production(base, faction, game):
         return unit
 
     # 4. Fallback
-    return "Scout Patrol"
+    return get_default_unit_name(faction)
 
 
 def select_discover_production(base, faction, game):
@@ -142,7 +142,7 @@ def select_discover_production(base, faction, game):
             return _get_colony_pod_design_name(faction)
 
     # 5. Fallback: general facility
-    return _select_general_facility(base, faction, game) or "Scout Patrol"
+    return _select_general_facility(base, faction, game) or get_default_unit_name(faction)
 
 
 def select_explore_production(base, faction, game):
@@ -183,7 +183,7 @@ def select_explore_production(base, faction, game):
     if _can_build_unit(base, faction, 'colony_pod'):
         return _get_colony_pod_design_name(faction)
 
-    return "Scout Patrol"
+    return get_default_unit_name(faction)
 
 
 # Helper functions
@@ -225,6 +225,29 @@ def _can_build_unit(base, faction, weapon_type):
         if design and design.get('weapon') == weapon_type:
             return True
     return False
+
+
+def get_default_unit_name(faction):
+    """Get the generated name for a faction's slot 0 (default scout) design.
+
+    This is the canonical way to get the 'Scout Patrol' equivalent name,
+    which may differ if the faction has customised slot 0.
+
+    Args:
+        faction: Faction object with a .designs attribute
+
+    Returns:
+        str: Generated unit name (e.g. 'Scout Patrol'), or 'Scout Patrol' as fallback
+    """
+    from game.unit_components import generate_unit_name
+    design = faction.designs.get_design(0)
+    if design:
+        return generate_unit_name(
+            design['weapon'], design['chassis'], design['armor'],
+            design.get('reactor', 'fission'),
+            design.get('ability1', 'none'), design.get('ability2', 'none')
+        )
+    return "Scout Patrol"
 
 
 def _get_design_name(faction, weapon_type):
@@ -274,7 +297,7 @@ def _select_defensive_unit(base, faction, game):
                 combat_designs.append(design)
 
     if not combat_designs:
-        return "Scout Patrol"
+        return get_default_unit_name(faction)
 
     # Pick one with decent armor
     from game.unit_components import generate_unit_name
@@ -303,7 +326,7 @@ def _select_offensive_unit(base, faction, game):
                 combat_designs.append(design)
 
     if not combat_designs:
-        return "Scout Patrol"
+        return get_default_unit_name(faction)
 
     from game.unit_components import generate_unit_name
     design = random.choice(combat_designs)
@@ -334,7 +357,7 @@ def _select_scout_unit(base, faction, game):
                 design.get('ability2', 'none')
             )
 
-    return "Scout Patrol"
+    return get_default_unit_name(faction)
 
 
 def _select_happiness_facility(base, faction, game):

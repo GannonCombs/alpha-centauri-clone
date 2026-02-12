@@ -210,15 +210,17 @@ class UIManager:
 
             # Handle text input for base view (hurry production popup)
             if self.active_screen == "BASE_VIEW":
+                _viewing = self.base_screens.viewing_base
+                _enemy_base = _viewing and _viewing.owner != game.player_faction_id
                 # Check for C (Change production) hotkey
-                if event.key == pygame.K_c and not self.base_screens.hurry_production_open and not self.base_screens.queue_management_open:
+                if not _enemy_base and event.key == pygame.K_c and not self.base_screens.hurry_production_open and not self.base_screens.queue_management_open:
                     self.base_screens.production_selection_mode = "change"
                     self.base_screens.production_selection_open = True
                     if self.base_screens.viewing_base:
                         self.base_screens.selected_production_item = self.base_screens.viewing_base.current_production
                     return True
                 # Check for H (Hurry production) hotkey
-                elif event.key == pygame.K_h and not self.base_screens.production_selection_open and not self.base_screens.queue_management_open:
+                elif not _enemy_base and event.key == pygame.K_h and not self.base_screens.production_selection_open and not self.base_screens.queue_management_open:
                     self.base_screens.hurry_production_open = True
                     self.base_screens.hurry_input = ""
                     return True

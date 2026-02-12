@@ -8,6 +8,17 @@ and can garrison military units for defense.
 
 from game import facilities
 
+
+def _default_unit_name(faction):
+    """Return the generated name of the faction's default (slot 0) unit design."""
+    if faction is None:
+        return "Scout Patrol"
+    try:
+        from game.governor import get_default_unit_name
+        return get_default_unit_name(faction)
+    except Exception:
+        return "Scout Patrol"
+
 class Base:
     """Represents a base (city) on the map.
 
@@ -556,9 +567,9 @@ class Base:
                     if self.governor_enabled and faction and game:
                         from game.governor import select_production
                         governor_choice = select_production(self, faction, game)
-                        self.current_production = governor_choice if governor_choice else "Scout Patrol"
+                        self.current_production = governor_choice if governor_choice else _default_unit_name(faction)
                     else:
-                        self.current_production = "Scout Patrol"
+                        self.current_production = _default_unit_name(faction)
                     self.production_progress = 0
                     self.production_cost = self._get_production_cost(self.current_production)
 

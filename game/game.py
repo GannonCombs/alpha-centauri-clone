@@ -1562,6 +1562,14 @@ class Game:
 
         self.bases.append(base)
 
+        # Set initial production to the faction's actual slot 0 design name
+        from game.governor import get_default_unit_name
+        faction_obj = self.factions.get(unit.owner)
+        if faction_obj and faction_obj.designs:
+            base.current_production = get_default_unit_name(faction_obj)
+            base.production_cost = base._get_production_cost(base.current_production)
+            base.production_turns_remaining = base._calculate_production_turns()
+
         # Update the tile
         if tile:
             tile.base = base

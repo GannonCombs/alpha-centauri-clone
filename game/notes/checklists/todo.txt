@@ -110,8 +110,8 @@ Use it to test the following issues, but also test debug mode along the way.
 1 Once we get the commlink of every living faction, give a popup that we now have them all, and thus can now call council.
 2 If another unit gets all contacts first, they may call council. Add to the AI behavior that encourages them to call things
 that they like. Examples: remove atrocity prohibitions if their faction is warlike, elect governor if they are a candidate, etc.
-3 New unit design on better unit tech is still not popping up, at least not consistently. Is the pattern that chassis and
- armor upgrade, but weapons don't?
+3 My diplomatic statuses have disappeared as turns pass. It now shows nothing. Speaking to the factions, it's clear this
+is not just a bug in display. I'm able to propose treaties and pacts all over again. Obv, these should persist.
 
 
 
@@ -125,8 +125,7 @@ that they like. Examples: remove atrocity prohibitions if their faction is warli
 Note: this is the ONLY section of todo.txt that can be edited by Claude Code, but only to add checkmarks to tasks.
 
 1 Healing should not occur at turn end. It happens in upkeep of the next turn.
-2 My diplomatic statuses have disappeared as turns pass. It now shows nothing. Speaking to the factions, it's clear this
-is not just a bug in display. I'm able to propose treaties and pacts all over again. Obv, these should persist.
+
 3 Rename button in base view needs to be implemented. A popup with a text box allows us to rename the base. OK and cancel
 buttons. The text should be visibly highlighted, so that one backspace button deletes the entire name.
 4 Production times are off. Merchant Exchange takes 20 turns on Turn 1 for Morgan.
@@ -146,16 +145,15 @@ in similar fashion. Note that if the tile has multiple units on it, the artifact
 14 Healing isn't working correctly. It's applying the bonuses correctly, but when the units are moving. It should only
 be when they've skipped their turn entirely. If a unit has even partially moved or acted that turn, healing doesn't happen
 naturally (movement onto a monolith is the exception.)
-15 If I click on an enemy base, its base view should still pop up. To the right of the base name, it should say (<faction>)
-16 Got a diplomatic milestone popup when missing commlinks.
-17 Turn auto-ends when the last unit moves into contact with a new faction. End turn needs to wait for diplomacy to finish.
+15 Got a diplomatic milestone popup when missing commlinks.
+16 Turn auto-ends when the last unit moves into contact with a new faction. End turn needs to wait for diplomacy to finish.
 The End Turn button should then blink, not auto-end.
-18 New tech screen says "New units may be available" or something. This should list the exact perks, just like the tech
+17 New tech screen says "New units may be available" or something. This should list the exact perks, just like the tech
 tree does.
-19 After pressing the V button, the garrison and player panes in the console should update, including if the tile has no
+18 After pressing the V button, the garrison and player panes in the console should update, including if the tile has no
 units in it.
-20 1-1-1 is called Scout Squad, not Scout Patrol.
-21 Worse, Scout Patrol is hardcoded on base start. We should NEVER be able to make units that aren't a saved design!
+19 New unit design on better unit tech is still not popping up, at least not consistently. Is the pattern that chassis and
+ armor upgrade, but weapons don't? Edit: on Centauri Ecology, Terraformers are not popping up. They should!
 
 ***************************************************************************
 

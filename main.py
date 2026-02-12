@@ -384,8 +384,7 @@ def main():
                             result = game.handle_click(mouse_x, mouse_y, renderer)
                             if result and result[0] == 'base_click':
                                 clicked_base = result[1]
-                                if clicked_base.is_friendly(game.player_faction_id):
-                                    ui_panel.show_base_view(clicked_base)
+                                ui_panel.show_base_view(clicked_base)
 
             # Let UI handle hover events (MOUSEMOTION), but NOT clicks again
             elif event.type == pygame.MOUSEMOTION:

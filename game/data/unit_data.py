@@ -4,7 +4,7 @@ CHASSIS = [
     {
         'id': 'infantry',
         'name': 'Infantry',
-        'offensive_names': ['Squad', 'Sentinels'],  # Low armor / high weapon
+        'offensive_names': ['Patrol', 'Sentinels'],  # Low armor / high weapon
         'defensive_names': ['Garrison', 'Shock Troops'],  # High armor / low weapon
         'elite_names': ['Elite Guard'],  # High reactor
         'type': 'land',

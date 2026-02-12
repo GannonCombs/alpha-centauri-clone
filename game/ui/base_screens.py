@@ -340,7 +340,14 @@ class BaseScreenManager:
 
         # Base name title — sits between the top bar and the mini-map
         base_title_font = pygame.font.Font(None, 32)
-        base_title_surf = base_title_font.render(base.name, True, COLOR_TEXT)
+        is_enemy_base = base.owner != game.player_faction_id
+        if is_enemy_base:
+            from game.data.data import FACTION_DATA
+            faction_name = FACTION_DATA[base.owner]['name'] if base.owner < len(FACTION_DATA) else "Unknown"
+            title_str = f"{base.name} ({faction_name})"
+        else:
+            title_str = base.name
+        base_title_surf = base_title_font.render(title_str, True, COLOR_TEXT)
         base_title_y = top_bar_y + top_bar_h + 6
         screen.blit(base_title_surf,
                     (screen_w // 2 - base_title_surf.get_width() // 2, base_title_y))
@@ -1406,6 +1413,7 @@ class BaseScreenManager:
     def handle_base_view_click(self, pos, game):
         """Handle clicks in the base view screen. Returns 'close' if should exit, None otherwise."""
         base = self.viewing_base
+        is_enemy_base = base and base.owner != game.player_faction_id
 
         # If garrison context menu is open, handle it first
         if self.garrison_context_menu_open:
@@ -1572,19 +1580,24 @@ class BaseScreenManager:
             # Click outside popup closes it
             return None
 
-        # Check map tile clicks (toggle worked/unworked)
-        for tile_rect, map_x, map_y in self.map_tile_rects:
-            if tile_rect.collidepoint(pos):
-                base.toggle_worked_tile(map_x, map_y, game.game_map)
-                base.calculate_resource_output(game.game_map)
-                base.growth_turns_remaining = base._calculate_growth_turns()
-                return None
+        # Check map tile clicks (toggle worked/unworked) — only for own bases
+        if not is_enemy_base:
+            for tile_rect, map_x, map_y in self.map_tile_rects:
+                if tile_rect.collidepoint(pos):
+                    base.toggle_worked_tile(map_x, map_y, game.game_map)
+                    base.calculate_resource_output(game.game_map)
+                    base.growth_turns_remaining = base._calculate_growth_turns()
+                    return None
 
         # Check OK button
         if hasattr(self, 'base_view_ok_rect') and self.base_view_ok_rect.collidepoint(pos):
             self.viewing_base = None
             self._reset_base_popups()  # Reset all popups when closing
             return 'close'
+
+        # All remaining interactive controls are player-only
+        if is_enemy_base:
+            return None
 
         # Check Change button - open production selection
         if hasattr(self, 'prod_change_rect') and self.prod_change_rect.collidepoint(pos):
