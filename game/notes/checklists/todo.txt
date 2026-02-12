@@ -156,7 +156,9 @@ naturally (movement onto a monolith is the exception.)
 The End Turn button should then blink, not auto-end.
 11 When opening an enemy's base, none of it should be alterable. Right now, I can choose tiles worked, and pick specialists.
 It should be read-only, so to speak.
-
+12 When certain non-combat units are on the same tile as military units, and another faction destroys all the military units,
+the non-military units automatically die. This is true for probe teams, and all versions of colony pods. (And artifacts,
+but they are captured, not killed. We've implemented this.)
 
 
 ***************************************************************************

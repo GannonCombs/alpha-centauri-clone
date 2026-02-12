@@ -294,49 +294,60 @@ class Base:
             return []
         return [u for u in tile.units if u.owner == self.owner]
 
-    def _calculate_nutrients_needed(self):
-        """Calculate nutrients needed for next population growth.
-
-        Uses progressive scaling: each population level requires more nutrients.
-        Formula: base_cost (7) + (population - 1) * 3
-
-        Population limits:
-        - 7 without Habitation Complex
-        - 14 with Habitation Complex
-        - Unlimited with Habitation Dome
-
-        Returns:
-            int: Nutrients required for next growth, or 999 if at max population
-        """
-        # Determine population limit based on facilities
-        max_pop = 7  # Default limit
+    def _get_max_pop(self):
+        """Return the population cap for this base based on facilities."""
         if 'habitation_dome' in self.facilities:
-            max_pop = 999  # Effectively unlimited
+            return 999
         elif 'hab_complex' in self.facilities:
-            max_pop = 14
+            return 14
+        return 7
 
-        # Scaling: 7, 10, 14, 19, 25, 32 for pops 1->2, 2->3, 3->4, etc.
-        if self.population >= max_pop:
-            return 999  # Max pop reached, won't grow
+    def _get_growth_rating(self, faction, game):
+        """Return the effective GROWTH SE rating for this base's faction.
 
-        base_cost = 7
-        scaling_factor = (self.population - 1) * 3
-        return base_cost + scaling_factor
+        Combines faction innate bonus with player SE selection.
+        Clamped to [-3, 6].  AI factions use SE=0 until wired.
+        Children's Crèche bonus is stubbed (not yet applied here).
+        """
+        from game.social_engineering import calculate_se_effects
+        rating = 0
+        if faction is not None:
+            rating += faction.bonuses.get('GROWTH', 0)
+            if (game is not None and hasattr(game, 'se_selections')
+                    and faction.id == game.player_faction_id):
+                rating += calculate_se_effects(game.se_selections).get('GROWTH', 0)
+        return max(-3, min(6, rating))
+
+    def _calculate_nutrients_needed(self, growth_rating=0):
+        """Return the nutrient tank capacity (columns × rows).
+
+        Tank formula (SMAC rules):
+          columns = 10 − growth_rating  (boom → 5, ≤−3 → 12)
+          rows    = 1 + population
+          capacity = columns × rows
+
+        Returns 999 when the base is at max population.
+        """
+        if self.population >= self._get_max_pop():
+            return 999
+        if growth_rating >= 6:
+            columns = 5
+        elif growth_rating <= -3:
+            columns = 12  # Near-zero: treats as −2 for capacity
+        else:
+            columns = 10 - growth_rating
+        return columns * (1 + self.population)
 
     def _calculate_growth_turns(self):
-        """Calculate turns remaining until growth.
+        """Estimate turns until next population growth.
 
-        Assumes 1 nutrient per turn accumulation rate.
-
-        Returns:
-            int: Number of turns until next population growth
+        Returns 999 when nutrients are not accumulating.
         """
-        remaining = self.nutrients_needed - self.nutrients_accumulated
-        # Surplus = intake - (population * 2 consumption)
         surplus = getattr(self, 'nutrients_per_turn', 0) - self.population * 2
         if surplus <= 0:
-            return 999  # No growth (starvation or break-even)
-        return max(1, (remaining + surplus - 1) // surplus)  # ceiling division
+            return 999
+        remaining = self.nutrients_needed - self.nutrients_accumulated
+        return max(1, (remaining + surplus - 1) // surplus)
 
     def _get_production_cost(self, item_name):
         """Get the mineral/credit cost for producing an item.
@@ -521,15 +532,53 @@ class Base:
         else:
             nutrients_per_turn = 1
             minerals_from_tiles = 1
-        if self.population < 7:
-            self.nutrients_accumulated += nutrients_per_turn
+        # --- Population growth / starvation (SMAC tank mechanics) ---
+        growth_rating = self._get_growth_rating(faction, game)
+        is_boom = growth_rating >= 6  # TODO: also trigger on Cloning Vats
+        nut_surplus = nutrients_per_turn - self.population * 2
+        max_pop = self._get_max_pop()
 
-            # Check for growth
-            if self.nutrients_accumulated >= self.nutrients_needed:
+        if is_boom:
+            columns = 5
+        elif growth_rating <= -3:
+            columns = 12  # Near-zero growth: acts as −2 for column count
+        else:
+            columns = 10 - growth_rating
+        tank_capacity = columns * (1 + self.population)
+
+        self.nutrients_accumulated += nut_surplus
+
+        if self.nutrients_accumulated < 0:
+            # Starvation: lose a citizen, reset tanks
+            if self.population > 1:
+                self.population -= 1
+                print(f"{self.name} lost population due to starvation, now {self.population}")
+            self.nutrients_accumulated = 0
+        elif is_boom:
+            # Boom: grow immediately if surplus ≥ 2 this turn
+            if nut_surplus >= 2 and self.population < max_pop:
                 self.population += 1
                 self.nutrients_accumulated = 0
-                self.nutrients_needed = self._calculate_nutrients_needed()
-                print(f"{self.name} grew to population {self.population}")
+                print(f"{self.name} boom-grew to population {self.population}")
+            else:
+                # Cap tanks (storage only in boom mode)
+                self.nutrients_accumulated = min(self.nutrients_accumulated, tank_capacity)
+        elif self.nutrients_accumulated >= tank_capacity:
+            # Normal growth trigger: tanks full
+            if self.population >= max_pop:
+                self.nutrients_accumulated = tank_capacity  # Stay capped, no growth
+            elif growth_rating <= -3:
+                # Near-zero: tanks reset but population does not change
+                self.nutrients_accumulated = 0
+            else:
+                # Check if new population can be fed; if not, tanks empty but no growth
+                if nutrients_per_turn - (self.population + 1) * 2 >= 0:
+                    self.population += 1
+                    print(f"{self.name} grew to population {self.population}")
+                self.nutrients_accumulated = 0
+
+        # Recompute tank capacity after any population change, store for display
+        self.nutrients_needed = columns * (1 + self.population)
 
         # Update growth turns remaining
         self.growth_turns_remaining = self._calculate_growth_turns()
