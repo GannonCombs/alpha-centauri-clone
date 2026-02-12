@@ -675,18 +675,29 @@ class Base:
     def calculate_population_happiness(self):
         """Calculate workers, drones, and talents based on psych and facilities.
 
+        Specialists are a separate citizen category and are not subject to the
+        drone/talent/worker classification.  All happiness math operates on the
+        non-specialist pool (population − num_specialists) so specialist psych
+        bonuses cannot circularly consume the specialist's own citizen slot.
+
         Formula:
         - Base drones: 1 drone per 4 citizens beyond size 3 (difficulty scaled)
         - Disloyal drones: Extra drones from recently conquered bases
         - Facilities: Recreation Commons (-2 drones), Hologram Theatre (-2 drones)
-        - Psych: 2 psych points = 1 talent
-        - Workers: remaining population
+        - Psych: 2 psych points = 1 talent (capped to non-specialist pool)
+        - Workers: non-specialist citizens − drones − talents
         """
-        # Start with all population as workers
-        base_drones = 0
-        base_talents = 0
+        # Specialists: can have at most one per citizen; trim only hard overflow
+        num_specialists = len(self.specialists)
+        if num_specialists > self.population:
+            self.specialists = self.specialists[:self.population]
+            num_specialists = self.population
 
-        # Calculate base drones (simplified: 1 drone per 4 citizens beyond size 3)
+        # Non-specialist citizens: these are the only ones classified as W/D/T
+        non_spec = self.population - num_specialists
+
+        # Base drones (threshold still based on total population, not just non-spec)
+        base_drones = 0
         if self.population > 3:
             base_drones = (self.population - 3) // 4
 
@@ -706,6 +717,9 @@ class Base:
         if 'hologram_theatre' in self.facilities:
             base_drones = max(0, base_drones - 2)
 
+        # Cap drones to the non-specialist pool
+        base_drones = min(base_drones, non_spec)
+
         # Convert psych to talents (2 psych = 1 talent)
         base_talents = self.psych_output // 2
 
@@ -714,18 +728,13 @@ class Base:
         if self.owner == 6:
             base_talents += (self.population + 3) // 4
 
-        # Specialists occupy citizen slots that would otherwise be workers
-        num_specialists = len(self.specialists)
-        # If drone/talent growth has squeezed out worker slots, trim excess specialists
-        available_for_specialists = max(0, self.population - base_drones - base_talents)
-        if num_specialists > available_for_specialists:
-            self.specialists = self.specialists[:available_for_specialists]
-            num_specialists = available_for_specialists
+        # Cap talents to what remains in the non-specialist pool after drones
+        base_talents = min(base_talents, max(0, non_spec - base_drones))
 
         # Final population breakdown
         self.drones = base_drones
         self.talents = base_talents
-        self.workers = max(0, self.population - self.drones - self.talents - num_specialists)
+        self.workers = max(0, non_spec - base_drones - base_talents)
 
         # Check for drone riot
         self.check_drone_riot()
