@@ -210,6 +210,10 @@ class Unit:
         if self.moves_remaining <= 0:
             return False
 
+        # Void tiles are not part of the playable map
+        if getattr(tile, 'void', False):
+            return False
+
         # Land units can't enter ocean
         if self.type == 'land' and tile.is_ocean():
             return False

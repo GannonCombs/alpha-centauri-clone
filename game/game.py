@@ -479,8 +479,11 @@ class Game:
         # Wrap X coordinate horizontally
         target_x = target_x % self.game_map.width
 
-        # Y doesn't wrap - must be valid
+        # Y doesn't wrap - must be valid and not a void (border) tile
         if target_y < 0 or target_y >= self.game_map.height:
+            return False
+        target_tile_check = self.game_map.get_tile(target_x, target_y)
+        if target_tile_check and getattr(target_tile_check, 'void', False):
             return False
 
         # Check if target is adjacent (one tile in any of 8 directions, with wrapping)
@@ -1349,7 +1352,6 @@ class Game:
                         # Player met the AI faction's base
                         other_faction_id = other_base.owner
                         if other_faction_id not in self.faction_contacts:
-                            self.faction_contacts.add(other_faction_id)
                             print(f"Player established contact with faction {other_faction_id} (via base)")
 
                             # Show commlink request popup
@@ -1360,21 +1362,12 @@ class Game:
                                 'player_faction_id': self.player_faction_id
                             })
 
-                            # Check if we have all living factions now
-                            # Check if contacted all NON-ELIMINATED factions (excluding player)
-                            living_factions = set()
-                            for faction_id in range(7):
-                                if faction_id != self.player_faction_id and faction_id not in self.eliminated_factions:
-                                    living_factions.add(faction_id)
-
-                            if living_factions.issubset(self.faction_contacts):
-                                self.all_contacts_obtained = True
+                            self.add_faction_contact(other_faction_id)
 
                     elif other_base.owner == self.player_faction_id:
                         # AI unit met the player's base
                         other_faction_id = unit.owner
                         if other_faction_id not in self.faction_contacts:
-                            self.faction_contacts.add(other_faction_id)
                             print(f"Player established contact with faction {other_faction_id} (via base)")
 
                             # Show commlink request popup
@@ -1385,15 +1378,7 @@ class Game:
                                 'player_faction_id': self.player_faction_id
                             })
 
-                            # Check if we have all living factions now
-                            # Check if contacted all NON-ELIMINATED factions (excluding player)
-                            living_factions = set()
-                            for faction_id in range(7):
-                                if faction_id != self.player_faction_id and faction_id not in self.eliminated_factions:
-                                    living_factions.add(faction_id)
-
-                            if living_factions.issubset(self.faction_contacts):
-                                self.all_contacts_obtained = True
+                            self.add_faction_contact(other_faction_id)
 
                 # Check for units on adjacent tile
                 for other_unit in adj_tile.units:
@@ -1414,7 +1399,6 @@ class Game:
                         # Player met the AI faction (owner IS faction_id)
                         other_faction_id = other_unit.owner
                         if other_faction_id not in self.faction_contacts:
-                            self.faction_contacts.add(other_faction_id)
                             print(f"Player established contact with faction {other_faction_id}")
 
                             # Show commlink request popup (player initiated contact)
@@ -1425,20 +1409,12 @@ class Game:
                                 'player_faction_id': self.player_faction_id
                             })
 
-                            # Check if we have all living factions now
-                            living_factions = set()
-                            for base in self.bases:
-                                if base.owner != self.player_faction_id:
-                                    living_factions.add(base.owner)  # owner IS faction_id
-
-                            if living_factions.issubset(set(self.faction_contacts)):
-                                self.all_contacts_obtained = True
+                            self.add_faction_contact(other_faction_id)
 
                     elif other_unit.owner == self.player_faction_id:
                         # AI met the player (owner IS faction_id)
                         other_faction_id = unit.owner
                         if other_faction_id not in self.faction_contacts:
-                            self.faction_contacts.add(other_faction_id)
                             print(f"Player established contact with faction {other_faction_id}")
 
                             # Show commlink request popup (AI initiated contact)
@@ -1449,14 +1425,7 @@ class Game:
                                 'player_faction_id': self.player_faction_id
                             })
 
-                            # Check if we have all living factions now
-                            living_factions = set()
-                            for base in self.bases:
-                                if base.owner != self.player_faction_id:
-                                    living_factions.add(base.owner)  # owner IS faction_id
-
-                            if living_factions.issubset(self.faction_contacts):
-                                self.all_contacts_obtained = True
+                            self.add_faction_contact(other_faction_id)
 
     def can_found_base(self, unit):
         """Check if a unit can found a base at its current location.

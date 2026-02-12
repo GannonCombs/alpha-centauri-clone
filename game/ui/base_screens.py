@@ -18,6 +18,8 @@ class BaseScreenManager:
 
         # State
         self.base_naming_unit = None
+        self.rename_base_target = None      # Set when renaming (not founding)
+        self.base_name_text_selected = False  # True = full text highlighted; backspace clears all
         self.base_name_input = ""
         self.base_name_suggestions = []
         self.viewing_base = None
@@ -99,7 +101,8 @@ class BaseScreenManager:
         pygame.draw.rect(screen, COLOR_BUTTON_HIGHLIGHT, dialog_rect, 3, border_radius=12)
 
         # Title
-        title_surf = self.font.render("Found New Base", True, COLOR_TEXT)
+        title_text = "Rename Base" if self.rename_base_target else "Found New Base"
+        title_surf = self.font.render(title_text, True, COLOR_TEXT)
         screen.blit(title_surf, (dialog_x + dialog_w // 2 - title_surf.get_width() // 2, dialog_y + 20))
 
         # Input field
@@ -108,15 +111,23 @@ class BaseScreenManager:
         pygame.draw.rect(screen, (20, 25, 30), input_rect, border_radius=6)
         pygame.draw.rect(screen, COLOR_BUTTON_BORDER, input_rect, 2, border_radius=6)
 
-        # Draw input text
+        # Draw selection highlight or normal text
         input_surf = self.font.render(self.base_name_input, True, COLOR_TEXT)
-        screen.blit(input_surf, (input_rect.x + 10, input_rect.y + 13))
-
-        # Draw cursor
-        cursor_x = input_rect.x + 10 + input_surf.get_width() + 2
-        if int(pygame.time.get_ticks() / 500) % 2 == 0:  # Blinking cursor
-            pygame.draw.line(screen, COLOR_TEXT, (cursor_x, input_rect.y + 10),
-                           (cursor_x, input_rect.y + input_rect.height - 10), 2)
+        if self.base_name_text_selected and self.base_name_input:
+            # Draw yellow highlight behind text
+            highlight_rect = pygame.Rect(input_rect.x + 8, input_rect.y + 8,
+                                         input_surf.get_width() + 4, input_rect.height - 16)
+            pygame.draw.rect(screen, (180, 150, 30), highlight_rect, border_radius=3)
+            # Draw text in dark color over highlight
+            sel_surf = self.font.render(self.base_name_input, True, (20, 15, 5))
+            screen.blit(sel_surf, (input_rect.x + 10, input_rect.y + 13))
+        else:
+            screen.blit(input_surf, (input_rect.x + 10, input_rect.y + 13))
+            # Draw cursor
+            cursor_x = input_rect.x + 10 + input_surf.get_width() + 2
+            if int(pygame.time.get_ticks() / 500) % 2 == 0:  # Blinking cursor
+                pygame.draw.line(screen, COLOR_TEXT, (cursor_x, input_rect.y + 10),
+                               (cursor_x, input_rect.y + input_rect.height - 10), 2)
 
         # OK and Cancel buttons
         button_y = dialog_y + dialog_h - 70
@@ -144,39 +155,59 @@ class BaseScreenManager:
         """Handle keyboard and mouse events for base naming. Returns True if event consumed."""
         if event.type == pygame.KEYDOWN:
             if event.key == pygame.K_ESCAPE:
-                self.base_naming_unit = None
-                self.base_name_input = ""
+                self._close_naming_dialog()
                 return 'close'
             elif event.key == pygame.K_RETURN:
                 if self.base_name_input.strip():
-                    game.found_base(self.base_naming_unit, self.base_name_input.strip())
-                    self.base_naming_unit = None
-                    self.base_name_input = ""
+                    self._commit_naming(game)
+                self._close_naming_dialog()
                 return 'close'
             elif event.key == pygame.K_BACKSPACE:
-                self.base_name_input = self.base_name_input[:-1]
+                if self.base_name_text_selected:
+                    self.base_name_input = ""
+                    self.base_name_text_selected = False
+                else:
+                    self.base_name_input = self.base_name_input[:-1]
                 return True
             else:
-                # Add character to input
-                if event.unicode and len(self.base_name_input) < 30:
-                    self.base_name_input += event.unicode
+                if event.unicode:
+                    if self.base_name_text_selected:
+                        # Replace entire selection with the typed character
+                        self.base_name_input = event.unicode
+                        self.base_name_text_selected = False
+                    elif len(self.base_name_input) < 30:
+                        self.base_name_input += event.unicode
                 return True
         return False
+
+    def _commit_naming(self, game):
+        """Apply the name — either found a new base or rename an existing one."""
+        name = self.base_name_input.strip()
+        if not name:
+            return
+        if self.rename_base_target:
+            self.rename_base_target.name = name
+        else:
+            game.found_base(self.base_naming_unit, name)
+
+    def _close_naming_dialog(self):
+        """Reset all naming state."""
+        self.base_naming_unit = None
+        self.rename_base_target = None
+        self.base_name_input = ""
+        self.base_name_text_selected = False
 
     def handle_base_naming_click(self, pos, game):
         """Handle clicks in the base naming dialog. Returns 'close' if should exit, None otherwise."""
         # Check OK button
         if hasattr(self, 'base_naming_ok_rect') and self.base_naming_ok_rect.collidepoint(pos):
-            if self.base_name_input.strip():
-                game.found_base(self.base_naming_unit, self.base_name_input.strip())
-                self.base_naming_unit = None
-                self.base_name_input = ""
+            self._commit_naming(game)
+            self._close_naming_dialog()
             return 'close'
 
         # Check Cancel button
         elif hasattr(self, 'base_naming_cancel_rect') and self.base_naming_cancel_rect.collidepoint(pos):
-            self.base_naming_unit = None
-            self.base_name_input = ""
+            self._close_naming_dialog()
             return 'close'
 
         return None
@@ -916,15 +947,15 @@ class BaseScreenManager:
         total_button_w = button_w * 2 + button_spacing
         buttons_start_x = (screen_w - total_button_w) // 2
 
-        # Rename button (disabled for now)
+        # Rename button
         rename_button_x = buttons_start_x
         self.base_view_rename_rect = pygame.Rect(rename_button_x, button_y, button_w, button_h)
 
-        # Draw disabled Rename button (grayed out)
-        pygame.draw.rect(screen, (50, 50, 50), self.base_view_rename_rect, border_radius=6)
-        pygame.draw.rect(screen, (80, 80, 80), self.base_view_rename_rect, 2, border_radius=6)
+        rename_hover = self.base_view_rename_rect.collidepoint(pygame.mouse.get_pos())
+        pygame.draw.rect(screen, COLOR_BUTTON_HOVER if rename_hover else COLOR_BUTTON, self.base_view_rename_rect, border_radius=6)
+        pygame.draw.rect(screen, COLOR_BUTTON_HIGHLIGHT if rename_hover else COLOR_BUTTON_BORDER, self.base_view_rename_rect, 2, border_radius=6)
 
-        rename_text = self.font.render("Rename", True, (100, 100, 100))
+        rename_text = self.font.render("Rename", True, COLOR_TEXT)
         screen.blit(rename_text, (self.base_view_rename_rect.centerx - rename_text.get_width() // 2, self.base_view_rename_rect.centery - 10))
 
         # OK button
@@ -1595,6 +1626,14 @@ class BaseScreenManager:
             self._reset_base_popups()  # Reset all popups when closing
             return 'close'
 
+        # Check Rename button
+        if hasattr(self, 'base_view_rename_rect') and self.base_view_rename_rect and self.base_view_rename_rect.collidepoint(pos):
+            if base:
+                self.rename_base_target = base
+                self.base_name_input = base.name
+                self.base_name_text_selected = True
+            return 'rename'
+
         # All remaining interactive controls are player-only
         if is_enemy_base:
             return None
@@ -1641,11 +1680,14 @@ class BaseScreenManager:
                     faction = game.factions[base.owner]
                     new_production = select_production(base, faction, game)
                     if new_production:
-                        base.current_production = new_production
-                        base.production_progress = 0
-                        base.production_cost = base._get_production_cost(new_production)
-                        base.production_turns_remaining = base._calculate_production_turns()
-                        game.set_status_message(f"Governor activated: Now producing {new_production}")
+                        if new_production != base.current_production:
+                            base.current_production = new_production
+                            base.production_progress = 0
+                            base.production_cost = base._get_production_cost(new_production)
+                            base.production_turns_remaining = base._calculate_production_turns()
+                            game.set_status_message(f"Governor activated: Now producing {new_production}")
+                        else:
+                            game.set_status_message(f"Governor activated for {base.name}")
                     else:
                         game.set_status_message(f"Governor activated for {base.name}")
                 else:
@@ -1671,11 +1713,14 @@ class BaseScreenManager:
                             faction = game.factions[base.owner]
                             new_production = select_production(base, faction, game)
                             if new_production:
-                                base.current_production = new_production
-                                base.production_progress = 0
-                                base.production_cost = base._get_production_cost(new_production)
-                                base.production_turns_remaining = base._calculate_production_turns()
-                                game.set_status_message(f"Governor: {mode_name.upper()} mode - Now producing {new_production}")
+                                if new_production != base.current_production:
+                                    base.current_production = new_production
+                                    base.production_progress = 0
+                                    base.production_cost = base._get_production_cost(new_production)
+                                    base.production_turns_remaining = base._calculate_production_turns()
+                                    game.set_status_message(f"Governor: {mode_name.upper()} mode - Now producing {new_production}")
+                                else:
+                                    game.set_status_message(f"Governor: {mode_name.upper()} mode - Continuing {new_production}")
                             else:
                                 game.set_status_message(f"Governor set to {mode_name.upper()} mode")
                     return None

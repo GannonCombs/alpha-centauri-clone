@@ -122,6 +122,9 @@ in similar fashion. Note that if the tile has multiple units on it, the artifact
 the artifact was destroyed. Ok button only.
 8 A scout patrol of mine attacked and won. The next turn, it was still Already Moved. This should never happen.
 9 A unit of mine took a base and wasn't healed. Any unit taking a base automatically fully heals.
+10 Saw an AI unit on an island tile it couldn't have walked to, before getting a transport. They were on the bottom row
+of the map; are there invisible tiles there that are playable?
+11 Got a diplomatic milestone popup when missing commlinks.
 
 
 
@@ -136,7 +139,7 @@ the artifact was destroyed. Ok button only.
 Note: this is the ONLY section of todo.txt that can be edited by Claude Code, but only to add checkmarks to tasks.
 
 1 Healing should not occur at turn end. It happens in upkeep of the next turn.
-2 Rename button in base view needs to be implemented. A popup with a text box allows us to rename the base. OK and cancel
+2 Got a drone riot popup. Zoom to base did not popup the base view. Also no drone icons (do we have any?)
 buttons. The text should be visibly highlighted, so that one backspace button deletes the entire name.
 3 Production times are off. Merchant Exchange takes 20 turns on Turn 1 for Morgan.
 4 FACTION_DATA contains single quotes and double quotes.
@@ -149,11 +152,8 @@ If yes, the artifact is consumed and we get a free tech. Linking means a network
 9 Healing isn't working correctly. It's applying the bonuses correctly, but when the units are moving. It should only
 be when they've skipped their turn entirely. If a unit has even partially moved or acted that turn, healing doesn't happen
 naturally (movement onto a monolith is the exception.)
-10 Got a diplomatic milestone popup when missing commlinks.
-11 Turn auto-ends when the last unit moves into contact with a new faction. End turn needs to wait for diplomacy to finish.
+10 Turn auto-ends when the last unit moves into contact with a new faction. End turn needs to wait for diplomacy to finish.
 The End Turn button should then blink, not auto-end.
-12 Saw an AI unit on an island tile it couldn't have walked to, before getting a transport. They were on the bottom row
-of the map; are there invisible tiles there that are playable?
 
 
 

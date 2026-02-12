@@ -205,7 +205,10 @@ class UIManager:
             if self.active_screen == "BASE_NAMING":
                 result = self.base_screens.handle_base_naming_event(event, game)
                 if result == 'close':
-                    self.active_screen = "GAME"
+                    if self.base_screens.viewing_base:
+                        self.active_screen = "BASE_VIEW"
+                    else:
+                        self.active_screen = "GAME"
                 return True
 
             # Handle text input for base view (hurry production popup)
@@ -624,11 +627,17 @@ class UIManager:
                 result = self.base_screens.handle_base_view_click(event.pos, game)
                 if result == 'close':
                     self.active_screen = "GAME"
+                elif result == 'rename':
+                    self.active_screen = "BASE_NAMING"
                 return True
             elif self.active_screen == "BASE_NAMING":
                 result = self.base_screens.handle_base_naming_click(event.pos, game)
                 if result == 'close':
-                    self.active_screen = "GAME"
+                    # Return to base view if we were renaming, otherwise back to game
+                    if self.base_screens.viewing_base:
+                        self.active_screen = "BASE_VIEW"
+                    else:
+                        self.active_screen = "GAME"
                 return True
             elif self.active_screen == "DIPLOMACY":
                 result = self.diplomacy.handle_click(event.pos)
@@ -1049,6 +1058,8 @@ class UIManager:
         elif self.active_screen == "BASE_VIEW":
             self.base_screens.draw_base_view(screen, game)
         elif self.active_screen == "BASE_NAMING":
+            if self.base_screens.rename_base_target:
+                self.base_screens.draw_base_view(screen, game)
             self.base_screens.draw_base_naming(screen)
         elif self.active_screen == "DIPLOMACY":
             self.diplomacy.draw(screen)

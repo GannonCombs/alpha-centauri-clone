@@ -78,6 +78,7 @@ class Tile:
         self.rainfall = 1  # 0=arid, 1=moderate, 2=rainy (land only; ocean is always 1)
         self.rockiness = 0  # 0=flat, 1=rolling, 2=rocky (land only; ocean is always 0)
         self.fungus = False  # Xenofungus present on this tile
+        self.void = False  # True for edge rows — not part of the playable map
 
     def is_land(self):
         """Check if this tile is land terrain."""
@@ -152,12 +153,16 @@ class GameMap:
         threshold = all_values[threshold_index] if threshold_index < len(all_values) else 0.0
 
         # Assign terrain based on threshold
+        # Edge rows (y=0 and y=height-1) are marked void — they sit under the
+        # black border overlay and are not part of the playable map.
         self.tiles = []
         for y in range(self.height):
             row = []
             for x in range(self.width):
                 terrain = 'ocean' if random_values[y][x] < threshold else 'land'
                 tile = Tile(x, y, terrain)
+                if y == 0 or y == self.height - 1:
+                    tile.void = True
                 row.append(tile)
             self.tiles.append(row)
 
