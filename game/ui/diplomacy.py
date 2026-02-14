@@ -79,7 +79,7 @@ class DiplomacyManager:
         pygame.draw.rect(screen, (15, 22, 28), info_panel)
         pygame.draw.rect(screen, COLOR_BUTTON_BORDER, info_panel, 2)
 
-        name_surf = self.font.render(self.target_faction['full_name'], True, self.target_faction['color'])
+        name_surf = self.font.render(self.target_faction['$FULLNAME'], True, self.target_faction['color'])
         screen.blit(name_surf, (info_x, info_y))
 
         faction_id = next((i for i, f in enumerate(FACTION_DATA) if f['name'] == self.target_faction['name']), None)
@@ -209,6 +209,11 @@ class DiplomacyManager:
             # Pact-specific options
             if requires == 'pact' and relation != 'Pact':
                 continue
+            #TODO: Implement
+            # if requires == 'has_enemy' and you have Vendetta with another faction:
+            #     continue
+            # if requires == 'has_outstanding_loan' and you owe them $$$:
+            #     continue
 
             available.append(response)
         return available
@@ -342,7 +347,18 @@ class DiplomacyManager:
             self.dialog_numbers = None
             self.diplo_stage = 'diplo'
         elif action == 'battleplans':
-            # TODO: Implement battle plans
+            # TODO: Implement everything from here down.
+            # #COUNTER0 is the classic "I see. What do you offer in return?" message, which most of these need.
+            self.diplo_stage = 'diplo'
+        elif action == 'propose_joint_attack':
+            self.diplo_stage = 'diplo'
+        elif action == 'propose_repayment':
+            self.diplo_stage = 'diplo'
+        elif action == 'propose_commlink':
+            self.diplo_stage = 'diplo'
+        elif action == 'propose_gift':
+            self.diplo_stage = 'diplo'
+        elif action == 'propose_cede_base':
             self.diplo_stage = 'diplo'
         else:
             # Default fallback

@@ -6,10 +6,8 @@
 FACTION_DATA = [
     {
         "id": 0,
-        "name": "Gaians",
         "leader": "Lady Deirdre Skye",
         "gender": "F",
-        "full_name": "Lady Deirdre Skye (Gaians)",
         "color": (50, 205, 50),
         "starting_tech": "Ecology",
         "bonuses": {
@@ -24,7 +22,7 @@ FACTION_DATA = [
         # --- IDENTITY & NAMING ---
         '$FACTION': "Gaia's Stepdaughters",
         '$FACTIONNOUN': "Gaians",  # Used for plural reference
-        '$NAME': "Deirdre",  # Short name
+        'name': "Deirdre",  # Short name
         '$FULLNAME': "Deirdre Skye",  # Inferred from Blurb/Datalinks
         '$TITLE': "Lady",  # $TITLE2
 
@@ -37,7 +35,8 @@ FACTION_DATA = [
         # These map to specific placeholders in the dialog tree
 
         # $PET_PROJECTS / $PET_PROJECTS6
-        '$PET_PROJECTS': "preserve Planet's native life",
+        '$PET_PROJECTS': "environmental initiatives",
+        '$PET_PROJECTS_ALT': "preserve Planet's native life",
 
         # $TO_CARRY_OUT_MY_MISSION6 (Statement of intent)
         '$MISSION_STATEMENT': "to guard, understand, and preserve Planet's native life",
@@ -53,9 +52,6 @@ FACTION_DATA = [
 
         # $BAD_HABITS2 (Noun phrase for annoying behavior)
         '$BAD_HABITS': "tree-crazy prattle",
-
-        # $ENVIRONMENTAL_INITIATIVES5 (Positive work description)
-        '$GOOD_WORK': "environmental initiatives",
 
         # $BIZARRE_PRACTICES5 (Negative ritual description)
         '$BIZARRE_PRACTICES': "pagan rituals",
@@ -95,10 +91,8 @@ FACTION_DATA = [
     },
     {
         "id": 1,
-        "name": "The Hive",
         "leader": "Chairman Yang",
         "gender": "M",
-        "full_name": "Chairman Yang (The Hive)",
         "color": (100, 100, 255),
         "starting_tech": "DocLoy",
         "bonuses": {
@@ -112,7 +106,7 @@ FACTION_DATA = [
         # --- IDENTITY & NAMING ---
         '$FACTION': "Human Hive",
         '$FACTIONNOUN': "Hive",  # Used for plural reference
-        '$NAME': "Yang",  # Short name
+        'name': "Yang",  # Short name
         '$FULLNAME': "Sheng-Ji Yang",  # From Blurb/Datalinks
         '$TITLE': "Chairman",  # $TITLE2
 
@@ -123,7 +117,8 @@ FACTION_DATA = [
 
         # --- FLAVOR TEXT / VARIABLES ---
         # $PET_PROJECTS / $PET_PROJECTS6
-        '$PET_PROJECTS': "properly control our followers",
+        '$PET_PROJECTS': "social experiments",
+        '$PET_PROJECTS_ALT': "properly control our followers",
 
         # $TO_CARRY_OUT_MY_MISSION6 (Statement of intent)
         '$MISSION_STATEMENT': "to found a society on the principles of security and control",
@@ -141,9 +136,6 @@ FACTION_DATA = [
 
         # $BAD_HABITS2 (Noun phrase for annoying behavior)
         '$BAD_HABITS': "brutal nihilism",
-
-        # $ENVIRONMENTAL_INITIATIVES5 (Positive work description)
-        '$GOOD_WORK': "social experiments",
 
         # $BIZARRE_PRACTICES5 (Negative ritual description)
         '$BIZARRE_PRACTICES': "mind control experiments",
@@ -181,10 +173,8 @@ FACTION_DATA = [
     },
     {
         "id": 2,
-        "name": "University",
         "leader": "Provost Zakharov",
         "gender": "M",
-        "full_name": "Provost Zakharov (University)",
         "color": (255, 255, 255),
         "starting_tech": "InfNet",
         "bonuses": {
@@ -198,7 +188,7 @@ FACTION_DATA = [
         # --- IDENTITY & NAMING ---
         '$FACTION': "University of Planet",
         '$FACTIONNOUN': "University",  # Used for plural reference
-        '$NAME': "Zakharov",  # Short name
+        'name': "Zakharov",  # Short name
         '$FULLNAME': "Prokhor Zakharov",  # From Blurb/Datalinks
         '$TITLE': "Provost",  # $TITLE2
 
@@ -211,7 +201,8 @@ FACTION_DATA = [
         # These map to specific placeholders in the dialog tree
 
         # $PET_PROJECTS / $PET_PROJECTS6
-        '$PET_PROJECTS': "pursue unfettered research",
+        '$PET_PROJECTS': "conducting unethical research",
+        '$PET_PROJECTS_ALT': "pursue unfettered research",
 
         # $TO_CARRY_OUT_MY_MISSION6 (Statement of intent)
         '$MISSION_STATEMENT': "to pursue pure research unfettered by outside motives and meddling",
@@ -229,9 +220,6 @@ FACTION_DATA = [
 
         # $BAD_HABITS2 (Noun phrase for annoying behavior)
         '$BAD_HABITS': "dreaming up new ways to exterminate our species",
-
-        # $ENVIRONMENTAL_INITIATIVES5 (Positive work description)
-        '$GOOD_WORK': "conducting unethical research",
 
         # $BIZARRE_PRACTICES5 (Negative ritual description)
         '$BIZARRE_PRACTICES': "unethical methods",
@@ -269,10 +257,8 @@ FACTION_DATA = [
     },
     {
         "id": 3,
-        "name": "Morganites",
         "leader": "CEO Morgan",
         "gender": "M",
-        "full_name": "CEO Morgan (Morganites)",
         "color": (255, 215, 0),
         "starting_tech": "Indust",
         "bonuses": {
@@ -287,7 +273,7 @@ FACTION_DATA = [
         # --- IDENTITY & NAMING ---
         '$FACTION': "Morgan Industries",
         '$FACTIONNOUN': "Morganites",  # Used for plural reference
-        '$NAME': "Morgan",  # Short name
+        'name': "Morgan",  # Short name
         '$FULLNAME': "Nwabudike Morgan",  # From Blurb/Datalinks
         '$TITLE': "CEO",  # $TITLE2
 
@@ -300,7 +286,8 @@ FACTION_DATA = [
         # These map to specific placeholders in the dialog tree
 
         # $PET_PROJECTS / $PET_PROJECTS6
-        '$PET_PROJECTS': "dominate Planet's economy",
+        '$PET_PROJECTS': "business plans",
+        '$PET_PROJECTS_ALT': "dominate Planet's economy",
 
         # $TO_CARRY_OUT_MY_MISSION6 (Statement of intent)
         '$MISSION_STATEMENT': "to reap the rightful rewards of skillful investment and planning",
@@ -318,9 +305,6 @@ FACTION_DATA = [
 
         # $BAD_HABITS2 (Noun phrase for annoying behavior)
         '$BAD_HABITS': "monopolistic grasping",
-
-        # $ENVIRONMENTAL_INITIATIVES5 (Positive work description)
-        '$GOOD_WORK': "business plans",
 
         # $BIZARRE_PRACTICES5 (Negative ritual description)
         '$BIZARRE_PRACTICES': "corporate empire-building",
@@ -358,10 +342,8 @@ FACTION_DATA = [
     },
     {
         "id": 4,
-        "name": "Spartans",
         "leader": "Colonel Santiago",
         "gender": "F",
-        "full_name": "Colonel Santiago (Spartans)",
         "color": (139, 69, 19),
         "starting_tech": "Mobile",
         "bonuses": {
@@ -374,7 +356,7 @@ FACTION_DATA = [
         # --- IDENTITY & NAMING ---
         '$FACTION': "Spartan Federation",
         '$FACTIONNOUN': "Spartans",  # Used for plural reference
-        '$NAME': "Santiago",  # Short name
+        'name': "Santiago",  # Short name
         '$FULLNAME': "Corazon Santiago",  # From Blurb/Datalinks
         '$TITLE': "Colonel",  # $TITLE2
 
@@ -387,7 +369,8 @@ FACTION_DATA = [
         # These map to specific placeholders in the dialog tree
 
         # $PET_PROJECTS / $PET_PROJECTS6
-        '$PET_PROJECTS': "exercise our rights to keep and bear arms",
+        '$PET_PROJECTS': "military preparations",
+        '$PET_PROJECTS_ALT': "exercise our rights to keep and bear arms",
 
         # $TO_CARRY_OUT_MY_MISSION6 (Statement of intent)
         '$MISSION_STATEMENT': "to exercise freely the God-given right to keep and bear arms",
@@ -405,9 +388,6 @@ FACTION_DATA = [
 
         # $BAD_HABITS2 (Noun phrase for annoying behavior)
         '$BAD_HABITS': "paranoid delusions",
-
-        # $ENVIRONMENTAL_INITIATIVES5 (Positive work description)
-        '$GOOD_WORK': "military preparations",
 
         # $BIZARRE_PRACTICES5 (Negative ritual description)
         '$BIZARRE_PRACTICES': "right-wing fantasies",
@@ -445,10 +425,8 @@ FACTION_DATA = [
     },
     {
         "id": 5,
-        "name": "Believers",
         "leader": "Sister Miriam",
         "gender": "F",
-        "full_name": "Sister Miriam (Believers)",
         "color": (255, 165, 0),
         "starting_tech": "Psych",
         "bonuses": {
@@ -460,50 +438,58 @@ FACTION_DATA = [
             "forbidden_values": "Knowledge"
         },
         "base_names": ["New Jerusalem", "Great Conclave", "Great Zion", "Far Jericho", "Redemption Base", "Children of God", "Noah's Rainbow", "The Voice of God", "Judgement Seat", "Valley of the Faithful", "Blessed Redeemer", "The Glory of God", "New Eden", "Terrible Swift Sword", "Time of Salvation", "Eternal Reward", "The Lord's Mercy", "Righteous Sentence", "Throne of God", "The Rapture", "The Lord's Wrath", "The Lord's Grace", "The Hand of God", "The Coming of the Lord", "Sanctity Base", "The Lord's Chosen", "Hallowed Ground", "The Lord's Gift", "Divinity Base", "The Word of God", "Revelation Base", "The Holy Fire", "The Lord's Truth", "Blessed Saviour", "From On High", "Godwinson's Hope", "House of Martyrs"],
-        # --- IDENTITY & TITLES ---
+        # --- IDENTITY & NAMING ---
         '$FACTION': "The Lord's Believers",
-        '$NAME': "Miriam",  # Short name
-        '$TITLE': "Sister",  # The leader's specific title
-        '$SPECIAL5': "The Fundamentalist",  # From the first line of stats
+        '$FACTIONNOUN': "Believers",  # Used for plural reference
+        'name': "Miriam",  # Short name
+        '$FULLNAME': "Miriam Godwinson",  # From Blurb/Datalinks
+        '$TITLE': "Sister",  # $TITLE2
 
-        # --- ADJECTIVES & PEJORATIVES ---
-        '$FACTIONADJ0': "Believing",  # Faction adjective (territory, etc.)
-        '$FACTIONADJ1': "Believing",
-        '$CHARACTERADJ9': "pious",  # Character trait for introductions
-        '$PEJORATIVE5': "Religious Freak",  # Used by enemies in reports
+        # --- ADJECTIVES ---
+        '$CHARACTERADJ': "pious",  # $CHARACTERADJ9
+        '$FACTIONADJ': "Believing",  # Used for "Believing territory"
+        '$PEJORATIVE': "Religious Freak",  # $PEJORATIVE5
 
-        # --- ACTION STRINGS & DIALOGUE FILLERS ---
-        # $TO_CARRY_OUT_MY_MISSION6 / $TO_CARRY_OUT_OUR_MISSION6
-        '$TO_CARRY_OUT_MY_MISSION6': "to embrace the truth of the good Lord's Scripture",
+        # --- FLAVOR TEXT / VARIABLES ---
+        # These map to specific placeholders in the dialog tree
 
-        # $PET_PROJECTS6
-        '$PET_PROJECTS6': "embrace the truth of the Lord's Scripture",
+        # $PET_PROJECTS / $PET_PROJECTS6
+        '$PET_PROJECTS': "life of worship",
+        '$PET_PROJECTS_ALT': "embrace the truth of the Lord's Scripture",
 
-        # $DANCINGNAKED3 (The 3rd person variant is used in #REPORTWINNING)
-        '$DANCINGNAKED3': "pounding her cherished bible",
+        # $TO_CARRY_OUT_MY_MISSION6 (Statement of intent)
+        '$MISSION_STATEMENT': "to embrace the truth of the good Lord's Scripture",
 
-        # $BADHABITS5
-        '$BADHABITS5': "bible thumping extremism",
+        # $IMPLEMENTING_YOUR_EVIL_AGENDA5 (How enemies describe them)
+        '$EVIL_AGENDA': "imposing your fanatical religious law on every faction on Planet",
 
-        # $ENVIRONMENTAL_INITIATIVES5 (The 'positive' version of their work)
-        '$ENVIRONMENTAL_INITIATIVES5': "life of worship",
+        # $DANCING_NAKED_THROUGH_THE_TREES8 (Specific insult for this faction)
+        # Context: "I see you're very busy [ACTION]"
+        '$DANCING_NAKED_ACTION': "pounding your cherished bible",
 
-        # $BIZARRE_PRACTICES5 (The 'negative' version of their work)
-        '$BIZARRE_PRACTICES5': "bizarre religious practices",
+        # $SPOUTING_TREE_CRAZY_PRATTLE9 (Specific insult regarding speech)
+        # Context: "accused of [ACTION]"
+        '$CRAZY_PRATTLE_ACTION': "bible thumping extremism",
 
-        # $FEE8
-        '$FEE8': "tithe",
+        # $BAD_HABITS2 (Noun phrase for annoying behavior)
+        '$BAD_HABITS': "bible thumping extremism",
 
-        # $PROVIDING_VALUABLE_SERVICES9
-        '$PROVIDING_VALUABLE_SERVICES9': "upholding standards of decency and morality",
+        # $BIZARRE_PRACTICES5 (Negative ritual description)
+        '$BIZARRE_PRACTICES': "bizarre religious practices",
 
-        # $THOUGHT_POLICE4
-        '$THOUGHT_POLICE4': "my Angels of Justice",
+        # $FEE8 (What they call a bribe/demand)
+        '$FEE': "tithe",
 
-        # $THE_ENVIRONMENTAL_CODE9
-        '$THE_ENVIRONMENTAL_CODE9': "Conclave Oral Law",
+        # $PROVIDING_VALUABLE_SERVICES9 (Justification for the bribe)
+        '$SERVICE_DESC': "upholding standards of decency and morality",
 
-        # --- UNIQUE FACTION OVERRIDES ---
+        # $THOUGHT_POLICE4 (Their enforcement agency)
+        '$POLICE_NAME': "my Angels of Justice",
+
+        # $THE_ENVIRONMENTAL_CODE9 (Their laws)
+        '$LAW_NAME': "Conclave Oral Law",
+
+        # --- DIALOGUE OVERRIDES ---
         # These hard-coded blocks replace generic dialogue tree sections
 
         '#FACTIONTRUCE': {
@@ -526,10 +512,8 @@ FACTION_DATA = [
     },
     {
         "id": 6,
-        "name": "Peacekeepers",
         "leader": "Commissioner Lal",
         "gender": "M",
-        "full_name": "Commissioner Lal (Peacekeepers)",
         "color": (180, 140, 230),
         "starting_tech": "Biogen",
         "bonuses": {
@@ -543,7 +527,7 @@ FACTION_DATA = [
         # --- IDENTITY & NAMING ---
         '$FACTION': "Peacekeeping Forces",
         '$FACTIONNOUN': "Peacekeepers",     # Used for plural reference
-        '$NAME': "Lal",                     # Short name
+        'name': "Lal",                     # Short name
         '$FULLNAME': "Pravin Lal",          # From Blurb/Datalinks
         '$TITLE': "Brother",                # $TITLE2 (as per the #PEACE block)
 
@@ -556,7 +540,8 @@ FACTION_DATA = [
         # These map to specific placeholders in the dialog tree
 
         # $PET_PROJECTS / $PET_PROJECTS6
-        '$PET_PROJECTS': "defend the principles of our U.N. Charter",
+        '$PET_PROJECTS': "humanitarian initiatives",
+        '$PET_PROJECTS_ALT': "defend the principles of our U.N. Charter",
 
         # $TO_CARRY_OUT_MY_MISSION6 (Statement of intent)
         '$MISSION_STATEMENT': "to defend the humanitarian principles of our original U.N. Charter",
@@ -574,9 +559,6 @@ FACTION_DATA = [
 
         # $BAD_HABITS2 (Noun phrase for annoying behavior)
         '$BAD_HABITS': "humanitarian whimpering",
-
-        # $ENVIRONMENTAL_INITIATIVES5 (Positive work description)
-        '$GOOD_WORK': "humanitarian initiatives",
 
         # $BIZARRE_PRACTICES5 (Negative ritual description)
         '$BIZARRE_PRACTICES': "whimpering social programs",

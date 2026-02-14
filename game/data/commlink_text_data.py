@@ -20,10 +20,30 @@ COMMLINK_TEXT = {
         'text': '"Very well, what do you desire from me?"',
         'responses': [
             {'text': '"Never mind."', 'action': 'diplo'},
+            {'text': '"Will you accept a small token of my goodwill and friendship?"', 'action': 'propose_gift'},
             {'text': '"That we swear a $PACTOFBORS1 and join forces!"', 'action': 'propose_pact', 'requires': 'has_treaty'},
             {'text': '"Let us sign a Treaty of Friendship."', 'action': 'propose_treaty', 'requires': 'no_treaty'},
             {'text': '"I desire access to your research data."', 'action': 'propose_tech'},
+            {'text': '"I need commlink frequencies for the other factions."', 'action': 'propose_commlink'},
             {'text': '"I have urgent need of energy credits."', 'action': 'propose_loan'},
+            {'text': '"Here is repayment in full for my $NUM0 loan balance."', 'action': 'propose_repayment', 'requires': 'has_outstanding_loan'},
+            {'text': '"A joint attack on my enemy . . ."', 'action': 'propose_joint_attack', 'requires': 'has_enemy'},
+            {'text': '"You must cede control of one of your bases."', 'action': 'propose_cede_base'},
+        ]
+    },
+    # Counter menu
+    'COUNTER': {
+        'text': '"I see. And blah...from me?"',
+        'responses': [
+            {'text': '"Never mind."', 'action': ''},
+            {'text': '"A generous schedule of loan payments."', 'action': ''},
+            {'text': '"Why, my goodwill and friendship, $TITLE0 $NAME1."', 'action': ''},
+            {'text': '"You need but name your price, $TITLE0."', 'action': ''},
+            {'text': '"To refrain from crushing you like a bug."', 'action': ''},
+            {'text': '"I shall otherwise cancel our $PACTOFBORS2."', 'action': ''},
+            {'text': '"Some of my valuable research data, perhaps?"', 'action': ''},
+            {'text': '"Would you find a modest sum of energy credits helpful?"', 'action': ''},
+            {'text': '"I shall turn over one of my bases to you."', 'action': ''},
         ]
     },
     'INTRONEW0': {
@@ -339,7 +359,7 @@ COMMLINK_TEXT = {
         'responses': [{'text': 'Continue', 'action': 'diplo'}]
     },
     'MAKEPACT': {
-        'text': '"Then I, $TITLE0 $NAME1 of the $FACTION2 greet you formally as $PACTBROTHERORSISTER3! Together we shall both $YOURGOAL4 and $MYGOAL5. May our plans and forces converge to victory!"',
+        'text': '"Then I, $TITLE2 $NAME3 of the $FACTION3 greet you formally as $PACTBROTHERORSISTER3! Together we shall both $YOURGOAL4 and $MYGOAL5. May our plans and forces converge to victory!"',
         'responses': [{'text': 'Continue', 'action': 'diplo'}]
     },
     'MAKETREATY0': {

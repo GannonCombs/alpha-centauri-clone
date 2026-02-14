@@ -39,20 +39,20 @@ class DialogSubstitution:
         pact_of_bors = 'Pact of Sisterhood' if ai_gender == 'F' else 'Pact of Brotherhood'
 
         self.variables = {
-            'NAME0': player_faction.get('$NAME', 'I am'),
-            'NAME1': player_faction.get('leader', 'Commander'),
             'TITLE0': player_faction.get('$TITLE', 'Leader'),
-            'NAME3': get_f('$NAME', 'The Leader'),
             'TITLE2': get_f('$TITLE', 'Leader'),
-            'FACTION2': get_f('$FACTION', 'The Faction'),  # AI's faction name
-            'FACTION3': get_f('$FACTIONNOUN', 'Citizens'),
+            'NAME0': player_faction.get('name', 'I am'),
+            'NAME1': player_faction.get('name', 'Commander'),
+            'NAME3': get_f('name', 'The Leader'),
+            'FACTION2': player_faction.get('$FACTION', 'The Faction'),
+            'FACTION3': get_f('$FACTIONNOUN', 'Citizens'), # AI's faction name
             'FACTION4': get_f('$FACTION', 'The Faction'),
-            'FACTION5': get_f('$FACTION', 'The Faction'),  # AI's faction name (alternate)
+            'FACTION5': get_f('$FACTION', 'The Faction'),
             'CHARACTERADJ9': get_f('$CHARACTERADJ', 'strange'),
             'FACTIONPEJ5': get_f('$PEJORATIVE', 'Enemy'),
             'TO_CARRY_OUT_MY_MISSION6': get_f('$MISSION_STATEMENT', 'to survive'),
-            'PET_PROJECTS6': get_f('$PET_PROJECTS', 'our goals'),
-            'PET_PROJECTS7': get_f('$PET_PROJECTS', 'our goals'),  # Alternate variant
+            'PET_PROJECTS6': player_faction.get('$PET_PROJECTS', 'our goals'),
+            'PET_PROJECTS7': get_f('$PET_PROJECTS', 'our goals'),
             'DANCINGNAKED3': get_f('$DANCING_NAKED_ACTION', 'plotting'),
             'BADHABITS5': get_f('$BAD_HABITS', 'stubbornness'),
             'FEE8': get_f('$FEE', 'payment'),

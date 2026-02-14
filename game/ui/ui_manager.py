@@ -157,7 +157,7 @@ class UIManager:
                 btn = Button(self.commlink_menu_rect.x + 5,
                            self.commlink_menu_rect.y + 5 + (button_index * 38),
                            menu_w - 10, 32,
-                           faction["full_name"],
+                           faction["$FULLNAME"],
                            faction["color"],
                            COLOR_BLACK)
                 btn.player_id = faction_id  # Store faction_id (same as player_id now)

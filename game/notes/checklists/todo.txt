@@ -179,7 +179,8 @@ but they are captured, not killed. We've implemented this.) A note at the bottom
 8 Free tech popups from supply pod are not showing correct procession of popups. Should be 1) Supply pod popup with generic
 free tech text, 2) the traditional tech popup, 3) (if applicable) the new units popup. Claude is having a hard time with
 this one; may need to do myself.
-
+9 Still a bug where 3 or 4 factions get eliminated on turn 1. Nothing attacked them. Just a bug.
+10 I need to freeze any player action whatsoever while the AI turns execute. Can I just hide/disable the cursor?
 
 
 ***************************************************************************

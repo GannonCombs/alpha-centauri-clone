@@ -952,22 +952,6 @@ Librarian, standard 10 bases, Transcend 6 bases
 
 Librarian, huge 16 bases, Transcend, 9 bases
 
-Progenitors #
-The Progenitors are a highly advanced race of starfaring creatures, whose technological sophistication is evident in the artifacts and monoliths they left behind on Planet. Research into these structures, or direct contact with the Progenitors should they return, can yield new technologies, weapons, and base facilities.
-
-In recent millenia, the Progenitors have split into two warring camps: the Manifold Caretakers and the Manifold Usurpers. These factions conflict over the uses of the Manifolds, which include Planet. The Caretakers wish to leave the Manifolds in their original, pristine state, while the Usurpers wish to initiate and control an Ascent to Transcendence. If either faction is successful in their quest, it most likely means an end to humanity's presence on Planet.
-
-Resonance #
-The Progenitors have evolved complex biological systems that can sense fields imperceptible to humans, including at least electrical and magnetic fields. The collective term for this sensitivity is resonance, and permeates all Progenitor communication, art, and culture. The sensitivity also confers valuable combat bonuses to Progenitor forces. With a great deal of training and mechanical aid, humans can learn to sense and utilize this resonance as well.
-
-Manifolds #
-Eons ago, the ancient Progenitors constructed six Planetary Manifolds, which they intended as massive experiments into sentience on a gigantic scale. One of the Manifolds, in the Tau Ceti system, achieved an early sentience, gaining the ability to project undreamt-of power across the galaxy. The "Flowering", as this event was called, engulfed numerous star systems and plunged Progenitor culture into a dark age from which it has not fully recovered. In the ensuing millenia of chaos and fragmentation, the locations of the Six Manifolds were lost.
-
-Energy Grid #
-Progenitor factions do not engage in commerce with humans. However, their experience with recycling does provide them with an Energy Grid at each base. Each Progenitor base facility is connected to this grid; every two base facilities generate one energy added to the base total, rounded up. Every two Secret Projects generate five energy added to the base total.
-
-Nerve Stapling causes widespread disaffection among Progenitor citizens, resulting in the shutdown of the Grid for a limited time.
-
 Ecology (Revised) #
 The Revised Eco-Formula:
 
