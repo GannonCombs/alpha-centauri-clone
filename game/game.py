@@ -30,7 +30,7 @@ from game.debug import DebugManager  # DEBUG: Remove for release
 class Game:
     """Main game state manager."""
 
-    def __init__(self, player_faction_id=0, player_name=None, ocean_percentage=None, map_width=None, map_height=None, cloud_cover=None, erosive_forces=None, native_life=None):
+    def __init__(self, player_faction_id=0, player_name=None, ocean_percentage=None, map_width=None, map_height=None, cloud_cover=None, erosive_forces=None, native_life=None, difficulty=1):
         """Initialize a new game.
 
         Args:
@@ -50,6 +50,7 @@ class Game:
         self.running = True
         self.player_faction_id = player_faction_id  # Which faction the player chose
         self.player_name = player_name  # Player's custom name
+        self.difficulty = difficulty  # 0=Citizen … 5=Transcend
         self.mission_year = 2100  # Starting year
 
         # Initialize all factions (player + AIs)
@@ -2160,8 +2161,12 @@ class Game:
         - Last action was a hold (signals player might do more)
         - All units are held (player hasn't committed to any actions)
         """
-        # Don't auto-end during AI turn, upkeep, or while a battle is animating
+        # Don't auto-end during AI turn, upkeep, battle animation, or while a commlink
+        # popup is pending. pending_commlink_requests is checked directly (not
+        # ui_panel.commlink_request_active) because the UI flag has a one-frame delay.
         if self.processing_ai or self.upkeep_phase_active or self.combat.active_battle:
+            return
+        if self.pending_commlink_requests:
             return
 
         friendly_units = [u for u in self.units if u.is_friendly(self.player_faction_id)]
@@ -2899,6 +2904,7 @@ class Game:
             'game_state': {
                 'turn': self.turn,
                 'mission_year': self.mission_year,
+                'difficulty': self.difficulty,
                 'energy_credits': self.energy_credits,
                 'player_id': self.player_faction_id,
                 'player_faction_id': self.player_faction_id,
@@ -2950,6 +2956,7 @@ class Game:
         gs = data['game_state']
         game.turn = gs['turn']
         game.mission_year = gs['mission_year']
+        game.difficulty = gs.get('difficulty', 1)
         game.energy_credits = gs['energy_credits']
         game.player_id = gs['player_id']
         game.player_faction_id = gs.get('player_faction_id', 0)  # Default to 0 for old saves

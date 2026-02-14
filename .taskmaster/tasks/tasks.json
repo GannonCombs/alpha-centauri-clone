@@ -1,0 +1,220 @@
+{
+  "master": {
+    "tasks": [
+      {
+        "id": 1,
+        "title": "Fix Turn Cycle & AI Contact Event Bug",
+        "description": "Resolve the bug where the turn cycle auto-ends prematurely when the last player unit of the turn moves into contact with a new faction. End turn needs to wait for diplomacy to finish. The End Turn button should then blink, not auto-end.",
+        "details": "In game/game.py and main.py, locate the AI turn processing loop (search for 'contact' or 'end_turn' event dispatch). The bug occurs when the game triggers a contact event (e.g., meeting a new faction) mid-AI-turn and the event handler incorrectly fires the end-turn logic.\n\nFix approach:\n1. Add a flag `self.processing_ai_turn = True` in game.py before the AI loop begins.\n2. Gate the auto-end-turn trigger so it only fires when `processing_ai_turn == False`.\n3. Ensure contact events during AI phase queue a popup for the next player phase instead of immediately resolving.\n4. After the AI loop completes, set `processing_ai_turn = False` and then check if any queued contact notifications exist.\n5. In main.py's event loop, check for the flag before calling `game.end_turn()`.",
+        "testStrategy": "1. Start a new game with multiple AI factions. Advance turns until first contact occurs. Verify the turn does NOT auto-end and the contact dialog appears at the start of the player's next turn.\n2. Run through 50 turns without any premature turn skips occurring.",
+        "priority": "high",
+        "dependencies": [],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 2,
+        "title": "Implement Difficulty Level Setting",
+        "description": "Add difficulty levels 0-5 to the game (Citizen, Specialist, Talent, Librarian, Thinker, Transcend). Store the selected difficulty on the game object and update the new game UI. This is a prerequisite for drone creation, eco-damage, and bureaucracy formulas which all reference the difficulty value.",
+        "details": "This is also tracked as Known Bug #11 in todo.txt.\n\n**New Game UI** (game/ui/new_game_screen.py or wherever 'Customize Random Map' lives):\n- Replace the current difficulty buttons with exactly these 6 labels in order: Citizen, Specialist, Talent, Librarian, Thinker, Transcend.\n- Store the selected index as `game.difficulty` (int 0–5).\n\n**Game Object** (game/game.py):\n- Add `self.difficulty: int = 1` (default Specialist) to `__init__`.\n- Add to `to_dict()` and `from_dict()` for save/load.\n\nDo not wire the difficulty value to any formulas yet — that happens in dependent tasks.",
+        "testStrategy": "1. Open the new game screen. Verify 6 difficulty buttons appear with the correct labels.\n2. Start a game on Transcend (difficulty=5). Save and load. Verify `game.difficulty` is still 5 after loading.",
+        "priority": "high",
+        "dependencies": [],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 3,
+        "title": "Implement Eco-Damage & Xenofungus Bloom System",
+        "description": "Implement the Ecology system: calculate per-faction eco-damage based on mineral production, trigger fungal blooms that spawn Native Life units, and implement Psi Combat for native life.",
+        "details": "Per datalinks.md Ecology section:\n\n**Eco-Damage Calculation** (game/game.py or game/map.py):\n- Formula: `Eco-Damage = (DamageFactor * Perihelion * Techs * Life * Difficulty * Planet) / 300`\n- Difficulty = 3 on Librarian and lower, 5 on Thinker and Transcend.\n- DamageFactor based on minerals above clean limit, atrocities, and goodfacs.\n- Each turn: accumulate eco-damage; when it crosses a threshold, trigger a fungal bloom.\n\n**Fungal Bloom** (game/map.py):\n- On bloom: convert 1–3 land tiles near high-mineral bases to Xenofungus.\n- Spawn a Mind Worm Boil (Native Life unit) on the new fungus tile.\n\n**Native Life / Psi Combat** (game/combat.py):\n- Native Life units use Psi Combat: ignore weapon/armor values entirely.\n- Odds determined solely by morale: `psi_odds = attacker_morale / (attacker_morale + defender_morale)`.\n- Add `unit.is_native_life` flag; route to psi path in `simulate_combat()`.",
+        "testStrategy": "1. Use debug mode to push a faction's minerals far above their clean limit. Verify eco-damage accumulates each turn.\n2. After sufficient turns, verify fungal blooms appear as new Xenofungus tiles.\n3. Spawn a Mind Worm and attack a human unit. Verify Psi Combat ignores armor and uses morale-based odds.",
+        "priority": "high",
+        "dependencies": [2],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 4,
+        "title": "Implement Unit Cost Formula",
+        "description": "Implement the full unit cost formula from datalinks.md so that the Design Workshop and base production queue show accurate mineral costs.",
+        "details": "Per datalinks.md 'Unit Cost (Basic)' and 'Unit Cost (Advanced)' sections:\n\nBasic formula (game/unit_components.py):\n- `cost = (weapon_rows + armor_rows/2 + chassis_rows + ability_rows) * reactor_modifier`\n- Round up; multiply by 10 for mineral cost.\n- Reactor modifiers: Fission=1.0, Fusion=0.75, Quantum=0.5, Singularity=0.25 (verify in datalinks).\n\nAdvanced modifiers:\n- Three-area units (strong weapon + strong armor + fast chassis) are significantly more expensive — the formula compounds.\n- Refer to 'Unit Cost (Advanced)' section in datalinks.md for the exact compounding rules before implementing.\n\n**UI** (game/ui/design_workshop_screen.py):\n- Display the computed mineral cost live as the player selects components.",
+        "testStrategy": "1. Open the Design Workshop. Configure an Infantry + Impact Rifle + Synthmetal + Fission unit. Verify the displayed cost matches the datalinks formula.\n2. Swap to a better reactor. Verify cost decreases proportionally.\n3. Build the unit. Verify base production queue shows the same cost.",
+        "priority": "medium",
+        "dependencies": [],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 5,
+        "title": "Implement Terraforming System & Former Units",
+        "description": "Implement the Terraforming system allowing Former units to improve tiles (Farms, Mines, Solar Collectors, Roads, Boreholes), with each improvement affecting resource output according to datalinks.md rules.",
+        "details": "Per datalinks.md Terraforming rules:\n\n**Former Unit Action** (game/unit.py):\n- Add `unit.is_former = True` flag for Former unit type.\n- Add `unit.terraform_action: str | None` and `unit.terraform_turns_remaining: int`.\n- Actions and turn costs:\n  - Farm: 4 turns → +Nutrient based on rainfall\n  - Mine: 4 turns → +Mineral based on rockiness\n  - Solar Collector: 4 turns → +Energy based on altitude\n  - Road: 3 turns → halves movement cost through tile\n  - Clear Fungus: 3 turns → removes Xenofungus\n  - Raise/Lower Terrain: 6 turns → changes altitude band\n  - Borehole: 8 turns → +6 Minerals, -2 Nutrients\n- Each turn, if `terraform_turns_remaining > 0`, decrement; at 0, apply improvement to tile.\n\n**Tile Improvement Data** (game/map.py):\n- Add `tile.improvements: list[str]` if not present.\n- Apply resource bonuses in base resource calculation when improvements are present.\n\n**UI Integration** (game/ui/ui_manager.py):\n- Right-click context menu for Former shows terraforming options.\n- Show turn countdown on actively terraforming tiles.",
+        "testStrategy": "1. Select a Former and issue a Farm order. Verify 4-turn countdown and Farm applied at completion.\n2. Verify the base working that tile shows increased Nutrient output.\n3. Use a Former to clear Xenofungus. Verify fungus reverts to normal terrain after 3 turns.",
+        "priority": "high",
+        "dependencies": [],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 6,
+        "title": "Implement Fog of War System",
+        "description": "Implement Fog of War: tiles outside a faction's visibility range are hidden (black), previously seen tiles are grayed out (shroud), and only currently visible tiles show live unit/terrain data.",
+        "details": "**Visibility Data** (game/map.py or game/game.py):\n- Add `game.visibility[faction_id]: set[tuple[int,int]]` for currently visible tiles.\n- Add `game.explored[faction_id]: set[tuple[int,int]]` for previously seen tiles.\n- Vision radius per unit type: Scout=2, Infantry=1, Speeder=2, Needlejet=3, Colony Pod=1, Former=1.\n- Base vision radius: 2 tiles.\n\n**Rendering** (game/renderer.py):\n- Not in `explored`: draw solid black overlay.\n- In `explored` but not in `visibility`: draw semi-transparent dark overlay; no units shown.\n- In `visibility`: draw normally.\n- Do NOT render enemy units outside player visibility.\n\n**Serialization**: serialize visibility/explored sets in save_load.py.",
+        "testStrategy": "1. Start a new game. Verify distant tiles are black (unexplored).\n2. Move a unit to a new area. Verify surrounding tiles become visible.\n3. Move unit away. Verify those tiles go to shroud with no units shown.\n4. Save and load. Verify explored/visibility state is preserved.",
+        "priority": "medium",
+        "dependencies": [],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 7,
+        "title": "Implement Advanced Unit Movement (GoTo, Waypoints, Patrol)",
+        "description": "Implement advanced movement commands: GoTo (G key — pathfind to clicked tile), Waypoints (multi-tile path queuing), and Patrol (unit cycles between two points).",
+        "details": "**Pathfinding** (new game/pathfinding.py):\n- Implement A* using tile movement costs.\n- Movement cost: road=0.5, flat=1, rough=1.5, fungus=2, ocean (land unit)=impassable.\n\n**GoTo** (game/unit.py + game/ui/ui_manager.py):\n- G key with unit selected enters goto_mode; next tile click sets destination.\n- Store path as `unit.goto_path: list[tuple]`. Move along path each turn until MP exhausted.\n- Cancel on enemy contact or manual order.\n\n**Waypoints** (game/unit.py):\n- Shift+click to queue waypoints: `unit.waypoints: deque[tuple]`.\n- Unit follows waypoints in order.\n\n**Patrol** (game/unit.py):\n- P key sets patrol between current tile and next-clicked tile.\n- Interrupted by enemy contact.",
+        "testStrategy": "1. Press G, click a distant tile. Verify unit pathfinds there over multiple turns.\n2. Shift-click 3 intermediate tiles. Verify unit follows waypoints in order.\n3. Press P and click a second tile. Verify unit patrols indefinitely until enemy contact.",
+        "priority": "medium",
+        "dependencies": [6],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 10,
+        "title": "Implement Art Assets, Sound System & Isometric View Foundation",
+        "description": "Add placeholder and final art assets, implement a sound system with background music and SFX, and lay the architectural groundwork for an isometric tile renderer.",
+        "details": "**Art Assets** (new game/assets/ directory):\n- Asset loading system in game/assets.py with placeholder colored rectangles for all unit/terrain types.\n- Consistent 64x64px tile sprite standard.\n\n**Sound System** (game/sound.py):\n- Wrap pygame.mixer: play_sfx, play_music, set_volume.\n- SFX triggers: unit move, combat, base founded, tech discovered, turn end.\n\n**Isometric View Foundation** (game/renderer.py):\n- Add `render_mode` flag ('top_down' default).\n- Add grid_to_iso coordinate conversion.\n- Toggle with a debug key. Do not break top-down mode.",
+        "testStrategy": "1. Verify all unit types render with faction-colored placeholder sprites.\n2. Trigger combat. Verify SFX plays.\n3. Toggle isometric view with debug key. Verify map switches to diamond layout and top-down still works.",
+        "priority": "low",
+        "dependencies": [6, 7],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 11,
+        "title": "Fix: Factions Spontaneously Eliminated on Turn 1",
+        "description": "3-4 factions are getting eliminated at the very start of the game with no combat taking place.",
+        "details": "Investigate what triggers faction elimination in game/game.py (search for 'eliminate' or 'is_eliminated'). The bug likely stems from one of:\n\n1. **Starting unit/base assignment**: A faction may be spawning with 0 units and 0 bases due to a map generation edge case (no valid land tile found). Check game/map_gen.py and faction starting placement logic.\n\n2. **Elimination check timing**: `check_elimination()` may be firing before all factions have been placed — e.g., running during map gen before initialization is complete.\n\n3. **Off-by-one in faction list**: Some factions never receive a starting base or unit, causing them to immediately fail the elimination check.\n\nFix approach:\n- Add assertions during faction placement to verify each faction receives at least 1 base and 1 unit before turn 1.\n- Gate elimination checks so they cannot fire during game initialization.\n- If a valid start tile cannot be found, widen the search radius rather than silently skipping the faction.",
+        "testStrategy": "1. Start 10 consecutive new games with max factions on a small map. Verify 0 factions are eliminated on turn 1 in all runs.\n2. Verify the fix does not affect normal mid-game elimination.",
+        "priority": "high",
+        "dependencies": [],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 12,
+        "title": "Implement Bureaucracy (Base Limit Drones)",
+        "description": "Implement the Bureaucracy mechanic: factions that exceed a certain number of bases receive extra drones, scaling with difficulty and EFFICIENCY social engineering.",
+        "details": "Per datalinks.md 'Bureaucracy' section:\n\nFormula: `BaseLimit = (8 - Difficulty) * (4 + Efficiency) * MapRoot / 2`\n- Difficulty = game.difficulty (0-5)\n- Efficiency = faction's current SE EFFICIENCY rating\n- MapRoot = sqrt(map_width * map_height)\n- `MapRoot` is defined in datalinks as the square root of the number of map squares.\n\nIf `num_bases > BaseLimit`, the faction receives extra drones per base above the limit. Exact drone count per excess base: refer to datalinks.md 'Bureaucracy' section for the exact formula.\n\nImplement in game/base.py's drone calculation, called after base count is known each turn.",
+        "testStrategy": "1. Use debug mode to give a faction 20 bases on a small map at high difficulty. Verify excess bases generate extra drones.\n2. Raise the faction's EFFICIENCY rating. Verify BaseLimit increases and fewer extra drones appear.\n3. Verify formula matches datalinks.md values at boundary cases.",
+        "priority": "medium",
+        "dependencies": [2],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 13,
+        "title": "Implement Drone Creation Formula",
+        "description": "Implement the base drone population formula: drones appear based on base population, difficulty level, and POLICE social engineering rating, per datalinks.md 'Drones (Advanced)' section.",
+        "details": "Per datalinks.md 'Drones (Advanced)':\n\n**Base drones from population:**\n- Formula: `base_drones = max(0, pop - (7 - difficulty))`\n- At Citizen (0): drones start after citizen 7. At Transcend (5): drones start after citizen 2.\n- Wire `game.difficulty` into this formula.\n\n**POLICE suppression:**\n- Each point of POLICE (SE rating) above 0 allows 1 military unit in the base to suppress 1 drone.\n- At POLICE -3 or below: units homed to this base *away* from territory each add 1 drone (pacifism drones). These cannot be suppressed by psych or facilities (only talents or secret projects).\n- Implement in `base.calculate_population_happiness()` in game/base.py.\n\n**Bureaucracy drones:**\n- Add the bureaucracy drone count (from task 12) on top of base drones.\n\n**Zakharov bonus:**\n- `extra_drone_per_4`: +floor(pop/4) extra drones (already noted as a stub in FEATURES_IMPLEMENTED.txt).",
+        "testStrategy": "1. Start a game on Citizen difficulty. Build a base to size 8. Verify exactly 1 drone appears.\n2. Start a game on Transcend difficulty. Build a base to size 3. Verify exactly 1 drone appears.\n3. Set POLICE to +2 and place 2 military units in a rioting base. Verify 2 drones are suppressed.\n4. Verify Zakharov's faction gets floor(pop/4) extra drones.",
+        "priority": "high",
+        "dependencies": [2, 12],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 14,
+        "title": "Implement Psych Allocation",
+        "description": "Implement the Psych energy allocation path: energy diverted to Psych converts drones and workers to talents at a 2:1 ratio, per datalinks.md 'Psych' section.",
+        "details": "Per datalinks.md 'Psych':\n- Every 2 units of Psych energy produces 1 Talent.\n- Psych first converts Drones into normal citizens, then normal citizens into Talents.\n- If no normal citizens remain, every 2 Psych converts 1 Drone to a normal citizen.\n\n**Energy slider** (game/base.py + game/ui/base_screens.py):\n- The slider already handles Economy and Labs allocations. Add Psych as the third allocation.\n- `psych_energy` → `talents_from_psych = psych_energy // 2`\n- Apply psych conversion in `calculate_citizens()` after raw drone count is established.\n\n**Specialists** (game/base.py):\n- Doctor specialist: +2 Psych (already defined in datalinks; verify wired correctly).\n- Other specialist psych contributions: verify per datalinks 'Specialists' table.\n\nEnsure Psych allocation is applied before the Drone Riot check runs.",
+        "testStrategy": "1. Allocate 4 Psych energy to a base with 2 drones. Verify 2 drones convert to normal citizens (not talents yet, since no drones → citizens → talents order).\n2. Allocate 6 Psych to a base with 3 normal citizens and 0 drones. Verify 3 talents appear.\n3. Assign a Doctor specialist. Verify +2 Psych is added to the base's psych total.",
+        "priority": "high",
+        "dependencies": [13],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 15,
+        "title": "Implement Drone Riots",
+        "description": "Implement the Drone Riot state: when drones exceed talents at a base, production and energy surplus halt until balance is restored.",
+        "details": "Per datalinks.md 'Drone Riots':\n- Riot condition: `drones > talents`.\n- During riot: citizens continue feeding themselves (nutrients still accumulate) but NO production and NO surplus energy.\n- Set `base.in_riot = True` in `check_drone_riot()` called from `calculate_resources()`.\n- When `in_riot`: set `production_progress` accumulation to 0 and energy surplus to 0 for that turn.\n\n**UI indicators:**\n- Draw a red frowny-face icon above rioting bases on the map (game/renderer.py).\n- Show a riot warning in the base management screen.\n- A drone riot popup already fires (Known Bug #1 in todo.txt notes the zoom-to-base does not work — fix that too: clicking the popup should open the base screen).",
+        "testStrategy": "1. Create a base with 3 drones and 0 talents. Verify production stops and no energy surplus is generated that turn.\n2. Allocate enough Psych to eliminate 2 drones. Verify riot ends and production resumes next turn.\n3. Click the drone riot popup. Verify it opens the base screen for that base.",
+        "priority": "high",
+        "dependencies": [13],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 16,
+        "title": "Implement Golden Age",
+        "description": "Implement the Golden Age state: a base with no drones and at least as many talents as workers+specialists enters a Golden Age with significant growth and energy bonuses.",
+        "details": "Per datalinks.md 'Golden Age':\n- Condition: `talents >= workers + specialists AND drones == 0`\n- Effects: equivalent to +1 ECONOMY and +2 GROWTH on the SE table for that base.\n  - +1 ECONOMY: +1 bonus energy per tile worked.\n  - +2 GROWTH: accelerated nutrient accumulation toward next population point.\n- Set `base.golden_age = True` in `check_golden_age()` called after psych conversion and riot check.\n- Show a golden sun/star indicator in the base management screen header.",
+        "testStrategy": "1. Bring a base to 0 drones with talents >= workers + specialists. Verify golden age indicator appears.\n2. Verify that base produces more energy per tile and grows faster than an identical non-golden-age base.\n3. Add a drone (e.g., by increasing population). Verify golden age ends immediately.",
+        "priority": "medium",
+        "dependencies": [13, 14],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 17,
+        "title": "Implement Unit Prototyping",
+        "description": "Implement the Prototype mechanic: the first unit built of any new design costs +50% minerals but receives +1 Morale, per datalinks.md 'Prototypes' section.",
+        "details": "Per datalinks.md 'Prototypes':\n- A prototype requires +50% Minerals to build.\n- In compensation, prototype units receive +1 Morale.\n- Once any unit of a given design has been built, subsequent units of the same design are NOT prototypes.\n\n**Design Tracking** (game/unit_components.py or game/base.py):\n- Add `faction.built_designs: set[str]` tracking chassis+weapon+armor+reactor+abilities as a key.\n- On producing a unit: if `design_key not in built_designs`, apply +50% cost and +1 morale; then add to set.\n\n**UI** (game/ui/design_workshop_screen.py):\n- Show '(PROTOTYPE +50%)' label next to cost for unbuilt designs.\n- Show '+1 Morale' bonus label.\n\n**Serialization**: add `built_designs` to save/load.",
+        "testStrategy": "1. Design a new unit. Verify the workshop shows PROTOTYPE +50% cost label.\n2. Build it. Verify the unit has +1 Morale above baseline and the cost was 50% higher.\n3. Build a second unit of the same design. Verify normal cost and no morale bonus.\n4. Save and load. Verify the design is still tracked as non-prototype.",
+        "priority": "medium",
+        "dependencies": [4],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 18,
+        "title": "Implement Integrity System",
+        "description": "Implement the Integrity stat that tracks a faction leader's trustworthiness, affecting AI willingness to form and honor agreements.",
+        "details": "Per datalinks.md 'Integrity' section:\n- Integrity has 7 named levels from best to worst (refer to datalinks for exact labels).\n- Decreases when: breaking a Blood Truce or Treaty, committing atrocities, declaring unprovoked Vendetta.\n- Recovers slowly over time during peaceful turns.\n- AI factions are less willing to sign agreements with low-integrity factions, and more likely to break agreements against them.\n\n**Implementation** (game/faction.py):\n- Add `faction.integrity: int` (use the 7-level scale or map to 0–100 internally).\n- Add `faction.record_integrity_event(event_type)` that applies the appropriate penalty — called by atrocity and diplomacy code.\n- Add `faction.recover_integrity()` called each turn during peaceful upkeep.\n\n**Diplomacy AI** (game/ai.py or game/ui/diplomacy.py):\n- Gate treaty/pact proposals on minimum integrity threshold.\n- Wire integrity into the existing diplomatic relationship calculations.\n\n**Serialization**: add to save/load.",
+        "testStrategy": "1. Break a Treaty with an AI faction. Verify integrity decreases.\n2. Remain peaceful for 20 turns. Verify integrity slowly recovers.\n3. Drop integrity to the lowest level. Verify AI factions refuse treaty proposals.",
+        "priority": "medium",
+        "dependencies": [19, 20],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 19,
+        "title": "Implement Simple Atrocities",
+        "description": "Implement simple atrocities (nerve gas, nerve stapling, intentional base obliteration). These trigger commerce sanctions from all factions and permanent enmity with the victim.",
+        "details": "Per datalinks.md 'Atrocities':\n- Simple Atrocities include: nerve gas attacks on bases, nerve stapling civilians, intentional obliteration of a base.\n- Committing a simple atrocity: all other factions impose commerce sanctions (all trade income cut to 0 for 10+ turns); victim faction likely remains permanent enemy.\n- Does NOT apply if U.N. Charter has been repealed by the Planetary Council.\n\n**Nerve Gas** (game/unit.py + game/combat.py):\n- New unit ability. When used against a base: kills 25% of population instead of normal combat.\n- Broadcast atrocity notification to all factions.\n\n**Nerve Stapling** (game/base.py):\n- Action available from base management. Converts all drones at a base to workers permanently (suppressed).\n- Costs: triggers atrocity event, -1 PLANET rating for that base.\n\n**Sanctions** (game/faction.py):\n- Add `faction.sanctioned_by: set[int]` and `faction.sanction_turns_remaining: int`.\n- While sanctioned, commerce income from/to that faction = 0.",
+        "testStrategy": "1. Use nerve gas on an enemy base. Verify population decreases by ~25% and all factions show atrocity notification.\n2. Verify the attacker's commerce income drops to 0 for the sanction duration.\n3. Repeal the U.N. Charter via council vote, then use nerve gas. Verify no sanctions are applied.",
+        "priority": "low",
+        "dependencies": [],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 20,
+        "title": "Implement Planet Busters (Major Atrocity)",
+        "description": "Implement the Planet Buster weapon as a Major Atrocity: destroys target tile and surrounding radius, expels the user from the Planetary Council, and causes all factions to declare Vendetta.",
+        "details": "Per datalinks.md 'Atrocities':\n- Planet Buster is a Major Atrocity (quasi-nuclear device).\n- On use: all factions declare Vendetta against the user; user is expelled from Planetary Council.\n- Destroys the target tile and units/bases in a radius (refer to datalinks for exact radius).\n- Each Planet Buster use permanently increases the faction's atrocity count, which worsens eco-damage formula.\n- Requires appropriate weapon technology to build.\n\n**Implementation** (game/unit.py + game/game.py):\n- Add Planet Buster as a weapon component with `is_planet_buster = True`.\n- On detonation: destroy all tiles/units/bases in radius; trigger major atrocity consequences.\n- Add `faction.major_atrocities: int` counter for eco-damage formula (task 3).\n- Does NOT apply council expulsion if U.N. Charter has been repealed.",
+        "testStrategy": "1. Build a Planet Buster unit and fire it at a tile. Verify tiles and units in radius are destroyed.\n2. Verify all other factions declare Vendetta.\n3. Verify the user is expelled from the Planetary Council.\n4. Verify `major_atrocities` counter increments and eco-damage worsens.",
+        "priority": "low",
+        "dependencies": [18, 19],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 21,
+        "title": "Implement Council Proposal Effects",
+        "description": "Implement the mechanical effects of Planetary Council proposals that have been voted on, per datalinks.md 'Council Proposals' section.",
+        "details": "Per datalinks.md 'Council Proposals':\nThe council UI and voting mechanics are already implemented. This task wires the actual effects after a vote passes.\n\n**Proposals to implement** (game/game.py after vote resolution):\n- Launch/Increase Solar Shade: global cooling; lower sea level by 1 step (flood/expose tiles).\n- Melt Polar Caps: global warming; raise sea level by 1 step.\n- Global Trade Pact: double commerce rates faction-wide.\n- Repeal Global Trade Pact: halve commerce rates.\n- Repeal U.N. Charter: disable atrocity sanctions and council expulsion for atrocities.\n- Reinstate U.N. Charter: restore atrocity consequences.\n- Elect Planetary Governor: winning faction gets commerce bonus (refer to datalinks for exact value).\n- Unity Fusion Core Salvage: +500 energy credits to all factions.\n\nSea level changes: track `game.sea_level` (int). On change, iterate all coastal tiles and convert to/from ocean as appropriate.",
+        "testStrategy": "1. Vote to pass Melt Polar Caps. Verify coastal land tiles convert to ocean on the map.\n2. Pass Global Trade Pact. Verify commerce income doubles for all factions with treaties.\n3. Repeal U.N. Charter. Commit a simple atrocity. Verify no sanctions are applied.\n4. Elect a Planetary Governor. Verify the winning faction's commerce income increases.",
+        "priority": "low",
+        "dependencies": [],
+        "status": "pending",
+        "subtasks": []
+      }
+    ],
+    "metadata": {
+      "created": "2026-02-14T21:10:08.595Z",
+      "updated": "2026-02-14T21:10:08.595Z",
+      "description": "Tasks for master context"
+    }
+  }
+}

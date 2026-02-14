@@ -150,6 +150,8 @@ of the map; are there invisible tiles there that are playable?
 be when they've skipped their turn entirely. If a unit has even partially moved or acted that turn, healing doesn't happen
 naturally (movement onto a monolith is the exception.)
 15 The first person to discover any of the three techs starting with "Secrets of" get another tech right after.
+16 Turn auto-ends when the last unit moves into contact with a new faction. End turn needs to wait for diplomacy to finish.
+The End Turn button should then blink, not auto-end.
 
 
 
@@ -165,22 +167,21 @@ Note: this is the ONLY section of todo.txt that can be edited by Claude Code, bu
 
 
 1 Got a drone riot popup. Zoom to base did not popup the base view.
-2 FACTION_DATA contains single quotes and double quotes.
+2 FACTION_DATA contains single quotes and double quotes. Perhaps we should make consistent.
 3 When I'm surprise attacked, another popup appears for each Pact brother or sister I have, saying, "On behalf of your
  pact, <pactbors> has pronounced on <attacker>!"
 4 If an artifact is held in a base with an unlinked Network Node, a popup occurs, asking if we'd like to link it.
 If yes, the artifact is consumed and we get a free tech. Linking means a network node can only consume one artifact ever.
-5 Turn auto-ends when the last unit moves into contact with a new faction. End turn needs to wait for diplomacy to finish.
-The End Turn button should then blink, not auto-end.
 6 When certain non-combat units are on the same tile as military units, and another faction destroys all the military units,
 the non-military units automatically die. This is true for probe teams, and all versions of colony pods. (And artifacts,
 but they are captured, not killed. We've implemented this.) A note at the bottom should say We <killed or lost> x units.
 7 AI colony pod keeps trying to build a base on a monolith, and gets denied, every turn. Needs an updated algo.
 8 Free tech popups from supply pod are not showing correct procession of popups. Should be 1) Supply pod popup with generic
-free tech text, 2) the traditional tech popup, 3) (if applicable) the new units popup. Claude is having a hard time with
-this one; may need to do myself.
+free tech text, 2) the traditional tech popup, 3) (if applicable) the new units popup. Make sure all of these finish before
+the turn ends.
 9 Still a bug where 3 or 4 factions get eliminated on turn 1. Nothing attacked them. Just a bug.
 10 I need to freeze any player action whatsoever while the AI turns execute. Can I just hide/disable the cursor?
+
 
 
 ***************************************************************************

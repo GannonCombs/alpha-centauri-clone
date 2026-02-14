@@ -1,0 +1,218 @@
+This PRD consolidates the game rules, technical requirements, and implementation status into a single architectural document.
+It abstracts specific data lists (like the 70+ techs) by referencing their source files, while ensuring all critical systems and mechanics are defined.
+
+Product Requirements Document: SMAC Clone
+
+Goal: Create a faithful, desktop-based clone of Sid Meier’s Alpha Centauri, implementing its complex 4X systems while leveraging modern AI workflows.
+The game is built using Python and Pygame.
+
+1. World Generation & Map Systems
+Source of Truth: datalinks.md (Rules), concept_implementation_checklist.txt (Status)
+
+Grid & Topology: The map is a grid of tiles with varying elevation and climate. Note: Isometric view and Fog of War are currently unimplemented.
+
+Terrain Data Model:
+
+Rainfall: Determines Nutrient potential (0-2). Enhanced by Farms.
++1
+
+Rockiness: Determines Mineral potential (0-1). Enhanced by Mines/Roads.
++1
+
+Altitude: Determines Energy potential (0-4 based on 1000m bands). Higher altitude = more energy for Solar Collectors.
++1
+
+Dynamic Features:
+
+Xenofungus: Impediment to movement, defense bonus (+50%), and late-game resource source (requires Centauri techs). Spawns "Native Life".
++1
+
+Monoliths: Provide instant unit repair and morale upgrades. Also yield 2/2/2 resources.
++1
+
+
+Landmarks: Unique tiles (e.g., Monsoon Jungle, Mt. Planet) that grant specific resource bonuses but are vulnerable to terraforming changes.
++1
+
+Terraforming & Ecology:
+
+Eco-Damage: A calculated risk of fungal blooms based on mineral production and terraforming intensity. Formula involves "Clean Minerals" limit and "Life" level.
+
+
+Global Climate: Sea levels can rise (Global Warming) or fall (Solar Shade), altering the playable map.
++1
+
+2. Base Management & Economy
+Source of Truth: datalinks.md (Rules), facility_implementation_checklist.txt (Data)
+
+Population Logic:
+
+
+Citizens: Divided into Workers (work tiles), Specialists (Doctors/Empaths fixed output), Talents (Happy), and Drones (Unhappy).
++2
+
+Happiness: If Drones > Talents, a Drone Riot occurs, stopping production. Mitigated by Psych allocation, Police units, or facilities (e.g., Recreation Commons).
++1
+
+Golden Age: Occurs when Talents ≥ Workers + Specialists (and no Drones). Boosts Growth/Energy.
++1
+
+Resource Pipeline:
+
+Nutrients: Consumed (2 per citizen). Surplus leads to population growth.
++1
+
+Minerals: Used to build Units, Facilities, and Secret Projects. Support costs (units beyond clean limit) drain minerals directly.
++1
+
+Energy: The raw currency. It is allocated via a slider into:
+
+
+Economy: Energy Credits (Treasury).
++2
+
+
+Labs: Research points toward current Tech.
++2
+
+
+Psych: Converts Drones to Talents.
++2
+
+
+Inefficiency: Energy loss calculated based on distance from HQ and Social Engineering (Efficiency rating).
++1
+
+Facilities: Buildings that modify base stats. See facility_implementation_checklist.txt for the full list (e.g., Recycling Tanks, Perimeter Defense).
++1
+
+3. Unit Design & Combat
+Source of Truth: datalinks.md (Rules), todo.txt (Combat Bugs)
+
+Modular Design Workshop: Units are not static; they are composed of:
+
+
+Chassis: Land/Sea/Air/Hover (Determines speed/cost).
++1
+
+
+Weapon: Attack strength.
++1
+
+
+Armor: Defense strength.
++1
+
+
+Reactor: Lowers cost/weight.
++1
+
+
+Abilities: Special traits (e.g., Amphibious, Clean Reactor).
++2
+
+Prototyping: The first unit of a new configuration costs +50% minerals but gains +1 Morale. Subsequent units are normal price.
++1
+
+Combat Mechanics:
+
+Standard: Attack vs. Armor (modified by terrain/sensors).
+
+Psi Combat: Used by Native Life. Ignores Armor/Weapon. Based purely on Morale and Life Cycle.
++1
+
+
+Bombardment/Artillery: Ranged attacks that reduce enemy HP (never below 50% for land units) or engage in Artillery Duels.
++1
+
+
+Disengage: Fast units can retreat from combat if HP < 50% and speed > enemy.
++2
+
+Morale: 6 levels (Very Green to Elite). Increases combat stats by 12.5% per level.
++1
+
+4. Technology & Secret Projects
+Source of Truth: tech_implementation_checklist.txt, secret_project_implementation_checklist.txt
+
+Tech Tree: A directed graph of 70+ technologies (e.g., Centauri Ecology unlocks Formers). Implementation status is tracked in tech_implementation_checklist.txt.
+
+Secret Projects: Unique "Wonders" that provide global faction bonuses (e.g., The Weather Paradigm increases terraforming speed). Only one can exist per game. Status tracked in secret_project_implementation_checklist.txt.
+
+5. Diplomacy & Planetary Council
+Source of Truth: datalinks.md (Diplomacy), todo.txt (Council status)
+
+
+Diplomatic States: Unknown -> Vendetta (War) -> Truce -> Treaty -> Pact of Brotherhood.
++1
+
+Commerce: Peace generates passive Energy income based on the partner's economy. Pacts double this yield.
++1
+
+Integrity: A hidden stat tracking "honor." Betrayals or Atrocities (e.g., Nerve Gas, Planet Busters) lower this, causing AI distrust and economic sanctions.
++1
+
+The Council:
+
+Requires all factions to have commlinks.
+
+Voting: Based on population size.
+
+
+Governor: Elected position; gains veto power and commerce bonuses.
++1
+
+
+Proposals: Global effects like "Melt Polar Caps" (raise sea level) or "Repeal UN Charter" (allow atrocities).
++2
+
+6. Victory Conditions
+Source of Truth: datalinks.md (Rules), todo.txt (Implementation)
+
+
+Conquest: Eliminate all rival factions.
++2
+
+
+Diplomatic: Win 75% of Council votes to become Supreme Leader.
++2
+
+
+Economic: Accumulate massive Energy reserves to "corner the market".
++2
+
+
+Transcendence: Complete the Ascent to Transcendence secret project.
++2
+
+7. Technical Architecture & Current State
+Source of Truth: todo.txt
+
+Engine:
+
+
+Debug Mode: Fully functional for testing Energy/Psych systems.
+
+
+Turn Cycle: Currently bugged; auto-ends turn prematurely on contact events.
+
+Missing Critical Features (High Priority):
+
+
+Assets: Art and Sound are completely missing.
+
+
+UI: Isometric view is planned but not implemented.
+
+
+UX: Advanced movement (Waypoints, Patrol, Drag-pathing) is specified in docs but unimplemented in engine.
++1
+
+
+Fog of War: Not implemented.
+
+AI Needs:
+
+Colony pods currently try to build on valid Monolith tiles (invalid move).
+
+Diplomacy state persistence is buggy (statuses disappear).

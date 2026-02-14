@@ -470,14 +470,13 @@ class IntroScreenManager:
         title_surf = self.title_font.render(title_text, True, (100, 200, 255))
         screen.blit(title_surf, (screen_width // 2 - title_surf.get_width() // 2, 100))
 
-        # Skill level options (only first one enabled)
         skill_options = [
-            (1, '1', True),  # Only this is enabled
-            (2, '2', False),
-            (3, '3', False),
-            (4, '4', False),
-            (5, '5', False),
-            (6, '6 (hardest)', False)
+            (0, 'Citizen',    'Novice'),
+            (1, 'Specialist', ''),
+            (2, 'Talent',     ''),
+            (3, 'Librarian',  ''),
+            (4, 'Thinker',    ''),
+            (5, 'Transcend',  'Expert'),
         ]
 
         button_w = 300
@@ -487,7 +486,7 @@ class IntroScreenManager:
 
         self.skill_level_button_rects = []
 
-        for i, (level, level_text, enabled) in enumerate(skill_options):
+        for i, (level, level_text, sublabel) in enumerate(skill_options):
             button_y = start_y + i * (button_h + button_spacing)
             button_rect = pygame.Rect(
                 screen_width // 2 - button_w // 2,
@@ -496,24 +495,30 @@ class IntroScreenManager:
                 button_h
             )
 
-            if enabled:
-                is_hover = button_rect.collidepoint(pygame.mouse.get_pos())
-                bg_color = (70, 90, 110) if is_hover else (45, 55, 65)
-                border_color = (120, 180, 200)
-                text_color = (220, 230, 240)
+            is_selected = (level == self.selected_skill_level)
+            is_hover = button_rect.collidepoint(pygame.mouse.get_pos())
+            if is_selected:
+                bg_color = (90, 120, 140)
+            elif is_hover:
+                bg_color = (70, 90, 110)
             else:
-                bg_color = (30, 35, 40)
-                border_color = (80, 90, 100)
-                text_color = (100, 110, 120)
+                bg_color = (45, 55, 65)
 
             pygame.draw.rect(screen, bg_color, button_rect, border_radius=8)
-            pygame.draw.rect(screen, border_color, button_rect, 3 if enabled else 1, border_radius=8)
+            pygame.draw.rect(screen, (120, 180, 200), button_rect, 3, border_radius=8)
 
-            text_surf = self.font.render(level_text, True, text_color)
-            screen.blit(text_surf, (button_rect.centerx - text_surf.get_width() // 2,
-                                   button_rect.centery - 10))
+            text_surf = self.font.render(level_text, True, (220, 230, 240))
+            if sublabel:
+                text_y = button_rect.centery - text_surf.get_height() // 2 - 6
+                screen.blit(text_surf, (button_rect.centerx - text_surf.get_width() // 2, text_y))
+                sub_surf = self.small_font.render(sublabel, True, (150, 170, 190))
+                screen.blit(sub_surf, (button_rect.centerx - sub_surf.get_width() // 2,
+                                       text_y + text_surf.get_height() + 2))
+            else:
+                screen.blit(text_surf, (button_rect.centerx - text_surf.get_width() // 2,
+                                        button_rect.centery - text_surf.get_height() // 2))
 
-            self.skill_level_button_rects.append((button_rect, level, enabled))
+            self.skill_level_button_rects.append((button_rect, level))
 
     def _draw_faction_select(self, screen, screen_width, screen_height):
         """Draw faction selection screen."""
@@ -842,6 +847,7 @@ class IntroScreenManager:
                 self.selected_ocean_percentage = None  # Use default (70%)
                 self.selected_cloud_cover = None      # None → GameMap picks a random bias
                 self.selected_erosive_forces = None   # None → GameMap picks a random bias
+                self.selected_skill_level = 1         # Default: Specialist
                 return None
             elif self.custom_map_button_rect and self.custom_map_button_rect.collidepoint(event.pos):
                 # Go to map size selection
@@ -919,10 +925,9 @@ class IntroScreenManager:
     def _handle_skill_level_event(self, event):
         """Handle skill level selection events."""
         if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
-            for button_rect, level, enabled in self.skill_level_button_rects:
-                if enabled and button_rect.collidepoint(event.pos):
+            for button_rect, level in self.skill_level_button_rects:
+                if button_rect.collidepoint(event.pos):
                     self.selected_skill_level = level
-                    # Proceed to faction selection
                     self.mode = 'faction_select'
                     self.selected_faction_id = None
                     return None
@@ -968,7 +973,7 @@ class IntroScreenManager:
             elif event.key == pygame.K_RETURN:
                 # Start game
                 if self.player_name_input.strip():
-                    return 'start_game', self.selected_faction_id, self.player_name_input.strip(), self.selected_ocean_percentage, self.selected_cloud_cover, self.selected_erosive_forces, self.selected_alien_life
+                    return 'start_game', self.selected_faction_id, self.player_name_input.strip(), self.selected_ocean_percentage, self.selected_cloud_cover, self.selected_erosive_forces, self.selected_alien_life, self.selected_skill_level
             elif len(self.player_name_input) < 50:
                 # Add character
                 char = event.unicode
@@ -983,7 +988,7 @@ class IntroScreenManager:
             elif self.ok_button_rect and self.ok_button_rect.collidepoint(event.pos):
                 # Start game
                 if self.player_name_input.strip():
-                    return ('start_game', self.selected_faction_id, self.player_name_input.strip(), self.selected_ocean_percentage, self.selected_cloud_cover, self.selected_erosive_forces, self.selected_alien_life)
+                    return ('start_game', self.selected_faction_id, self.player_name_input.strip(), self.selected_ocean_percentage, self.selected_cloud_cover, self.selected_erosive_forces, self.selected_alien_life, self.selected_skill_level)
             elif self.cancel_button_rect and self.cancel_button_rect.collidepoint(event.pos):
                 # Back to faction select
                 self.mode = 'faction_select'
