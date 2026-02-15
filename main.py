@@ -129,6 +129,7 @@ def main():
                                           ui_panel.surprise_attack_popup_active or
                                           ui_panel.break_treaty_popup_active or
                                           ui_panel.pact_evacuation_popup_active or
+                                          ui_panel.active_screen == "DIPLOMACY" or
                                           game.upkeep_phase_active or
                                           game.combat.pending_battle is not None or
                                           game.combat.active_battle is not None)
@@ -238,9 +239,113 @@ def main():
                             else:
                                 game.set_status_message(f"Cannot found base: {error_msg}")
                     elif event.key == pygame.K_f:
-                        # Toggle artillery mode for selected unit
-                        if game.selected_unit and game.selected_unit.owner == game.player_faction_id:
-                            game.toggle_artillery_mode(game.selected_unit)
+                        unit = game.selected_unit
+                        if unit and unit.owner == game.player_faction_id:
+                            if getattr(unit, 'is_former', False):
+                                # Shift+F = Forest
+                                # F without shift = context-smart:
+                                #   fungus present  → Remove Fungus
+                                #   farm present    → Soil Enricher
+                                #   otherwise       → Farm
+                                from game.terraforming import get_available_actions, start_terraforming
+                                from game.data.terraforming_data import IMPROVEMENTS
+                                tile = game.game_map.get_tile(unit.x, unit.y)
+                                available = get_available_actions(unit, tile, game)
+                                if mods & pygame.KMOD_SHIFT:
+                                    action = 'forest'
+                                elif 'remove_fungus' in available:
+                                    action = 'remove_fungus'
+                                elif 'soil_enricher' in available:
+                                    action = 'soil_enricher'
+                                else:
+                                    action = 'farm'
+                                if action in available:
+                                    start_terraforming(unit, action, game)
+                                    game.set_status_message(f"{unit.name}: {IMPROVEMENTS[action]['name']} ({unit.terraforming_turns_left} turns)")
+                                    game.last_unit_action = 'action'
+                                    game.cycle_units()
+                                else:
+                                    game.set_status_message(f"Cannot build {IMPROVEMENTS[action]['name']} here.")
+                            else:
+                                # Toggle artillery mode for non-former units
+                                game.toggle_artillery_mode(unit)
+                    elif event.key == pygame.K_s:
+                        unit = game.selected_unit
+                        if unit and unit.owner == game.player_faction_id and getattr(unit, 'is_former', False):
+                            from game.terraforming import get_available_actions, start_terraforming
+                            from game.data.terraforming_data import IMPROVEMENTS
+                            tile = game.game_map.get_tile(unit.x, unit.y)
+                            available = get_available_actions(unit, tile, game)
+                            if 'solar' in available:
+                                start_terraforming(unit, 'solar', game)
+                                game.set_status_message(f"{unit.name}: Solar Collector ({unit.terraforming_turns_left} turns)")
+                                game.last_unit_action = 'action'
+                                game.cycle_units()
+                            else:
+                                game.set_status_message("Cannot build Solar Collector here.")
+                    elif event.key == pygame.K_m:
+                        unit = game.selected_unit
+                        if unit and unit.owner == game.player_faction_id and getattr(unit, 'is_former', False):
+                            from game.terraforming import get_available_actions, start_terraforming
+                            from game.data.terraforming_data import IMPROVEMENTS
+                            tile = game.game_map.get_tile(unit.x, unit.y)
+                            available = get_available_actions(unit, tile, game)
+                            if 'mine' in available:
+                                start_terraforming(unit, 'mine', game)
+                                game.set_status_message(f"{unit.name}: Mine ({unit.terraforming_turns_left} turns)")
+                                game.last_unit_action = 'action'
+                                game.cycle_units()
+                            else:
+                                game.set_status_message("Cannot build Mine here.")
+                    elif event.key == pygame.K_r:
+                        unit = game.selected_unit
+                        if unit and unit.owner == game.player_faction_id and getattr(unit, 'is_former', False):
+                            from game.terraforming import get_available_actions, start_terraforming
+                            from game.data.terraforming_data import IMPROVEMENTS
+                            tile = game.game_map.get_tile(unit.x, unit.y)
+                            available = get_available_actions(unit, tile, game)
+                            # Prefer mag_tube if road already present, else road
+                            action = 'mag_tube' if 'mag_tube' in available else ('road' if 'road' in available else None)
+                            if action:
+                                start_terraforming(unit, action, game)
+                                game.set_status_message(f"{unit.name}: {IMPROVEMENTS[action]['name']} ({unit.terraforming_turns_left} turns)")
+                                game.last_unit_action = 'action'
+                                game.cycle_units()
+                            else:
+                                game.set_status_message("Cannot build Road or Mag Tube here.")
+                    elif event.key == pygame.K_o:
+                        unit = game.selected_unit
+                        if unit and unit.owner == game.player_faction_id and getattr(unit, 'is_former', False):
+                            from game.terraforming import get_available_actions, start_terraforming
+                            from game.data.terraforming_data import IMPROVEMENTS
+                            tile = game.game_map.get_tile(unit.x, unit.y)
+                            available = get_available_actions(unit, tile, game)
+                            if 'sensor_array' in available:
+                                start_terraforming(unit, 'sensor_array', game)
+                                game.set_status_message(f"{unit.name}: Sensor Array ({unit.terraforming_turns_left} turns)")
+                                game.last_unit_action = 'action'
+                                game.cycle_units()
+                            else:
+                                game.set_status_message("Cannot build Sensor Array here.")
+                    elif event.key == pygame.K_l:
+                        # Board a transport on the same tile
+                        if (game.selected_unit
+                                and game.selected_unit.owner == game.player_faction_id
+                                and game.selected_unit.type == 'land'):
+                            unit = game.selected_unit
+                            tile = game.game_map.get_tile(unit.x, unit.y)
+                            transport = next(
+                                (u for u in tile.units
+                                 if u != unit and u.transport_capacity > 0
+                                 and u.owner == game.player_faction_id),
+                                None
+                            ) if tile else None
+                            if transport:
+                                game.load_unit_onto_transport(unit, transport)
+                                game.selected_unit = None
+                                game.cycle_units()
+                            else:
+                                game.set_status_message("No transport here to board")
                     elif event.key == pygame.K_h:
                         # Toggle hold status for selected unit
                         if game.selected_unit and game.selected_unit.owner == game.player_faction_id:
@@ -280,14 +385,12 @@ def main():
                     elif event.key == pygame.K_v:
                         # Toggle tile cursor mode
                         if game.tile_cursor_mode:
-                            # Exit cursor mode — return to selected unit (or cycle to find one)
                             game.tile_cursor_mode = False
                             if not game.selected_unit:
                                 game.cycle_units()
                             if game.selected_unit:
                                 game.center_camera_on_selected = True
                         else:
-                            # Enter cursor mode — place cursor on selected unit (or map center)
                             game.tile_cursor_mode = True
                             if game.selected_unit:
                                 game.cursor_x = game.selected_unit.x
@@ -295,6 +398,28 @@ def main():
                             else:
                                 game.cursor_x = game.game_map.width // 2
                                 game.cursor_y = game.game_map.height // 2
+                    elif event.key == pygame.K_RIGHTBRACKET:
+                        # ] = Raise Land (former only, costs energy)
+                        unit = game.selected_unit
+                        if unit and unit.owner == game.player_faction_id and getattr(unit, 'is_former', False):
+                            from game.terraforming import get_available_actions
+                            tile = game.game_map.get_tile(unit.x, unit.y)
+                            available = get_available_actions(unit, tile, game)
+                            if 'raise_land' in available:
+                                game.pending_terraform_cost = {'unit': unit, 'action': 'raise_land', 'cost': 12}
+                            else:
+                                game.set_status_message("Cannot raise terrain here.")
+                    elif event.key == pygame.K_LEFTBRACKET:
+                        # [ = Lower Land (former only, costs energy)
+                        unit = game.selected_unit
+                        if unit and unit.owner == game.player_faction_id and getattr(unit, 'is_former', False):
+                            from game.terraforming import get_available_actions
+                            tile = game.game_map.get_tile(unit.x, unit.y)
+                            available = get_available_actions(unit, tile, game)
+                            if 'lower_land' in available:
+                                game.pending_terraform_cost = {'unit': unit, 'action': 'lower_land', 'cost': 12}
+                            else:
+                                game.set_status_message("Cannot lower terrain here.")
                     # Arrow/numpad movement — routes to cursor or unit depending on mode
                     elif game.tile_cursor_mode or game.selected_unit:
                         dx, dy = 0, 0
@@ -347,6 +472,7 @@ def main():
                                           ui_panel.surprise_attack_popup_active or
                                           ui_panel.break_treaty_popup_active or
                                           ui_panel.pact_evacuation_popup_active or
+                                          ui_panel.active_screen == "DIPLOMACY" or
                                           game.upkeep_phase_active or
                                           game.combat.pending_battle is not None or
                                           game.combat.active_battle is not None)
@@ -458,6 +584,7 @@ def main():
                              ui_panel.surprise_attack_popup_active or
                              ui_panel.break_treaty_popup_active or
                              ui_panel.pact_evacuation_popup_active or
+                             ui_panel.active_screen == "DIPLOMACY" or
                              game.upkeep_phase_active or
                              game.combat.pending_battle is not None or
                              game.combat.active_battle is not None)
@@ -518,6 +645,7 @@ def main():
                                   ui_panel.surprise_attack_popup_active or
                                   ui_panel.break_treaty_popup_active or
                                   ui_panel.pact_evacuation_popup_active or
+                                  ui_panel.active_screen == "DIPLOMACY" or
                                   game.upkeep_phase_active or
                                   game.combat.pending_battle is not None or
                                   game.combat.active_battle is not None)

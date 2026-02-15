@@ -184,8 +184,10 @@ class Base:
 
         placed_coords = {(t.x, t.y) for t in worked}
 
-        # 2. Auto-fill remaining slots, skipping excluded and already-placed
-        remaining = slots - (len(worked) - 1)
+        # 2. Auto-fill remaining slots, skipping excluded and already-placed.
+        # Each manual_exclude reduces available auto-fill by 1 so that deselecting
+        # a tile leaves a real empty slot rather than immediately replacing it.
+        remaining = slots - (len(worked) - 1) - len(self.manual_exclude_coords)
         if remaining > 0:
             candidates = []
             for tile, coord in domain:
@@ -267,13 +269,29 @@ class Base:
         """
         from game.map import tile_base_nutrients, tile_base_minerals, tile_base_energy
         from game.data.data import FACTION_DATA
+        from game.terraforming import get_tile_yields
         bonuses = FACTION_DATA[self.owner].get('bonuses', {}) if self.owner < len(FACTION_DATA) else {}
         fungus_nut_bonus = bonuses.get('fungus_nutrients', 0)
 
         worked = self.get_worked_tiles(game_map)
-        n = sum(tile_base_nutrients(t) for t in worked)
-        m = sum(tile_base_minerals(t) for t in worked)
-        e = sum(tile_base_energy(t) for t in worked)
+        n = 0
+        m = 0
+        e = 0
+        for t in worked:
+            imp_yields = get_tile_yields(t)
+            if imp_yields['fixed']:
+                fn, fm, fe = imp_yields['fixed']
+                n += fn
+                m += fm
+                e += fe
+            else:
+                tn = tile_base_nutrients(t) + imp_yields['nutrients']
+                tm = tile_base_minerals(t) + imp_yields['minerals']
+                te = tile_base_energy(t) + imp_yields['energy']
+                mult = imp_yields['nutrients_multiplier']
+                n += int(tn * mult)
+                m += tm
+                e += te
 
         # Deirdre: +1 nutrient per fungus tile worked (including base tile)
         if fungus_nut_bonus:

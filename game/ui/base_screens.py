@@ -641,6 +641,7 @@ class BaseScreenManager:
         pygame.draw.rect(screen, COLOR_UI_BORDER, map_view_rect, 2)
 
         from game.map import tile_base_nutrients, tile_base_minerals, tile_base_energy
+        from game.terraforming import get_tile_yields
         from game.data.data import FACTION_DATA
 
         tile_size = 44  # 5 × 44 = 220
@@ -684,8 +685,26 @@ class BaseScreenManager:
                     pygame.draw.rect(screen, COLOR_BLACK, tile_rect)
                     continue
 
-                # Terrain base color
-                terrain_color = display.COLOR_LAND if actual_tile.is_land() else display.COLOR_OCEAN
+                # Void tiles count as empty (off-map) — draw black like out-of-bounds
+                if getattr(actual_tile, 'void', False):
+                    pygame.draw.rect(screen, COLOR_BLACK, tile_rect)
+                    pygame.draw.rect(screen, (40, 40, 40), tile_rect, 1)
+                    continue
+
+                # Terrain base color — mirrors main renderer rainfall/fungus logic
+                if actual_tile.is_ocean():
+                    terrain_color = display.COLOR_OCEAN
+                else:
+                    _rainfall_colors = [
+                        display.COLOR_LAND_ARID,
+                        display.COLOR_LAND_MODERATE,
+                        display.COLOR_LAND_RAINY,
+                    ]
+                    terrain_color = _rainfall_colors[getattr(actual_tile, 'rainfall', 1)]
+
+                # Fungus overrides terrain color (same tones as main renderer)
+                if getattr(actual_tile, 'fungus', False):
+                    terrain_color = (200, 50, 120) if actual_tile.is_land() else (80, 130, 210)
 
                 if is_base:
                     # Base tile: faction color background
@@ -698,6 +717,11 @@ class BaseScreenManager:
                     pygame.draw.rect(screen, COLOR_BLACK, tile_rect)
                 else:
                     pygame.draw.rect(screen, terrain_color, tile_rect)
+                    # Rocks: draw a subtle darker overlay on rocky land tiles
+                    if actual_tile.is_land() and getattr(actual_tile, 'rockiness', 0) == 2:
+                        rock_surf = pygame.Surface((tile_size, tile_size), pygame.SRCALPHA)
+                        rock_surf.fill((0, 0, 0, 60))
+                        screen.blit(rock_surf, tile_rect.topleft)
                     # Store rect for click detection (domain tiles only, not base)
                     self.map_tile_rects.append((pygame.Rect(tile_rect), map_x, map_y))
 
@@ -714,9 +738,14 @@ class BaseScreenManager:
 
                 # Resource number overlays for worked tiles (including base tile)
                 if coord in worked_coords:
-                    nut = tile_base_nutrients(actual_tile)
-                    min_ = tile_base_minerals(actual_tile)
-                    ene = tile_base_energy(actual_tile)
+                    imp_yields = get_tile_yields(actual_tile)
+                    if imp_yields['fixed']:
+                        nut, min_, ene = imp_yields['fixed']
+                    else:
+                        mult = imp_yields['nutrients_multiplier']
+                        nut  = int((tile_base_nutrients(actual_tile) + imp_yields['nutrients']) * mult)
+                        min_ = tile_base_minerals(actual_tile) + imp_yields['minerals']
+                        ene  = tile_base_energy(actual_tile)   + imp_yields['energy']
 
                     # Draw small colored numbers at bottom of tile, left to right
                     num_x = tile_rect.x + 2
@@ -841,6 +870,8 @@ class BaseScreenManager:
         # Turns until growth (or hunger warning if net negative nutrients)
         if nut_surplus < 0:
             growth_text = self.small_font.render("Hunger!", True, (210, 70, 70))
+        elif base.growth_turns_remaining >= 999:
+            growth_text = self.small_font.render("No growth", True, (140, 160, 140))
         else:
             growth_text = self.small_font.render(f"Growth in {base.growth_turns_remaining} turns", True, (180, 220, 180))
         screen.blit(growth_text, (nutrients_x + 10, nutrients_y + 70))
@@ -1444,8 +1475,7 @@ class BaseScreenManager:
             description = f"{project['effect']}, {turns} turns"
             production_items.append({"name": project['name'], "type": "project", "description": description})
 
-        # Stockpile Energy (always available)
-        production_items.append({"name": "Stockpile Energy", "type": "special", "description": f"Earn {1 + base.population} energy per turn"})
+        # (Stockpile Energy is already included via facility_data.py and the loop above)
 
         # Calculate grid layout (5 items per row with bigger squares to prevent text overflow)
         items_per_row = 5

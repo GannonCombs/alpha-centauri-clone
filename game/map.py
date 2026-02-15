@@ -88,9 +88,29 @@ class Tile:
         self.altitude = 0  # Exact altitude in meters: -3000 to 3500
         self.rainfall = 1  # 0=arid, 1=moderate, 2=rainy (land only; ocean is always 1)
         self.rockiness = 0  # 0=flat, 1=rolling, 2=rocky (land only; ocean is always 0)
-        self.fungus = False  # Xenofungus present on this tile
+        self._fungus = False  # Backing store — use tile.fungus property
+        self.improvements = set()  # Completed terraforming improvements, e.g. {'farm', 'mine', 'road'}
         self.void = False  # True for edge rows — not part of the playable map
         self.river_edges = set()  # Directions {'N','S','E','W'} where a river crosses this tile's edge
+        self.has_river = False  # True if an aquifer has been drilled here
+
+    @property
+    def fungus(self):
+        """True if xenofungus is present (land) or sea fungus (ocean)."""
+        if self.is_ocean():
+            return 'sea_fungus' in self.improvements
+        return 'fungus' in self.improvements or self._fungus
+
+    @fungus.setter
+    def fungus(self, value):
+        """Set fungus state — kept for backward compatibility with map generation."""
+        self._fungus = value
+        if value:
+            key = 'sea_fungus' if self.is_ocean() else 'fungus'
+            self.improvements.add(key)
+        else:
+            self.improvements.discard('fungus')
+            self.improvements.discard('sea_fungus')
 
     def is_land(self):
         """Check if this tile is land terrain."""
@@ -791,7 +811,9 @@ class GameMap:
                     'altitude': tile.altitude,
                     'rainfall': tile.rainfall,
                     'rockiness': tile.rockiness,
-                    'fungus': tile.fungus,
+                    'fungus': tile._fungus,
+                    'improvements': list(tile.improvements),
+                    'has_river': tile.has_river,
                     'river_edges': list(tile.river_edges)
                 })
             tiles_data.append(row_data)
@@ -827,7 +849,12 @@ class GameMap:
                 tile.altitude = tile_data.get('altitude', 0)    # Default to 0 for old saves
                 tile.rainfall = tile_data.get('rainfall', 1)    # Default to moderate for old saves
                 tile.rockiness = tile_data.get('rockiness', 0)  # Default to flat for old saves
-                tile.fungus = tile_data.get('fungus', False)    # Default to no fungus for old saves
+                tile._fungus = tile_data.get('fungus', False)
+                tile.improvements = set(tile_data.get('improvements', []))
+                # Back-compat: old saves stored fungus as bool, not in improvements set
+                if tile._fungus and 'fungus' not in tile.improvements and 'sea_fungus' not in tile.improvements:
+                    tile.improvements.add('sea_fungus' if tile.terrain_type == 'ocean' else 'fungus')
+                tile.has_river = tile_data.get('has_river', False)
                 tile.river_edges = set(tile_data.get('river_edges', []))
                 row.append(tile)
             game_map.tiles.append(row)

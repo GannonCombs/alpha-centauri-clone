@@ -276,6 +276,27 @@ class Renderer:
 
         self.screen.blit(text_surf, text_rect)
 
+        # Draw terraforming work letter above former if actively working
+        _terraform_action = getattr(unit, 'terraforming_action', None)
+        if _terraform_action:
+            _TERRAFORM_LETTERS = {
+                'farm': 'f', 'forest': 'o', 'mine': 'm', 'solar': 's',
+                'road': 'r', 'mag_tube': 't', 'sensor_array': 'n',
+                'borehole': 'b', 'condenser': 'c', 'echelon_mirror': 'e',
+                'soil_enricher': 'l', 'remove_fungus': 'x',
+                'raise_land': '+', 'lower_land': '-', 'level_terrain': 'v',
+                'aquifer': 'q', 'bunker': 'k', 'airbase': 'a',
+                'kelp_farm': 'f', 'mining_platform': 'm', 'tidal_harness': 's',
+                'remove_sea_fungus': 'x',
+            }
+            work_char = _TERRAFORM_LETTERS.get(_terraform_action, _terraform_action[0])
+            work_font = pygame.font.Font(None, 20)
+            work_surf = work_font.render(work_char, True, (255, 230, 80))
+            work_rect = work_surf.get_rect()
+            work_rect.center = (center_x, center_y - radius - 6)
+            pygame.draw.circle(self.screen, (40, 40, 40), work_rect.center, 7)
+            self.screen.blit(work_surf, work_rect)
+
         # Draw held indicator if unit is held
         if hasattr(unit, 'held') and unit.held:
             held_font = pygame.font.Font(None, 20)

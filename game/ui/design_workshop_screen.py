@@ -213,11 +213,9 @@ class DesignWorkshopScreen:
             for weapon in new_weapons:
                 if weapon['attack'] > 0:  # Combat weapon
                     for chassis in available_chassis:
-                        # Determine armor based on chassis type
-                        armor_to_use = self._get_armor_for_chassis(chassis, best_armor, min_armor_obj)
-
-                        # Min-armor variant (glass cannon)
-                        if armor_to_use != min_armor_obj:  # Only if not air unit
+                        # Unarmored offensive variant for ground/sea chassis
+                        # (always created — even when no armor tech is available yet)
+                        if chassis['type'] in ['land', 'sea']:
                             design_name = generate_unit_name(weapon['id'], chassis['id'], min_armor_obj['id'], best_reactor['id'], 'none', 'none')
                             if design_name not in existing_names:
                                 new_designs.append({
@@ -229,7 +227,7 @@ class DesignWorkshopScreen:
                                     "ability2": "none"
                                 })
 
-                        # Max-armor variant (tank) - only for ground units
+                        # Armored variant — only when combat armor is available
                         if chassis['type'] in ['land', 'sea'] and best_armor:
                             design_name = generate_unit_name(weapon['id'], chassis['id'], best_armor['id'], best_reactor['id'], 'none', 'none')
                             if design_name not in existing_names:
@@ -241,9 +239,25 @@ class DesignWorkshopScreen:
                                     "ability1": "none",
                                     "ability2": "none"
                                 })
+
+                        # Air/missile chassis: always create no-armor variant
+                        if chassis['type'] == 'air':
+                            design_name = generate_unit_name(weapon['id'], chassis['id'], min_armor_obj['id'], best_reactor['id'], 'none', 'none')
+                            if design_name not in existing_names:
+                                new_designs.append({
+                                    "chassis": chassis['id'],
+                                    "weapon": weapon['id'],
+                                    "armor": min_armor_obj['id'],
+                                    "reactor": best_reactor['id'],
+                                    "ability1": "none",
+                                    "ability2": "none"
+                                })
                 elif weapon['id'] != 'artifact':  # Non-combat weapon (terraform, colony_pod, probe, etc.)
                     for chassis in available_chassis:
                         if chassis['id'] == 'missile':
+                            continue
+                        # Transport weapon only makes sense on sea chassis (foil, cruiser)
+                        if weapon['id'] == 'transport' and chassis['type'] != 'sea':
                             continue
                         design_name = generate_unit_name(weapon['id'], chassis['id'], 'no_armor', best_reactor['id'], 'none', 'none')
                         if design_name not in existing_names:

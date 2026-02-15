@@ -73,8 +73,9 @@ class Unit:
         reactor_data = self.reactor_data
         self.reactor_level = reactor_data['power']  # 1-4
 
-        # Movement
-        self.moves_remaining = self.max_moves()
+        # Movement (stored as float to support road/river 1/3-cost fractions)
+        self.moves_remaining = float(self.max_moves())
+        self.moves_this_turn = 0  # Count of moves made this turn (overflow protection)
 
         # Health system: max HP = 10 * reactor power
         self.max_health = 10 * self.reactor_level
@@ -118,7 +119,12 @@ class Unit:
 
         # Special weapon checks
         self.is_probe = (weapon == 'probe')
+        self.is_former = (weapon == 'terraforming')
         self.is_cloaked = False  # Runtime cloak status
+
+        # Terraforming state (formers only)
+        self.terraforming_action = None   # str key from IMPROVEMENTS, or None
+        self.terraforming_turns_left = 0
 
     @property
     def chassis_data(self):
@@ -342,7 +348,6 @@ class Unit:
         """
         self.x = x
         self.y = y
-        self.moves_remaining -= 1
         self.has_moved = True
 
         # Air units consume fuel when moving
@@ -461,7 +466,8 @@ class Unit:
         # Capture heal eligibility before clearing has_moved: unit must not have
         # moved or acted at all this turn to qualify for natural healing next upkeep.
         self.heal_eligible = not self.has_moved
-        self.moves_remaining = self.max_moves()
+        self.moves_remaining = float(self.max_moves())
+        self.moves_this_turn = 0
         self.has_moved = False
 
         # Note: Refueling happens in game logic, not here
@@ -656,7 +662,9 @@ class Unit:
             'transport_capacity': self.transport_capacity,
             'loaded_unit_indices': [id(u) for u in self.loaded_units],
             'is_probe': self.is_probe,
-            'is_cloaked': self.is_cloaked
+            'is_cloaked': self.is_cloaked,
+            'terraforming_action': self.terraforming_action,
+            'terraforming_turns_left': self.terraforming_turns_left,
         }
 
     @classmethod
@@ -684,7 +692,8 @@ class Unit:
         )
 
         # Restore runtime state
-        unit.moves_remaining = data['moves_remaining']
+        unit.moves_remaining = float(data['moves_remaining'])
+        unit.moves_this_turn = 0  # Reset each session; not persisted
         unit.current_health = data['current_health']
         unit.max_health = data['max_health']
         unit.morale_level = data['morale_level']
@@ -703,7 +712,10 @@ class Unit:
         unit.transport_capacity = data.get('transport_capacity', 0)
         unit.loaded_units = []  # Reconstructed in game.py
         unit.is_probe = data.get('is_probe', unit.weapon == 'probe')
+        unit.is_former = data.get('is_former', unit.weapon == 'terraforming')
         unit.is_cloaked = data.get('is_cloaked', False)
+        unit.terraforming_action = data.get('terraforming_action', None)
+        unit.terraforming_turns_left = data.get('terraforming_turns_left', 0)
         unit.has_moved = False  # Reset per-turn state
 
         return unit

@@ -178,6 +178,9 @@ class Game:
         self.shown_all_contacts_popup = False  # Flag: have we shown the popup?
         self.pending_commlink_requests = []  # List of {faction_id, player_id} dicts for AI contact popups
         self.pending_artifact_link = None   # {artifact, base} set when artifact enters base with network node
+        self.pending_busy_former = None     # Unit set when player clicks a terraforming former
+        self.pending_terraform_cost = None  # {'unit', 'action', 'cost'} for raise/lower confirmation
+        self.pending_movement_overflow_unit = None  # Unit that exceeded 100 moves in one turn
         self.eliminated_factions = set()  # Set of faction IDs that have been eliminated
         self.factions_that_had_bases = set()  # Set of faction IDs that have founded at least one base
         self.pending_faction_eliminations = []  # List of faction_ids for elimination popups
@@ -334,6 +337,69 @@ class Game:
             tile = self.game_map.get_tile(unit.x, unit.y)
             if tile and unit in tile.units:
                 tile.displayed_unit_index = tile.units.index(unit)
+            # If an artifact is selected while sitting on a base with a Network Node,
+            # prompt the player to link it (handles the case where the artifact was
+            # already on the tile from a previous turn).
+            if (unit.weapon == 'artifact'
+                    and unit.owner == self.player_faction_id
+                    and tile is not None
+                    and getattr(tile, 'base', None) is not None
+                    and 'network_node' in tile.base.facilities
+                    and not getattr(tile.base, 'network_node_linked', False)
+                    and self.pending_artifact_link is None):
+                self.pending_artifact_link = {'artifact': unit, 'base': tile.base}
+
+    # -----------------------------------------------------------------------
+    # Movement cost helpers
+    # -----------------------------------------------------------------------
+    _RIVER_EDGE_DIRS = {
+        ( 0, -1): ('N', 'S'),
+        ( 0,  1): ('S', 'N'),
+        ( 1,  0): ('E', 'W'),
+        (-1,  0): ('W', 'E'),
+    }
+
+    def _tiles_share_river(self, from_tile, to_tile, dx, dy):
+        """Return True if there is a river on the edge between two adjacent tiles."""
+        dir_pair = self._RIVER_EDGE_DIRS.get((dx, dy))
+        if not dir_pair:
+            return False  # Diagonal — no shared river edge
+        from_dir, to_dir = dir_pair
+        return (from_dir in getattr(from_tile, 'river_edges', set()) and
+                to_dir   in getattr(to_tile,   'river_edges', set()))
+
+    def _get_movement_cost(self, unit, from_tile, to_tile, dx, dy):
+        """Return movement cost (float) for one step.
+
+        Returns:
+            0.0  — both tiles have mag_tube (free)
+            1/3  — both tiles have road (or a base acts as road), or a shared river edge
+            1.0  — standard cost (extra terrain costs applied separately)
+        """
+        from_imps = getattr(from_tile, 'improvements', set())
+        to_imps   = getattr(to_tile,   'improvements', set())
+
+        # Bases act as road and mag-tube terminuses (infrastructure assumed)
+        from_has_base = bool(from_tile.base)
+        to_has_base   = bool(to_tile.base)
+
+        # Mag-tube (or base) to mag-tube (or base) is free
+        from_magtube = 'mag_tube' in from_imps or from_has_base
+        to_magtube   = 'mag_tube' in to_imps   or to_has_base
+        if from_magtube and to_magtube:
+            return 0.0
+
+        # Road (or base) on both endpoints — 1/3 move cost
+        from_road = 'road' in from_imps or from_has_base
+        to_road   = 'road' in to_imps   or to_has_base
+        if from_road and to_road:
+            return 1.0 / 3.0
+
+        # Shared river edge
+        if self._tiles_share_river(from_tile, to_tile, dx, dy):
+            return 1.0 / 3.0
+
+        return 1.0
 
     def handle_input(self, renderer):
         """Process keyboard input for unit movement."""
@@ -379,6 +445,12 @@ class Game:
         clicked_unit = self.game_map.get_unit_at(tile_x, tile_y)
         if clicked_unit:
             if clicked_unit.is_friendly(self.player_faction_id):
+                # If a former is actively terraforming, ask player before interrupting
+                if (getattr(clicked_unit, 'is_former', False)
+                        and clicked_unit.terraforming_action
+                        and not getattr(self, '_always_select_busy_formers', False)):
+                    self.pending_busy_former = clicked_unit
+                    return None
                 # Select friendly unit and center camera
                 self._select_unit(clicked_unit)
                 self.center_camera_on_tile = (tile_x, tile_y)
@@ -490,6 +562,11 @@ class Game:
             - Sets relationship to Vendetta on combat
         """
 
+        # Moving cancels any in-progress terraforming
+        if getattr(unit, 'terraforming_action', None):
+            from game.terraforming import cancel_terraforming
+            cancel_terraforming(unit)
+
         # Wrap X coordinate horizontally
         target_x = target_x % self.game_map.width
 
@@ -518,6 +595,17 @@ class Game:
 
         # Check if unit can move there
         if not unit.can_move_to(target_tile):
+            return False
+
+        # Land unit on an ocean tile (e.g. garrisoned in a sea base) cannot walk
+        # directly to a land tile — needs amphibious ability or a transport.
+        from_tile = self.game_map.get_tile(unit.x, unit.y)
+        if (unit.type == 'land'
+                and from_tile is not None and from_tile.is_ocean()
+                and target_tile.is_land()
+                and not unit.has_amphibious_pods):
+            if unit.owner == self.player_faction_id:
+                self.set_status_message("Need amphibious pods or a transport to exit sea base to land")
             return False
 
         # Check zone of control
@@ -558,6 +646,18 @@ class Game:
                     return True
             # else: Friendly unit(s) - allow stacking, continue below
 
+        # ---- Movement cost and fractional-move RNG ----
+        # Compute signed dy for river-direction check
+        _signed_dy = target_y - unit.y
+        from_tile_mv = self.game_map.get_tile(unit.x, unit.y)
+        move_cost = self._get_movement_cost(unit, from_tile_mv, target_tile, dx, _signed_dy)
+
+        # Fractional-move RNG: if moves_remaining < 1 full move and we're trying a
+        # full-cost tile, the move succeeds only with probability = moves_remaining.
+        if move_cost >= 1.0 and 0.0 < unit.moves_remaining < 1.0:
+            if random.random() >= unit.moves_remaining:
+                return False  # Failed fractional-move attempt
+
         # Clear old position and remove from garrison if leaving a base
         old_tile = self.game_map.get_tile(unit.x, unit.y)
         if old_tile:
@@ -567,16 +667,25 @@ class Game:
                 old_tile.base.garrison.remove(unit)
                 print(f"{unit.name} left {old_tile.base.name}")
 
-        # Move unit
+        # Move unit (position only; cost applied below)
         unit.move_to(target_x, target_y)
         self.game_map.add_unit_at(target_x, target_y, unit)
 
-        # Rocky terrain costs an extra movement point (2 total per tile)
-        if target_tile.is_land() and getattr(target_tile, 'rockiness', 0) == 2:
-            unit.moves_remaining = max(0, unit.moves_remaining - 1)
+        # Apply base movement cost (road=1/3, magtube=0, regular=1)
+        unit.moves_remaining = max(0.0, round(unit.moves_remaining - move_cost, 9))
 
-        # Fungus movement costs
-        if getattr(target_tile, 'fungus', False):
+        # Rocky terrain: +1 extra move cost — but only on full-cost (non-road) moves
+        if move_cost >= 1.0 and target_tile.is_land() and getattr(target_tile, 'rockiness', 0) == 2:
+            unit.moves_remaining = max(0.0, unit.moves_remaining - 1.0)
+
+        # Overflow protection: >100 moves in one turn = likely infinite loop
+        unit.moves_this_turn += 1
+        if unit.moves_this_turn > 100 and self.pending_movement_overflow_unit is None:
+            self.pending_movement_overflow_unit = unit
+            unit.moves_remaining = 0.0
+
+        # Fungus movement costs (skip if magtube is free)
+        if move_cost > 0.0 and getattr(target_tile, 'fungus', False):
             if target_tile.is_land():
                 # Land fungus: probabilistic movement drain.
                 # Exception: if any unit is already on the tile, entry is always free
@@ -589,10 +698,10 @@ class Game:
                     planet_rating = self.get_planet_rating(unit.owner)
                     consume_chance = max(0.0, 0.50 - planet_rating * 0.10)
                     if consume_chance > 0 and random.random() < consume_chance:
-                        unit.moves_remaining = 0
+                        unit.moves_remaining = 0.0
             else:
                 # Sea fungus: flat 3 movement cost (subtract 2 extra on top of base 1)
-                unit.moves_remaining = max(0, unit.moves_remaining - 2)
+                unit.moves_remaining = max(0.0, unit.moves_remaining - 2.0)
 
         # If unit was held, unheld it when manually moved
         if hasattr(unit, 'held') and unit.held:
@@ -802,10 +911,8 @@ class Game:
                     faction_name = FACTION_DATA[new_faction_id]['name'] if new_faction_id < len(FACTION_DATA) else f"Faction {new_faction_id}"
                     self.supply_pod_message = f"Supply Pod discovered! Commlink frequencies for {faction_name} recovered from ancient datalinks!"
                     self.add_faction_contact(new_faction_id)
-                    self.pending_commlink_requests.append({
-                        'other_faction_id': new_faction_id,
-                        'player_faction_id': self.player_faction_id
-                    })
+                    # NOTE: intentionally NOT adding to pending_commlink_requests — supply pod
+                    # commlinks just unlock the contact in the commlink panel; they don't start a call.
                     print(f"Supply pod commlink: player gained contact with faction {new_faction_id}")
                 else:
                     # Already know everyone — fall back to credits
@@ -825,11 +932,17 @@ class Game:
                 print(f"AI collected supply pod at ({tile.x}, {tile.y})")
 
         else:
-            # --- River spawns from this tile ---
-            self.game_map.generate_river_from(tile.x, tile.y)
-            if unit.owner == self.player_faction_id:
-                self.supply_pod_message = "Supply Pod discovered! A river springs from the ground!"
-                print(f"Supply pod river at ({tile.x}, {tile.y})")
+            # --- River spawns from this tile (land only; ocean falls back to credits) ---
+            if tile.is_land():
+                self.game_map.generate_river_from(tile.x, tile.y)
+                if unit.owner == self.player_faction_id:
+                    self.supply_pod_message = "Supply Pod discovered! A river springs from the ground!"
+                    print(f"Supply pod river at ({tile.x}, {tile.y})")
+            else:
+                if unit.owner == self.player_faction_id:
+                    self.energy_credits += 500
+                    self.supply_pod_message = "Supply Pod discovered! You gain 500 energy credits."
+                print(f"Supply pod river fallback (ocean tile) at ({tile.x}, {tile.y}): +500 credits")
 
     def _check_artifact_stolen_by_proximity(self, artifact):
         """If an artifact moves adjacent to an enemy unit, the enemy steals it.
@@ -2177,8 +2290,16 @@ class Game:
 
     def check_auto_cycle(self):
         """Check if enough time has passed to auto-cycle to next unit."""
-        # Only auto-cycle for player units, not during AI turn
+        # Only auto-cycle for player units, not during AI turn or while popups need attention
         if self.processing_ai or self.upkeep_phase_active:
+            return
+        if (self.pending_commlink_requests or self.supply_pod_message or
+                self.supply_pod_tech_event or self.pending_artifact_link or
+                self.pending_faction_eliminations or self.pending_treaty_break or
+                self.pending_ai_attack):
+            return
+        if (hasattr(self, 'ui_manager') and self.ui_manager is not None
+                and self.ui_manager.has_any_blocking_popup()):
             return
 
         # Check if timer is set (non-zero) and delay has elapsed
@@ -2199,8 +2320,10 @@ class Game:
         if not friendly_units:
             return
 
-        # Filter to units with moves remaining and not held
-        units_with_moves = [u for u in friendly_units if u.moves_remaining > 0 and not u.held]
+        # Filter to units with moves remaining, not held, and not actively terraforming
+        units_with_moves = [u for u in friendly_units
+                            if u.moves_remaining > 0 and not u.held
+                            and not (getattr(u, 'is_former', False) and u.terraforming_action)]
 
         # If no units need attention, check for auto-end
         if not units_with_moves:
@@ -2231,21 +2354,39 @@ class Game:
         if self.processing_ai or self.upkeep_phase_active or self.combat.active_battle:
             return
 
-        # Don't auto-end while a commlink/diplomacy popup is waiting — let player handle it first
-        if self.pending_commlink_requests:
+        # Don't auto-end while any game-state event is pending player attention
+        if (self.pending_commlink_requests or
+                self.supply_pod_message or
+                self.supply_pod_tech_event or
+                self.pending_artifact_link or
+                self.pending_busy_former or
+                self.pending_terraform_cost or
+                self.pending_movement_overflow_unit or
+                self.pending_faction_eliminations or
+                self.pending_treaty_break or
+                self.pending_ai_attack):
+            return
+
+        # Don't auto-end while the UI has any modal popup open
+        if (hasattr(self, 'ui_manager') and self.ui_manager is not None
+                and self.ui_manager.has_any_blocking_popup()):
             return
 
         friendly_units = [u for u in self.units if u.is_friendly(self.player_faction_id)]
         if not friendly_units:
             return
 
-        # Check if all units are held (none have taken actions)
-        all_held = all(u.held for u in friendly_units)
+        # Check if all units are "handled" — either held, or a former actively terraforming.
+        # Terraforming formers don't need player attention this turn.
+        all_handled = all(
+            u.held or (getattr(u, 'is_former', False) and getattr(u, 'terraforming_action', None))
+            for u in friendly_units
+        )
 
         # Require manual end if:
         # 1. Last action was a hold, OR
-        # 2. All units are held (nobody moved)
-        if self.last_unit_action == 'hold' or all_held:
+        # 2. All units are handled (held or working — nobody voluntarily moved)
+        if self.last_unit_action == 'hold' or all_handled:
             # Manual end required - button will continue glowing
             return
 
@@ -2340,6 +2481,12 @@ class Game:
                 for unit in self.units:
                     if unit.owner == ai_player.player_id:
                         unit.end_turn()
+
+                # Advance terraforming for AI formers
+                from game.terraforming import process_terraforming
+                for unit in self.units:
+                    if unit.owner == ai_player.player_id and unit.terraforming_action:
+                        process_terraforming(unit, self)
 
                 # Heal AI units
                 self._process_unit_healing(ai_player.player_id)
@@ -2534,7 +2681,11 @@ class Game:
         friendly_units = [u for u in self.units if u.is_friendly(self.player_faction_id)]
         if not friendly_units:
             return False
-        return all(u.moves_remaining <= 0 or u.held for u in friendly_units)
+        return all(
+            u.moves_remaining <= 0 or u.held or
+            (getattr(u, 'is_former', False) and getattr(u, 'terraforming_action', None))
+            for u in friendly_units
+        )
 
     def apply_council_proposal_effect(self, proposal_id, passed=True, winner=None):
         """Apply the effects of a passed council proposal.
@@ -2659,6 +2810,12 @@ class Game:
         # Reset auto-end turn tracking
         self.last_unit_action = None
 
+        # Advance terraforming for player formers
+        from game.terraforming import process_terraforming
+        for unit in self.units:
+            if unit.owner == self.player_faction_id and unit.terraforming_action:
+                process_terraforming(unit, self)
+
         # Heal player units (upkeep phase — only units that skipped last turn)
         self._process_unit_healing(self.player_faction_id)
 
@@ -2670,11 +2827,16 @@ class Game:
             self._spawn_production(base, item_name)
         self.pending_production = []
 
-        # Select a friendly unit if none selected
+        # Deselect if the current selection is a former still actively terraforming
+        if (self.selected_unit
+                and getattr(self.selected_unit, 'is_former', False)
+                and self.selected_unit.terraforming_action):
+            self.selected_unit = None
+
+        # Select a friendly unit if none selected, using cycle logic to skip
+        # terraforming formers and held units
         if not self.selected_unit:
-            friendly_units = [u for u in self.units if u.is_friendly(self.player_faction_id)]
-            if friendly_units:
-                self._select_unit(friendly_units[0])
+            self.cycle_units()
 
     def advance_upkeep_event(self):
         """Move to next upkeep event or exit upkeep phase.
@@ -3127,7 +3289,12 @@ class Game:
         game.status_message = ""
         game.status_message_timer = 0
         game.supply_pod_message = None
+        game.supply_pod_tech_event = None
+        game.mid_turn_upkeep = False
         game.pending_artifact_link = None
+        game.pending_busy_former = None
+        game.pending_terraform_cost = None
+        game.pending_movement_overflow_unit = None
         game.pending_battle = None
         game.active_battle = None
         game.pending_treaty_break = None

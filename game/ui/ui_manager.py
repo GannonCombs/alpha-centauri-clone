@@ -92,6 +92,23 @@ class UIManager:
         self.artifact_link_yes_rect = None
         self.artifact_link_no_rect = None
 
+        # Movement overflow popup (unit exceeded 100 moves in one turn)
+        self.movement_overflow_popup_active = False
+        self.movement_overflow_ok_rect = None
+
+        # Terrain cost popup (raise/lower land has an energy cost)
+        self.terraform_cost_popup_active = False
+        self.terraform_cost_approve_rect = None
+        self.terraform_cost_reject_rect = None
+
+        # Busy former popup (clicking a former that is currently terraforming)
+        self.busy_former_popup_active = False
+        self.busy_former_unit = None
+        self.always_select_busy_formers = False  # Session flag: skip popup if set
+        self.busy_former_select_rect = None
+        self.busy_former_ignore_rect = None
+        self.busy_former_always_rect = None
+
         # Pact evacuation popup
         self.pact_evacuation_popup_active = False
         self.pact_evacuation_count = 0
@@ -181,6 +198,21 @@ class UIManager:
 
         # 1. Handle Overlays First (Hotkeys)
         if event.type == pygame.KEYDOWN:
+            # Enter/Return advances upkeep popups and dismisses new-designs popup
+            if event.key in (pygame.K_RETURN, pygame.K_KP_ENTER):
+                if game.upkeep_phase_active:
+                    game.advance_upkeep_event()
+                    return True
+                if self.new_designs_popup_active:
+                    self.new_designs_popup_active = False
+                    game.new_designs_available = False
+                    return True
+
+            # Block all game keys while modal popups are open
+            if (self.busy_former_popup_active or self.terraform_cost_popup_active
+                    or self.movement_overflow_popup_active):
+                return True
+
             # Check for Ctrl+S and Ctrl+L first (highest priority shortcuts)
             if event.key == pygame.K_s and (event.mod & pygame.KMOD_CTRL):
                 if self.active_screen == "GAME" and not game.processing_ai:
@@ -357,6 +389,12 @@ class UIManager:
                 # Supply pod message takes priority
                 if game.supply_pod_message:
                     game.supply_pod_message = None
+                    if game.supply_pod_tech_event:
+                        game.upkeep_events = [game.supply_pod_tech_event]
+                        game.supply_pod_tech_event = None
+                        game.current_upkeep_event_index = 0
+                        game.upkeep_phase_active = True
+                        game.mid_turn_upkeep = True
                     return True
 
                 if self.active_screen == "DIPLOMACY":
@@ -580,6 +618,73 @@ class UIManager:
                 elif self.artifact_link_no_rect and self.artifact_link_no_rect.collidepoint(pos):
                     game.pending_artifact_link = None
                     self.artifact_link_popup_active = False
+                    return True
+                return True  # Block clicks through popup
+
+            # Movement overflow popup
+            if self.movement_overflow_popup_active:
+                pos = pygame.mouse.get_pos()
+                if self.movement_overflow_ok_rect and self.movement_overflow_ok_rect.collidepoint(pos):
+                    game.pending_movement_overflow_unit = None
+                    self.movement_overflow_popup_active = False
+                    return True
+                return True  # Block clicks through popup
+
+            # Terrain cost confirmation popup (raise/lower land)
+            if self.terraform_cost_popup_active:
+                pos = pygame.mouse.get_pos()
+                pending = game.pending_terraform_cost
+                if self.terraform_cost_approve_rect and self.terraform_cost_approve_rect.collidepoint(pos):
+                    if pending and game.energy_credits >= pending['cost']:
+                        game.energy_credits -= pending['cost']
+                        from game.terraforming import start_terraforming
+                        from game.data.terraforming_data import IMPROVEMENTS
+                        start_terraforming(pending['unit'], pending['action'], game)
+                        imp_name = IMPROVEMENTS[pending['action']]['name']
+                        turns = pending['unit'].terraforming_turns_left
+                        game.set_status_message(f"{pending['unit'].name}: {imp_name} ({turns} turns)")
+                    elif pending:
+                        game.set_status_message(f"Not enough energy. Need {pending['cost']} credits.")
+                    game.pending_terraform_cost = None
+                    self.terraform_cost_popup_active = False
+                    return True
+                elif self.terraform_cost_reject_rect and self.terraform_cost_reject_rect.collidepoint(pos):
+                    game.pending_terraform_cost = None
+                    self.terraform_cost_popup_active = False
+                    return True
+                return True  # Block clicks through popup
+
+            # Busy former popup buttons
+            if self.busy_former_popup_active:
+                pos = pygame.mouse.get_pos()
+                if self.busy_former_select_rect and self.busy_former_select_rect.collidepoint(pos):
+                    # Select — cancel terraforming and select the unit
+                    unit = self.busy_former_unit
+                    if unit:
+                        from game.terraforming import cancel_terraforming
+                        cancel_terraforming(unit)
+                        game._select_unit(unit)
+                        game.center_camera_on_tile = (unit.x, unit.y)
+                    self.busy_former_popup_active = False
+                    self.busy_former_unit = None
+                    return True
+                elif self.busy_former_ignore_rect and self.busy_former_ignore_rect.collidepoint(pos):
+                    # Ignore — close popup, former keeps working
+                    self.busy_former_popup_active = False
+                    self.busy_former_unit = None
+                    return True
+                elif self.busy_former_always_rect and self.busy_former_always_rect.collidepoint(pos):
+                    # Always — set session flag, then select the unit
+                    self.always_select_busy_formers = True
+                    game._always_select_busy_formers = True
+                    unit = self.busy_former_unit
+                    if unit:
+                        from game.terraforming import cancel_terraforming
+                        cancel_terraforming(unit)
+                        game._select_unit(unit)
+                        game.center_camera_on_tile = (unit.x, unit.y)
+                    self.busy_former_popup_active = False
+                    self.busy_former_unit = None
                     return True
                 return True  # Block clicks through popup
 
@@ -828,6 +933,24 @@ class UIManager:
 
         return False
 
+    def has_any_blocking_popup(self):
+        """Return True if any modal popup is currently active.
+
+        Used by game.check_auto_end_turn() to prevent the turn from advancing
+        while the player still needs to interact with a dialog.
+        """
+        return (self.commlink_request_active or
+                self.commlink_open or
+                self.elimination_popup_active or
+                self.new_designs_popup_active or
+                self.break_treaty_popup_active or
+                self.surprise_attack_popup_active or
+                self.artifact_link_popup_active or
+                self.pact_evacuation_popup_active or
+                self.busy_former_popup_active or
+                self.terraform_cost_popup_active or
+                self.movement_overflow_popup_active)
+
     def draw(self, screen, game, renderer=None):
         """Render the UI panel with game info, buttons, and active modals.
 
@@ -925,7 +1048,9 @@ class UIManager:
             if unit.moves_remaining == 0:
                 moves_text = self.small_font.render("ALREADY MOVED", True, (255, 100, 100))
             else:
-                moves_text = self.small_font.render(f"Moves: {unit.moves_remaining}/{unit.max_moves()}", True, (200, 210, 220))
+                _rem = unit.moves_remaining
+                _rem_str = str(int(_rem)) if _rem == int(_rem) else f"{_rem:.2f}".rstrip('0')
+                moves_text = self.small_font.render(f"Moves: {_rem_str}/{unit.max_moves()}", True, (200, 210, 220))
             screen.blit(moves_text, (info_x, info_y + 74))
 
             # Health percentage with color coding
@@ -948,6 +1073,13 @@ class UIManager:
             morale_text = self.small_font.render(f"Morale: {morale_name}", True, (150, 200, 255))
             screen.blit(morale_text, (info_x, info_y + 106))
 
+            # Transport cargo (only for sea transports)
+            if getattr(unit, 'transport_capacity', 0) > 0:
+                cargo_count = len(getattr(unit, 'loaded_units', []))
+                cargo_text = self.small_font.render(
+                    f"Cargo: {cargo_count}/{unit.transport_capacity}", True, (160, 210, 160))
+                screen.blit(cargo_text, (info_x, info_y + 122))
+
         # Terrain panel - far right of console
         # Show when a unit is selected OR when tile cursor mode is active
         _show_terrain = game.selected_unit or game.tile_cursor_mode
@@ -955,7 +1087,7 @@ class UIManager:
             terrain_x = 1080
             terrain_y = display.UI_PANEL_Y + 20
             terrain_box_w = 200
-            terrain_box_h = 185
+            terrain_box_h = 270
             terrain_box = pygame.Rect(terrain_x - 10, terrain_y - 5, terrain_box_w, terrain_box_h)
             pygame.draw.rect(screen, (30, 40, 35), terrain_box)
             pygame.draw.rect(screen, COLOR_BUTTON_BORDER, terrain_box, 2)
@@ -1016,10 +1148,53 @@ class UIManager:
                 ene_text = self.small_font.render(f"Energy: {energy}", True, (220, 220, 100))
                 screen.blit(ene_text, (terrain_x, terrain_y + 128))
 
-                # Xenofungus
+                # Terrain labels (Xenofungus, River, improvements) stacked from y+148
+                _label_y = terrain_y + 148
                 if getattr(tile, 'fungus', False):
                     xeno_text = self.small_font.render("Xenofungus", True, (255, 0, 200))
-                    screen.blit(xeno_text, (terrain_x, terrain_y + 148))
+                    screen.blit(xeno_text, (terrain_x, _label_y))
+                    _label_y += 16
+                if getattr(tile, 'river_edges', None):
+                    river_text = self.small_font.render("River", True, (100, 160, 220))
+                    screen.blit(river_text, (terrain_x, _label_y))
+                    _label_y += 16
+                # Terrain improvements
+                _IMP_NAMES = {
+                    'farm': 'Farm', 'forest': 'Forest', 'mine': 'Mine',
+                    'solar': 'Solar Collector', 'road': 'Road', 'mag_tube': 'Mag Tube',
+                    'sensor_array': 'Sensor Array', 'borehole': 'Thermal Borehole',
+                    'condenser': 'Condenser', 'echelon_mirror': 'Echelon Mirror',
+                    'soil_enricher': 'Soil Enricher', 'bunker': 'Bunker',
+                    'airbase': 'Air Base', 'kelp_farm': 'Kelp Farm',
+                    'mining_platform': 'Mining Platform', 'tidal_harness': 'Tidal Harness',
+                }
+                _imp_labels = [
+                    _IMP_NAMES.get(k, k.replace('_', ' ').title())
+                    for k in sorted(getattr(tile, 'improvements', set()))
+                    if k not in ('fungus', 'sea_fungus')
+                ]
+                if _imp_labels:
+                    # Render comma-separated labels with line wrapping at ~175px
+                    _imp_color = (180, 210, 160)
+                    _max_w = 175
+                    _full_text = ', '.join(_imp_labels)
+                    # Word-wrap: split on ', ' boundaries
+                    _tokens = _full_text.split(', ')
+                    _current_line = ''
+                    for _tok in _tokens:
+                        _candidate = _tok if not _current_line else _current_line + ', ' + _tok
+                        if self.small_font.size(_candidate)[0] <= _max_w:
+                            _current_line = _candidate
+                        else:
+                            if _current_line:
+                                screen.blit(self.small_font.render(_current_line, True, _imp_color),
+                                            (terrain_x, _label_y))
+                                _label_y += 14
+                            _current_line = _tok
+                    if _current_line:
+                        screen.blit(self.small_font.render(_current_line, True, _imp_color),
+                                    (terrain_x, _label_y))
+                        _label_y += 14
 
         # Layer 4a: Main Menu Drop-up
         if self.main_menu_open and self.active_screen == "GAME":
@@ -1181,6 +1356,26 @@ class UIManager:
             self.artifact_link_popup_active = True
         if self.artifact_link_popup_active and game.pending_artifact_link:
             self._draw_artifact_link_popup(screen, game)
+
+        # Busy former popup (player clicked a working former)
+        if game.pending_busy_former and not self.busy_former_popup_active:
+            self.busy_former_popup_active = True
+            self.busy_former_unit = game.pending_busy_former
+            game.pending_busy_former = None
+        if self.busy_former_popup_active:
+            self._draw_busy_former_popup(screen, game)
+
+        # Movement overflow popup
+        if game.pending_movement_overflow_unit and not self.movement_overflow_popup_active:
+            self.movement_overflow_popup_active = True
+        if self.movement_overflow_popup_active and game.pending_movement_overflow_unit:
+            self._draw_movement_overflow_popup(screen, game)
+
+        # Terrain cost confirmation popup
+        if game.pending_terraform_cost and not self.terraform_cost_popup_active:
+            self.terraform_cost_popup_active = True
+        if self.terraform_cost_popup_active and game.pending_terraform_cost:
+            self._draw_terraform_cost_popup(screen, game)
 
         # Check for pending commlink requests and show popup
         # Only activate next request if we're not in diplomacy (wait for screen to fully close)
@@ -1774,14 +1969,14 @@ class UIManager:
 
         link = game.pending_artifact_link
         base_name = link['base'].name if link else "this base"
-        msg1 = f"An Alien Artifact has arrived at {base_name}."
-        msg2 = "Link it to the Network Node for a free tech breakthrough?"
+        msg1 = f"An Alien Artifact is present at {base_name}."
+        msg2 = "What would you like to do with it?"
         msg1_surf = self.small_font.render(msg1, True, (180, 210, 230))
         msg2_surf = self.small_font.render(msg2, True, (180, 210, 230))
         screen.blit(msg1_surf, (box_x + box_w // 2 - msg1_surf.get_width() // 2, box_y + 90))
         screen.blit(msg2_surf, (box_x + box_w // 2 - msg2_surf.get_width() // 2, box_y + 115))
 
-        btn_w, btn_h = 140, 50
+        btn_w, btn_h = 180, 50
         btn_y = box_y + box_h - 75
         yes_x = box_x + box_w // 2 - btn_w - 20
         no_x  = box_x + box_w // 2 + 20
@@ -1790,8 +1985,8 @@ class UIManager:
         self.artifact_link_no_rect  = pygame.Rect(no_x,  btn_y, btn_w, btn_h)
 
         for rect, label, color in [
-            (self.artifact_link_yes_rect, "Yes - Link", (60, 120, 80)),
-            (self.artifact_link_no_rect,  "No",         (80, 60, 60)),
+            (self.artifact_link_yes_rect, "Link to Network Node", (60, 120, 80)),
+            (self.artifact_link_no_rect,  "Keep for later",       (60, 80, 80)),
         ]:
             hover = rect.collidepoint(pygame.mouse.get_pos())
             bg = tuple(min(c + 20, 255) for c in color) if hover else color
@@ -1799,6 +1994,157 @@ class UIManager:
             pygame.draw.rect(screen, (120, 200, 140) if label.startswith("Yes") else (200, 100, 100),
                              rect, 2, border_radius=8)
             lbl_surf = self.font.render(label, True, COLOR_TEXT)
+            screen.blit(lbl_surf, (rect.centerx - lbl_surf.get_width() // 2,
+                                   rect.centery - lbl_surf.get_height() // 2))
+
+    def _draw_busy_former_popup(self, screen, game):
+        """Draw popup asking if the player wants to select a busy former."""
+        overlay = pygame.Surface((display.SCREEN_WIDTH, display.SCREEN_HEIGHT))
+        overlay.set_alpha(180)
+        overlay.fill((0, 0, 0))
+        screen.blit(overlay, (0, 0))
+
+        box_w, box_h = 560, 230
+        box_x = display.SCREEN_WIDTH // 2 - box_w // 2
+        box_y = display.SCREEN_HEIGHT // 2 - box_h // 2
+
+        pygame.draw.rect(screen, (30, 30, 20), (box_x, box_y, box_w, box_h), border_radius=12)
+        pygame.draw.rect(screen, (180, 160, 80), (box_x, box_y, box_w, box_h), 3, border_radius=12)
+
+        title_surf = self.font.render("FORMER AT WORK", True, (220, 200, 100))
+        screen.blit(title_surf, (box_x + box_w // 2 - title_surf.get_width() // 2, box_y + 30))
+
+        unit = self.busy_former_unit
+        action_name = ""
+        if unit and unit.terraforming_action:
+            from game.data.terraforming_data import IMPROVEMENTS
+            imp = IMPROVEMENTS.get(unit.terraforming_action)
+            action_name = f" ({imp['name']})" if imp else ""
+        msg1 = "Would you like to select this unit?"
+        msg2 = f"Selecting will erase all work in progress{action_name}."
+        msg1_surf = self.small_font.render(msg1, True, (210, 200, 160))
+        msg2_surf = self.small_font.render(msg2, True, (180, 170, 130))
+        screen.blit(msg1_surf, (box_x + box_w // 2 - msg1_surf.get_width() // 2, box_y + 85))
+        screen.blit(msg2_surf, (box_x + box_w // 2 - msg2_surf.get_width() // 2, box_y + 110))
+
+        btn_w, btn_h = 140, 46
+        btn_y = box_y + box_h - 68
+        gap = 14
+        total_w = btn_w * 3 + gap * 2
+        start_x = box_x + (box_w - total_w) // 2
+
+        self.busy_former_select_rect = pygame.Rect(start_x, btn_y, btn_w, btn_h)
+        self.busy_former_ignore_rect = pygame.Rect(start_x + btn_w + gap, btn_y, btn_w, btn_h)
+        self.busy_former_always_rect = pygame.Rect(start_x + (btn_w + gap) * 2, btn_y, btn_w, btn_h)
+
+        buttons = [
+            (self.busy_former_select_rect, "Select",        (60, 100, 60),  (120, 200, 120)),
+            (self.busy_former_ignore_rect, "Ignore",        (60, 60, 100),  (120, 120, 200)),
+            (self.busy_former_always_rect, "Always Select", (80, 60, 40),   (180, 140, 80)),
+        ]
+        for rect, label, bg_color, border_color in buttons:
+            hover = rect.collidepoint(pygame.mouse.get_pos())
+            bg = tuple(min(c + 20, 255) for c in bg_color) if hover else bg_color
+            pygame.draw.rect(screen, bg, rect, border_radius=8)
+            pygame.draw.rect(screen, border_color, rect, 2, border_radius=8)
+            lbl_surf = self.small_font.render(label, True, COLOR_TEXT)
+            screen.blit(lbl_surf, (rect.centerx - lbl_surf.get_width() // 2,
+                                   rect.centery - lbl_surf.get_height() // 2))
+
+    def _draw_movement_overflow_popup(self, screen, game):
+        """Draw warning popup when a unit exceeds 100 moves in one turn."""
+        overlay = pygame.Surface((display.SCREEN_WIDTH, display.SCREEN_HEIGHT))
+        overlay.set_alpha(180)
+        overlay.fill((0, 0, 0))
+        screen.blit(overlay, (0, 0))
+
+        box_w, box_h = 520, 190
+        box_x = display.SCREEN_WIDTH // 2 - box_w // 2
+        box_y = display.SCREEN_HEIGHT // 2 - box_h // 2
+
+        pygame.draw.rect(screen, (45, 20, 20), (box_x, box_y, box_w, box_h), border_radius=12)
+        pygame.draw.rect(screen, (220, 80, 80), (box_x, box_y, box_w, box_h), 3, border_radius=12)
+
+        title_surf = self.font.render("MOVEMENT LIMIT REACHED", True, (255, 120, 120))
+        screen.blit(title_surf, (box_x + box_w // 2 - title_surf.get_width() // 2, box_y + 28))
+
+        unit = game.pending_movement_overflow_unit
+        name = unit.name if unit else "Unit"
+        msg = f"{name} has been stopped after 100 moves this turn."
+        msg2 = "Movement exhausted to prevent an infinite loop."
+        msg_surf  = self.small_font.render(msg,  True, (210, 180, 180))
+        msg2_surf = self.small_font.render(msg2, True, (170, 140, 140))
+        screen.blit(msg_surf,  (box_x + box_w // 2 - msg_surf.get_width()  // 2, box_y + 80))
+        screen.blit(msg2_surf, (box_x + box_w // 2 - msg2_surf.get_width() // 2, box_y + 104))
+
+        btn_w, btn_h = 120, 44
+        btn_x = box_x + box_w // 2 - btn_w // 2
+        btn_y = box_y + box_h - 60
+        self.movement_overflow_ok_rect = pygame.Rect(btn_x, btn_y, btn_w, btn_h)
+        hover = self.movement_overflow_ok_rect.collidepoint(pygame.mouse.get_pos())
+        pygame.draw.rect(screen, (80, 50, 50) if hover else (60, 35, 35),
+                         self.movement_overflow_ok_rect, border_radius=8)
+        pygame.draw.rect(screen, (220, 80, 80), self.movement_overflow_ok_rect, 2, border_radius=8)
+        ok_surf = self.font.render("OK", True, COLOR_TEXT)
+        screen.blit(ok_surf, (self.movement_overflow_ok_rect.centerx - ok_surf.get_width() // 2,
+                               self.movement_overflow_ok_rect.centery - ok_surf.get_height() // 2))
+
+    def _draw_terraform_cost_popup(self, screen, game):
+        """Draw cost confirmation popup for raise/lower land terrain operations."""
+        overlay = pygame.Surface((display.SCREEN_WIDTH, display.SCREEN_HEIGHT))
+        overlay.set_alpha(180)
+        overlay.fill((0, 0, 0))
+        screen.blit(overlay, (0, 0))
+
+        box_w, box_h = 500, 210
+        box_x = display.SCREEN_WIDTH // 2 - box_w // 2
+        box_y = display.SCREEN_HEIGHT // 2 - box_h // 2
+
+        pygame.draw.rect(screen, (25, 35, 45), (box_x, box_y, box_w, box_h), border_radius=12)
+        pygame.draw.rect(screen, (100, 160, 220), (box_x, box_y, box_w, box_h), 3, border_radius=12)
+
+        pending = game.pending_terraform_cost
+        action_name = ""
+        if pending:
+            from game.data.terraforming_data import IMPROVEMENTS
+            imp = IMPROVEMENTS.get(pending['action'])
+            action_name = imp['name'] if imp else pending['action']
+        cost = pending['cost'] if pending else 12
+        can_afford = game.energy_credits >= cost
+
+        title_surf = self.font.render(action_name.upper(), True, (140, 200, 255))
+        screen.blit(title_surf, (box_x + box_w // 2 - title_surf.get_width() // 2, box_y + 28))
+
+        msg1 = f"This operation costs {cost} energy credits."
+        msg2 = f"Current balance: {game.energy_credits} credits."
+        color2 = (120, 220, 120) if can_afford else (220, 100, 100)
+        msg1_surf = self.small_font.render(msg1, True, (200, 210, 220))
+        msg2_surf = self.small_font.render(msg2, True, color2)
+        screen.blit(msg1_surf, (box_x + box_w // 2 - msg1_surf.get_width() // 2, box_y + 80))
+        screen.blit(msg2_surf, (box_x + box_w // 2 - msg2_surf.get_width() // 2, box_y + 105))
+
+        btn_w, btn_h = 150, 46
+        btn_y = box_y + box_h - 64
+        gap = 20
+        approve_x = box_x + box_w // 2 - btn_w - gap // 2
+        reject_x  = box_x + box_w // 2 + gap // 2
+
+        self.terraform_cost_approve_rect = pygame.Rect(approve_x, btn_y, btn_w, btn_h)
+        self.terraform_cost_reject_rect  = pygame.Rect(reject_x,  btn_y, btn_w, btn_h)
+
+        approve_bg = (40, 90, 50) if can_afford else (50, 50, 50)
+        approve_border = (100, 200, 120) if can_afford else (100, 100, 100)
+        approve_label = "Approve" if can_afford else "Approve (no funds)"
+
+        for rect, label, bg, border in [
+            (self.terraform_cost_approve_rect, approve_label, approve_bg, approve_border),
+            (self.terraform_cost_reject_rect,  "Reject",      (80, 50, 50), (200, 100, 100)),
+        ]:
+            hover = rect.collidepoint(pygame.mouse.get_pos())
+            draw_bg = tuple(min(c + 20, 255) for c in bg) if hover else bg
+            pygame.draw.rect(screen, draw_bg, rect, border_radius=8)
+            pygame.draw.rect(screen, border, rect, 2, border_radius=8)
+            lbl_surf = self.small_font.render(label, True, COLOR_TEXT)
             screen.blit(lbl_surf, (rect.centerx - lbl_surf.get_width() // 2,
                                    rect.centery - lbl_surf.get_height() // 2))
 

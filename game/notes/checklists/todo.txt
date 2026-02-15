@@ -61,14 +61,15 @@ Use it to test the following issues, but also test debug mode along the way.
 - Incite drone riots
 - Mind control units/bases
 - Success rate based on PROBE social engineering
+- Every successful action leads to a morale upgrade, until Elite
 
 8: Sea Transport & Loading
 
 - Transport foils can carry up to 4 land units, Transport cruisers up to 8.
 - Loaded units move with transport automatically
 - Unload to adjacent land tiles
-- Loaded units destroyed if transport is destroyed
-- When a unit is in a base along with a transport, press L to load them.
+- Loaded units destroyed if transport is destroyed while not in base.
+- When a unit is in a base along with a transport, press l to load them.
 
 9: Disengage Mechanic
 
@@ -161,6 +162,21 @@ The End Turn button should then blink, not auto-end.
 10 Still a bug where 3 or 4 factions get eliminated on turn 1. Nothing attacked them. Just a bug.
 11 When an AI faction meets me for the first time and wants to talk, the AI turns keep processing in the background. This
 should not be the case. Everything should pause until the conversation is over.
+12 Supply pod commlink auto-started a call. Should just add contact to commlink panel silently.
+13 Alien artifact in base with network node — no popup appeared. Now triggers on unit selection.
+    Updated popup: "What would you like to do?" with "Link to Network Node" / "Keep for later".
+14 Applied Physics (laser) not generating new unit designs. Bug: no armor available → best_armor=None
+    caused creation guard to fail. Now always creates no-armor offensive variants for land/sea.
+15 Transport design auto-created transport infantry. Only sea chassis now get transport weapon designs.
+16 'l' key to board transport did nothing — K_l handler was missing. Now boards transport on same tile.
+17 Unit panel: added "Cargo: x/y" line for sea transports.
+18 Land unit in sea base could walk directly to adjacent land tile. Now blocked unless amphibious pods.
+19 The selecting and de-selecting of the tiles the base works in the mini-map is broken. De-selection should not automatically
+re-select. The user will click once to de-select, and click a non-worked tile to select. The user can also de-select multiple
+tiles in a row before selecting new ones.
+20 I got the underground river supply pod. No river appeared. Make sure you not only generate this in the backend, but draw
+it. It becomes a permanent part of the map. Also, where you have "Xenofungus" in pink in the terrain pane, could you do a
+similar thing for "River", drawing it the same light blue as the river?
 
 
 
@@ -183,7 +199,10 @@ Note: this is the ONLY section of todo.txt that can be edited by Claude Code, bu
 the non-military units automatically die. This is true for probe teams, and all versions of colony pods. (And artifacts,
 but they are captured, not killed. We've implemented this.) A note at the bottom should say We <killed or lost> x units.
 5 AI colony pod keeps trying to build a base on a monolith, and gets denied, every turn. Needs an updated algo.
-
+6 Found a base mini-map that isn't accurate. It's pretending there's a row of green land beneath it that isn't there.
+The base is founded on the bottom row, so that might be affecting it. Also, the minimap should show our new land type additions,
+including fungus, arid land, and rocks, but isn't.
+7 Growth is still messed up. It should not show two growth meters, especially disagreeing ones.
 
 
 ***************************************************************************
@@ -196,9 +215,8 @@ but they are captured, not killed. We've implemented this.) A note at the bottom
 
 1 Art
 2 Sounds
-3 Terraforming
-4 Fog of war
-5 Advanced unit movement (G command, J command, drag path)
-6 Isometric
-7 Diplomacy trees (it is half-built, but may need a redesign)
-8 Secret Project view
+3 Fog of war
+4 Advanced unit movement (G command, J command, drag path)
+5 Isometric
+6 Diplomacy trees (it is half-built, but may need a redesign)
+7 Secret Project view

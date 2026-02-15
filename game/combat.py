@@ -243,6 +243,18 @@ class Combat:
                         'display': '+50%'
                     })
 
+            # Fractional-move attack penalty (attacker only)
+            # A unit that has used road/river moves may attack but at reduced strength.
+            # >= 2/3 remaining: -33%  |  < 2/3 remaining: -66%
+            max_mv = float(unit.max_moves())
+            if max_mv > 0:
+                remaining = unit.moves_remaining
+                if 0.0 < remaining < max_mv - 1e-6:  # Has used at least one full-cost move
+                    if remaining < (2.0 / 3.0) - 1e-6:
+                        modifiers.append({'name': 'Low Moves', 'multiplier': 0.34, 'display': '-66%'})
+                    else:
+                        modifiers.append({'name': 'Partial Move', 'multiplier': 0.67, 'display': '-33%'})
+
             # PLANET rating bonus in psi combat (+/-10% per point, attacker only)
             if vs_unit and self._is_psi_combat(unit, vs_unit):
                 planet_rating = self.game.get_planet_rating(unit.owner)

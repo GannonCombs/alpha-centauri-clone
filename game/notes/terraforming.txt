@@ -1,0 +1,125 @@
+Airbase
+Airbase (SMAC)
+Prerequisite: Doctrine: Air Power
+Base terraforming time: 10
+Allows Air units to refuel here.
+
+Aquifer
+Aquifer (SMAC)
+Prerequisite: Ecological Engineering
+Base terraforming time: 18
+Taps an underground aquifer, creating a river. This adds one energy point to each square. They can even be built on bore holes.
+
+Bunker
+Bunker (SMAC)
+Prerequisite: Advanced Military Algorithms
+Base terraforming time: 5
+Units in a Bunker have a 50% bonus to defense and do not suffer from collateral damage when another unit in the bunker is attacked. The bunker is controlled by the faction that owns the territory of the square. Hostile factions may capture the bunker by moving a unit into it, which will use up all the movement points of that unit.
+
+Condenser
+Condenser (SMAC)
+Prerequisite: Ecological Engineering
+Base terraforming time: 12
+A condenser increases the raininess of its square and all adjacent squares and increases its square's food production by 50%. Condensers also cause significant amounts of eco-damage.
+
+Echelon Mirror
+Echelon Mirror (SMAC)
+Prerequisite: Ecological Engineering
+Base terraforming time: 12
+Produces the same base energy as a Solar Collector and increases the production of adjacent Solar Collectors by 1. Multiple mirrors can affect a single Solar Collector, which can result in that collector to produce 10 or more energy. Echelon Mirrors also cause significant amounts of eco-damage.
+
+Farm
+Farm (SMAC)
+Base terraforming time: 4
+Increases nutrient production by 1.
+
+Forest
+Forest (SMAC)
+Base terraforming time: 4
+Production: 1-2-1
+Ignores the tile's raininess and rockiness attributes, giving it a base value of 1 nutrient, 2 mineral, and 1 energy, which can be increased by appropriate base facilities. Forests also reduce terraforming-related eco-damage, which helps to offset the effects of heavy terrain development and improvements like boreholes. Planet will also appreciate the new biodiversity. One further important fact about forests is that they will spread to adjacent tiles, and doing so will destroy fungus in a spread-to tile.
+
+Forests will not spread to Rocky tiles or tiles with existing improvements, and trying to plant them over top of existing improvements will replace that tile's improvements. Building an improvement over a forest will "harvest" the forest, removing it and giving 5 minerals to the former's home base. The only exceptions are roads, mag tubes, and sensor arrays, and forests can spread to (but can't be planted in without replacing) otherwise-unimproved condenser tiles.
+
+Plant Fungus
+Xenofungus (SMAC)Sea Xenofungus (SMAC)
+Prerequisite: Ecological Engineering
+Base terraforming time: 6
+Fills the square with xenofungus. Not useful until you've discovered a lot of Centauri techs, or are for some reason using your formers offensively.
+
+Remove Fungus
+Base terraforming time: 6
+Removes fungus from a square, allowing it normal production.
+
+Level Terrain
+Base terraforming time: 8
+Reduces the Rockiness of a tile from Rocky to Rolling, or Rolling to Flat.
+
+Lower Land
+Prerequisite: Environmental Economics
+Base terraforming time: 12
+Reduces the tile's elevation by about 1000m. Costs energy credits to perform, amount is determined by the current elevation and the distance of the operation from your nearest base. If used by a sea former outside of a coastal base it can lower the base into the sea, drowning all the inhabitants (unless the base is equipped with a pressure dome). Land formers cannot lower land if the height is less than 1000m.
+
+Note that a land-lowering operation that would send another faction's land-based territory undersea is considered an act of Vendetta against that faction.
+
+Mag Tube
+Mag Tube (SMAC)
+Prerequisite: Monopole Magnets
+Base terraforming time: 3
+Units moving along a mag tube expend no movement points.
+
+Mine
+Mine (SMAC)
+Base terraforming time: 8
+A mine increases the mineral production of a tile by 1. On a rocky tile with a road, increases mineral production by 3 (+2 without a road). In the Alien Crossfire expansion it also reduces Nutrients by one to a minimum of 1
+
+Raise Land
+Prerequisite: Environmental Economics
+Base terraforming time: 12
+Raises the tile's elevation by about 1000m. Adjacent tiles will be brought up, allowing you to create a mountain by raising a single tile. Costs energy credits to perform, amount is determined by the current elevation and the distance of the operation from your nearest base. Sea formers cannot raise terrain if the ocean depth is less than 1000m.
+
+Road
+Road (SMAC)
+Base terraforming time: 1
+Units moving along a road expend 1/3 movement point for every square.
+
+Sensor Array
+Sensor Array (SMAC)
+Base terraforming time: 4
+Gives a 25% defense bonus to your units within a 2 square radius. Eliminates fog of war in a 2 square radius.
+
+Soil Enricher
+Soil Enricher (SMAC)
+Prerequisite: Advanced Ecological Engineering
+Base terraforming time: 8
+Increases food production in the square by 50%.
+
+Solar Collector
+Solar Collector (SMAC)
+Base terraforming time: 4
+Produces 1 energy, plus 1 energy for every 1000m of the tile's elevation. A tile can be raised to at most 3500m, for a maximum base energy of 4.
+
+Thermal Borehole
+Thermal Borehole (SMAC)
+Prerequisite: Ecological Engineering
+Base terraforming time: 24
+Production: 0-6-6
+Ignores most other terraforming in the square and produces 0 nutrients, 6 minerals, and 6 energy. Can stack with rivers and resource bonuses. Unfortunately, Boreholes cause a HUGE amount of eco-damage, and rivers will end at Boreholes, i.e. if you create a Borehole in the middle of a river (or at its source!) the downstream river will disappear.
+
+The secret project Weather Paradigm allows you to build boreholes before you research the technology that would normally allow them, but without certain technology to remove the limits on energy and minerals, you can only get 2 minerals and 2 energy from them unless built on a mineral or energy bonus which will allow harvesting the full amount of that resource. Environmental Economics eliminates limits on energy. Ecological Engineering releases limits on minerals.
+
+Kelp Farm
+Kelp Farm (SMAC)
+Base terraforming time: 4
++2 Nutrients, +1 extra Nutrients with the Aquafarm facility. Like forests, kelp farms will grow into adjacent squares automatically.
+
+Mining Platform
+Mining Platform (SMAC)
+Base terraforming time: 8
+-1 nutrients, +1 Minerals, +1 Minerals with the discovery of Advanced Ecological Engineering, +1 extra with Sub Sea Trunkline facility.
+
+Tidal Harness
+Tidal Harness (SMAC)
+Base terraforming time: 4
++3 Energy, +1 extra with Thermocline Tranductor facility.
+

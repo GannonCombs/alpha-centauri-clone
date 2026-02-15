@@ -172,6 +172,8 @@ REACTORS = [
 SPECIAL_ABILITIES = [
     {'id': 'none', 'name': 'None', 'cost': 0, 'prereq': None, 'description': 'No special ability'},
     {'id': 'super_former', 'name': 'Super Former', 'cost': 10, 'prereq': 'EcoEng2', 'description': 'Terraform twice as fast'},
+    {'id': 'fungicide_tanks', 'name': 'Fungicide Tanks', 'cost': 10, 'prereq': 'Fossil', 'description': 'Remove fungus at double speed'},
+    {'id': 'high_morale', 'name': 'High Morale', 'cost': 1, 'prereq': 'Integ', 'description': 'Unit starts with one extra morale level'},
     {'id': 'deep_radar', 'name': 'Deep Radar', 'cost': 20, 'prereq': 'MilAlg', 'description': 'See 2 squares farther'},
     {'id': 'cloaking', 'name': 'Cloaking Device', 'cost': 25, 'prereq': 'Surface', 'description': 'Invisible to enemy units'},
     {'id': 'amphibious', 'name': 'Amphibious Pods', 'cost': 15, 'prereq': 'DocInit', 'description': 'Move on land and sea'},
