@@ -120,6 +120,20 @@ def main():
 
             # Game is active - handle game events
             elif event.type == pygame.KEYDOWN:
+                # Block all input during AI processing unless a popup needs attention
+                if game.processing_ai:
+                    ai_popups_blocking = (ui_panel.commlink_request_active or
+                                          ui_panel.commlink_open or
+                                          ui_panel.elimination_popup_active or
+                                          ui_panel.surprise_attack_popup_active or
+                                          ui_panel.break_treaty_popup_active or
+                                          ui_panel.pact_evacuation_popup_active or
+                                          game.upkeep_phase_active or
+                                          game.combat.pending_battle is not None or
+                                          game.combat.active_battle is not None)
+                    if not ai_popups_blocking:
+                        continue
+
                 # Check for exit dialog first
                 if exit_dialog.show_dialog:
                     exit_result = exit_dialog.handle_event(event)
@@ -323,6 +337,20 @@ def main():
                                 game.try_move_unit(game.selected_unit, target_x, target_y)
 
             elif event.type == pygame.MOUSEBUTTONDOWN:
+                # Block all input during AI processing unless a popup needs attention
+                if game.processing_ai:
+                    ai_popups_blocking = (ui_panel.commlink_request_active or
+                                          ui_panel.commlink_open or
+                                          ui_panel.elimination_popup_active or
+                                          ui_panel.surprise_attack_popup_active or
+                                          ui_panel.break_treaty_popup_active or
+                                          ui_panel.pact_evacuation_popup_active or
+                                          game.upkeep_phase_active or
+                                          game.combat.pending_battle is not None or
+                                          game.combat.active_battle is not None)
+                    if not ai_popups_blocking:
+                        continue
+
                 # Check for exit dialog first
                 if exit_dialog.show_dialog:
                     exit_result = exit_dialog.handle_event(event)
@@ -477,6 +505,21 @@ def main():
         elif game.center_camera_on_tile:
             renderer.center_on_tile(game.center_camera_on_tile[0], game.center_camera_on_tile[1], game.game_map)
             game.center_camera_on_tile = None
+
+        # Hide cursor during AI turns (unless a popup is waiting for player input)
+        if game.processing_ai:
+            ai_popups_blocking = (ui_panel.commlink_request_active or
+                                  ui_panel.commlink_open or
+                                  ui_panel.elimination_popup_active or
+                                  ui_panel.surprise_attack_popup_active or
+                                  ui_panel.break_treaty_popup_active or
+                                  ui_panel.pact_evacuation_popup_active or
+                                  game.upkeep_phase_active or
+                                  game.combat.pending_battle is not None or
+                                  game.combat.active_battle is not None)
+            pygame.mouse.set_visible(ai_popups_blocking)
+        else:
+            pygame.mouse.set_visible(True)
 
         # Render (ORDER MATTERS!)
         screen.fill((0, 0, 0))  # Clear screen first

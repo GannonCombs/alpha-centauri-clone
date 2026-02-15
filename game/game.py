@@ -319,12 +319,21 @@ class Game:
 
         print(f"Total units spawned: {len(self.units)}")
 
-        # Auto-select first friendly unit
+        # Auto-select starting colony pod; fall back to first friendly unit
         friendly_units = [u for u in self.units if u.owner == self.player_faction_id]
+        colony_pods = [u for u in friendly_units if u.weapon == 'colony_pod']
         if friendly_units:
-            self.selected_unit = friendly_units[0]
+            self._select_unit(colony_pods[0] if colony_pods else friendly_units[0])
             self.center_camera_on_selected = True  # Flag to center camera on game start
             print(f"Selected {self.selected_unit.name}")
+
+    def _select_unit(self, unit):
+        """Select a unit and sync the tile's displayed_unit_index to it."""
+        self.selected_unit = unit
+        if unit is not None:
+            tile = self.game_map.get_tile(unit.x, unit.y)
+            if tile and unit in tile.units:
+                tile.displayed_unit_index = tile.units.index(unit)
 
     def handle_input(self, renderer):
         """Process keyboard input for unit movement."""
@@ -352,13 +361,13 @@ class Game:
                 if self.selected_unit in friendly_garrison:
                     current_idx = friendly_garrison.index(self.selected_unit)
                     next_idx = (current_idx + 1) % len(friendly_garrison)
-                    self.selected_unit = friendly_garrison[next_idx]
+                    self._select_unit(friendly_garrison[next_idx])
                     # Center camera on this tile when cycling units
                     self.center_camera_on_tile = (tile_x, tile_y)
                     return 'unit_selected', self.selected_unit
                 else:
                     # Select first garrison unit
-                    self.selected_unit = friendly_garrison[0]
+                    self._select_unit(friendly_garrison[0])
                     # Center camera on this tile when selecting garrison
                     self.center_camera_on_tile = (tile_x, tile_y)
                     return 'unit_selected', self.selected_unit
@@ -371,7 +380,7 @@ class Game:
         if clicked_unit:
             if clicked_unit.is_friendly(self.player_faction_id):
                 # Select friendly unit and center camera
-                self.selected_unit = clicked_unit
+                self._select_unit(clicked_unit)
                 self.center_camera_on_tile = (tile_x, tile_y)
             else:
                 # Clicked on enemy unit - try to attack with selected unit
@@ -1071,7 +1080,7 @@ class Game:
         if self.selected_unit == unit:
             # Try to select next friendly unit
             friendly_units = [u for u in self.units if u.is_friendly(self.player_faction_id)]
-            self.selected_unit = friendly_units[0] if friendly_units else None
+            self._select_unit(friendly_units[0] if friendly_units else None)
 
     def load_unit_onto_transport(self, unit, transport):
         """Load a unit onto a transport.
@@ -2202,16 +2211,12 @@ class Game:
         if self.selected_unit in units_with_moves:
             current_idx = units_with_moves.index(self.selected_unit)
             next_idx = (current_idx + 1) % len(units_with_moves)
-            self.selected_unit = units_with_moves[next_idx]
+            self._select_unit(units_with_moves[next_idx])
         else:
-            self.selected_unit = units_with_moves[0]
+            self._select_unit(units_with_moves[0])
 
-        # Update displayed unit on the map tile to show the selected unit
+        # Center camera on newly selected unit
         if self.selected_unit:
-            tile = self.game_map.get_tile(self.selected_unit.x, self.selected_unit.y)
-            if tile and self.selected_unit in tile.units:
-                tile.displayed_unit_index = tile.units.index(self.selected_unit)
-            # Center camera on newly selected unit
             self.center_camera_on_selected = True
 
     def check_auto_end_turn(self):
@@ -2669,7 +2674,7 @@ class Game:
         if not self.selected_unit:
             friendly_units = [u for u in self.units if u.is_friendly(self.player_faction_id)]
             if friendly_units:
-                self.selected_unit = friendly_units[0]
+                self._select_unit(friendly_units[0])
 
     def advance_upkeep_event(self):
         """Move to next upkeep event or exit upkeep phase.

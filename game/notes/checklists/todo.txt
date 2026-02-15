@@ -146,21 +146,19 @@ Bugs:
 
 1 My diplomatic statuses have disappeared as turns pass. It now shows nothing. Speaking to the factions, it's clear this
 is not just a bug in display. I'm able to propose treaties and pacts all over again. Obv, these should persist.
-2 New unit design on better unit tech is still not popping up, at least not consistently. Is the pattern that chassis and
- armor upgrade, but weapons don't? Edit: on Centauri Ecology, Terraformers are not popping up. They should!
-3 A scout patrol of mine attacked and won. The next turn, it was still Already Moved. This should never happen.
-4 A unit of mine took a base and wasn't healed. Any unit taking a base automatically fully heals.
-5 Saw an AI unit on an island tile it couldn't have walked to, before getting a transport. They were on the bottom row
+2 A scout patrol of mine attacked and won. The next turn, it was still Already Moved. This should never happen.
+3 A unit of mine took a base and wasn't healed. Any unit taking a base automatically fully heals.
+4 Saw an AI unit on an island tile it couldn't have walked to, before getting a transport. They were on the bottom row
 of the map; are there invisible tiles there that are playable?
-6 Got a diplomatic milestone popup when missing commlinks.
-7 Healing should not occur at turn end. It happens in upkeep of the next turn.
-8 Production times are off. Merchant Exchange takes 20 turns on Turn 1 for Morgan.
-9 Healing isn't working correctly. It's applying the bonuses correctly, but when the units are moving. It should only
+5 Got a diplomatic milestone popup when missing commlinks.
+6 Healing should not occur at turn end. It happens in upkeep of the next turn.
+7 Production times are off. Merchant Exchange takes 20 turns on Turn 1 for Morgan.
+8 Healing isn't working correctly. It's applying the bonuses correctly, but when the units are moving. It should only
 be when they've skipped their turn entirely. If a unit has even partially moved or acted that turn, healing doesn't happen
 naturally (movement onto a monolith is the exception.)
-10 Turn auto-ends when the last unit moves into contact with a new faction. End turn needs to wait for diplomacy to finish.
+9 Turn auto-ended when the last unit moved into contact with a new faction. End turn needs to wait for diplomacy to finish.
 The End Turn button should then blink, not auto-end.
-11 Still a bug where 3 or 4 factions get eliminated on turn 1. Nothing attacked them. Just a bug.
+10 Still a bug where 3 or 4 factions get eliminated on turn 1. Nothing attacked them. Just a bug.
 
 
 
@@ -183,12 +181,7 @@ Note: this is the ONLY section of todo.txt that can be edited by Claude Code, bu
 the non-military units automatically die. This is true for probe teams, and all versions of colony pods. (And artifacts,
 but they are captured, not killed. We've implemented this.) A note at the bottom should say We <killed or lost> x units.
 5 AI colony pod keeps trying to build a base on a monolith, and gets denied, every turn. Needs an updated algo.
-6 Free tech popups from supply pod are not showing correct procession of popups. Should be 1) Supply pod popup with generic
-free tech text, 2) the traditional tech popup, 3) (if applicable) the new units popup. Make sure all of these finish before
-the turn auto-ends.
-7 I need to freeze any player action whatsoever while the AI turns execute. Can I just hide/disable the cursor?
-8 Make the starting colony pod the first selected unit, instead of the starting scout patrol.
-9 When an AI faction meets me for the first time and wants to talk, the AI turns keep processing in the background. This
+6 When an AI faction meets me for the first time and wants to talk, the AI turns keep processing in the background. This
 should not be the case. Everything should pause until the conversation is over.
 
 
