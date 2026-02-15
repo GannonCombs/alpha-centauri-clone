@@ -87,6 +87,11 @@ class UIManager:
         self.surprise_attack_faction = None
         self.surprise_attack_ok_rect = None
 
+        # Artifact + Network Node link popup
+        self.artifact_link_popup_active = False
+        self.artifact_link_yes_rect = None
+        self.artifact_link_no_rect = None
+
         # Pact evacuation popup
         self.pact_evacuation_popup_active = False
         self.pact_evacuation_count = 0
@@ -544,6 +549,39 @@ class UIManager:
                     return True
                 # Don't allow clicks through popup
                 return True
+
+            # Artifact + Network Node link popup
+            if self.artifact_link_popup_active:
+                pos = pygame.mouse.get_pos()
+                if self.artifact_link_yes_rect and self.artifact_link_yes_rect.collidepoint(pos):
+                    # Link artifact: grant free tech, mark node linked, remove artifact
+                    link = game.pending_artifact_link
+                    if link:
+                        import random
+                        tech_tree = game.tech.get_faction_tree(game.player_faction_id)
+                        researchable = tech_tree.get_researchable_techs()
+                        if researchable:
+                            tech_id = random.choice(researchable)
+                            tech_name = tech_tree.technologies[tech_id]['name']
+                            tech_tree.technologies[tech_id]['researched'] = True
+                            tech_tree.researched_techs.add(tech_id)
+                            if tech_tree.current_research == tech_id:
+                                tech_tree.current_research = None
+                                tech_tree.research_points = 0
+                            game._auto_generate_unit_designs(tech_id)
+                            game.upkeep_events.append({'type': 'tech_complete', 'tech_id': tech_id, 'tech_name': tech_name})
+                        link['base'].network_node_linked = True
+                        if link['artifact'] in game.units:
+                            game._remove_unit(link['artifact'])
+                        game.set_status_message("Artifact linked! Technology breakthrough achieved!")
+                    game.pending_artifact_link = None
+                    self.artifact_link_popup_active = False
+                    return True
+                elif self.artifact_link_no_rect and self.artifact_link_no_rect.collidepoint(pos):
+                    game.pending_artifact_link = None
+                    self.artifact_link_popup_active = False
+                    return True
+                return True  # Block clicks through popup
 
             # Handle save/load dialog clicks if open
             if self.save_load_dialog.mode is not None:
@@ -1138,6 +1176,12 @@ class UIManager:
         if game.upkeep_phase_active:
             self._draw_upkeep_event(screen, game)
 
+        # Artifact + Network Node link popup
+        if game.pending_artifact_link and not self.artifact_link_popup_active:
+            self.artifact_link_popup_active = True
+        if self.artifact_link_popup_active and game.pending_artifact_link:
+            self._draw_artifact_link_popup(screen, game)
+
         # Check for pending commlink requests and show popup
         # Only activate next request if we're not in diplomacy (wait for screen to fully close)
         if not self.commlink_request_active and game.pending_commlink_requests and self.active_screen != "DIPLOMACY":
@@ -1710,6 +1754,53 @@ class UIManager:
         ok_text = self.font.render("OK", True, COLOR_TEXT)
         screen.blit(ok_text, (self.surprise_attack_ok_rect.centerx - ok_text.get_width() // 2,
                              self.surprise_attack_ok_rect.centery - 10))
+
+    def _draw_artifact_link_popup(self, screen, game):
+        """Draw yes/no popup asking player to link an Alien Artifact to a Network Node."""
+        overlay = pygame.Surface((display.SCREEN_WIDTH, display.SCREEN_HEIGHT))
+        overlay.set_alpha(180)
+        overlay.fill((0, 0, 0))
+        screen.blit(overlay, (0, 0))
+
+        box_w, box_h = 620, 240
+        box_x = display.SCREEN_WIDTH // 2 - box_w // 2
+        box_y = display.SCREEN_HEIGHT // 2 - box_h // 2
+
+        pygame.draw.rect(screen, (20, 35, 50), (box_x, box_y, box_w, box_h), border_radius=12)
+        pygame.draw.rect(screen, (80, 180, 220), (box_x, box_y, box_w, box_h), 3, border_radius=12)
+
+        title_surf = self.font.render("ALIEN ARTIFACT", True, (120, 220, 255))
+        screen.blit(title_surf, (box_x + box_w // 2 - title_surf.get_width() // 2, box_y + 30))
+
+        link = game.pending_artifact_link
+        base_name = link['base'].name if link else "this base"
+        msg1 = f"An Alien Artifact has arrived at {base_name}."
+        msg2 = "Link it to the Network Node for a free tech breakthrough?"
+        msg1_surf = self.small_font.render(msg1, True, (180, 210, 230))
+        msg2_surf = self.small_font.render(msg2, True, (180, 210, 230))
+        screen.blit(msg1_surf, (box_x + box_w // 2 - msg1_surf.get_width() // 2, box_y + 90))
+        screen.blit(msg2_surf, (box_x + box_w // 2 - msg2_surf.get_width() // 2, box_y + 115))
+
+        btn_w, btn_h = 140, 50
+        btn_y = box_y + box_h - 75
+        yes_x = box_x + box_w // 2 - btn_w - 20
+        no_x  = box_x + box_w // 2 + 20
+
+        self.artifact_link_yes_rect = pygame.Rect(yes_x, btn_y, btn_w, btn_h)
+        self.artifact_link_no_rect  = pygame.Rect(no_x,  btn_y, btn_w, btn_h)
+
+        for rect, label, color in [
+            (self.artifact_link_yes_rect, "Yes - Link", (60, 120, 80)),
+            (self.artifact_link_no_rect,  "No",         (80, 60, 60)),
+        ]:
+            hover = rect.collidepoint(pygame.mouse.get_pos())
+            bg = tuple(min(c + 20, 255) for c in color) if hover else color
+            pygame.draw.rect(screen, bg, rect, border_radius=8)
+            pygame.draw.rect(screen, (120, 200, 140) if label.startswith("Yes") else (200, 100, 100),
+                             rect, 2, border_radius=8)
+            lbl_surf = self.font.render(label, True, COLOR_TEXT)
+            screen.blit(lbl_surf, (rect.centerx - lbl_surf.get_width() // 2,
+                                   rect.centery - lbl_surf.get_height() // 2))
 
     def _draw_pact_evacuation_popup(self, screen, game):
         """Draw popup notifying player of unit evacuation after pact ended."""

@@ -17,7 +17,7 @@ Morale ◐
 Monoliths ✓
 Artifacts ◐
 Fungus/Xenofungus ◐
-Psi Combat
+Psi Combat ✓
 Waypoints
 Patrol
 Explore (Governor) ◐

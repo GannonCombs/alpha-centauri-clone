@@ -30,7 +30,7 @@ from game.debug import DebugManager  # DEBUG: Remove for release
 class Game:
     """Main game state manager."""
 
-    def __init__(self, player_faction_id=0, player_name=None, ocean_percentage=None, map_width=None, map_height=None, cloud_cover=None, erosive_forces=None, native_life=None):
+    def __init__(self, player_faction_id=0, player_name=None, ocean_percentage=None, map_width=None, map_height=None, cloud_cover=None, erosive_forces=None, native_life=None, difficulty=1):
         """Initialize a new game.
 
         Args:
@@ -48,6 +48,7 @@ class Game:
         self.game_map = GameMap(map_width, map_height, ocean_percentage, cloud_cover, erosive_forces, native_life)
         self.turn = 1
         self.running = True
+        self.difficulty = difficulty  # 1=Citizen, 2=Specialist, 3=Talent, 4=Librarian, 5=Thinker, 6=Transcend
         self.player_faction_id = player_faction_id  # Which faction the player chose
         self.player_name = player_name  # Player's custom name
         self.mission_year = 2100  # Starting year
@@ -176,7 +177,9 @@ class Game:
         self.all_contacts_obtained = False  # Flag: have we contacted all living factions?
         self.shown_all_contacts_popup = False  # Flag: have we shown the popup?
         self.pending_commlink_requests = []  # List of {faction_id, player_id} dicts for AI contact popups
+        self.pending_artifact_link = None   # {artifact, base} set when artifact enters base with network node
         self.eliminated_factions = set()  # Set of faction IDs that have been eliminated
+        self.factions_that_had_bases = set()  # Set of faction IDs that have founded at least one base
         self.pending_faction_eliminations = []  # List of faction_ids for elimination popups
         self.infiltrated_datalinks = set()  # Set of faction IDs whose datalinks player has infiltrated
 
@@ -685,6 +688,16 @@ class Game:
             if unit not in target_tile.base.garrison:
                 target_tile.base.garrison.append(unit)
                 print(f"{unit.name} garrisoned at {target_tile.base.name}")
+
+            # Artifact + Network Node: prompt to link if base has an unlinked network node
+            if (unit.weapon == 'artifact'
+                    and unit.owner == self.player_faction_id
+                    and 'network_node' in target_tile.base.facilities
+                    and not getattr(target_tile.base, 'network_node_linked', False)):
+                self.pending_artifact_link = {
+                    'artifact': unit,
+                    'base': target_tile.base
+                }
 
         return True
 
@@ -1691,6 +1704,9 @@ class Game:
             tile.base = base
             self.game_map.remove_unit_at(unit.x, unit.y, unit)
 
+        # Track that this faction has now founded at least one base (guards against false elimination)
+        self.factions_that_had_bases.add(unit.owner)
+
         # Add any other friendly units at this location to the garrison
         other_units = [u for u in self.units if u != unit and u.x == unit.x and u.y == unit.y and u.owner == unit.owner]
         for other_unit in other_units:
@@ -1966,7 +1982,9 @@ class Game:
                 continue
 
             # Check if this faction has no bases
-            if bases_per_player.get(faction_id, 0) == 0:
+            # Only eliminate if they've previously founded a base — prevents false eliminations
+            # before any colony pods have had a chance to settle (e.g. on turn 1)
+            if bases_per_player.get(faction_id, 0) == 0 and faction_id in self.factions_that_had_bases:
                 # Faction has been eliminated!
                 self.eliminated_factions.add(faction_id)
                 self.pending_faction_eliminations.append(faction_id)
@@ -2162,6 +2180,10 @@ class Game:
         """
         # Don't auto-end during AI turn, upkeep, or while a battle is animating
         if self.processing_ai or self.upkeep_phase_active or self.combat.active_battle:
+            return
+
+        # Don't auto-end while a commlink/diplomacy popup is waiting — let player handle it first
+        if self.pending_commlink_requests:
             return
 
         friendly_units = [u for u in self.units if u.is_friendly(self.player_faction_id)]
@@ -2898,6 +2920,7 @@ class Game:
             'save_timestamp': datetime.now().isoformat(),
             'game_state': {
                 'turn': self.turn,
+                'difficulty': self.difficulty,
                 'mission_year': self.mission_year,
                 'energy_credits': self.energy_credits,
                 'player_id': self.player_faction_id,
@@ -2912,6 +2935,7 @@ class Game:
                 'ai_faction_ids': self.ai_faction_ids,
                 'faction_contacts': list(self.faction_contacts),
                 'eliminated_factions': list(self.eliminated_factions),
+                'factions_that_had_bases': list(self.factions_that_had_bases),
                 'infiltrated_datalinks': list(self.infiltrated_datalinks),
                 'diplo_relations': self.ui_manager.diplomacy.diplo_relations.copy() if hasattr(self, 'ui_manager') and hasattr(self.ui_manager, 'diplomacy') else {}
             },
@@ -2949,6 +2973,7 @@ class Game:
         # Restore simple state
         gs = data['game_state']
         game.turn = gs['turn']
+        game.difficulty = gs.get('difficulty', 1)
         game.mission_year = gs['mission_year']
         game.energy_credits = gs['energy_credits']
         game.player_id = gs['player_id']
@@ -2963,6 +2988,7 @@ class Game:
         game.ai_faction_ids = gs.get('ai_faction_ids', [fid for fid in range(7) if fid != game.player_faction_id])
         game.faction_contacts = set(gs.get('faction_contacts', []))
         game.eliminated_factions = set(gs.get('eliminated_factions', []))
+        game.factions_that_had_bases = set(gs.get('factions_that_had_bases', []))
         game.infiltrated_datalinks = set(gs.get('infiltrated_datalinks', []))
         # Store diplo_relations for later restoration (after ui_manager is created)
         saved_diplo_relations = gs.get('diplo_relations', {})
@@ -3048,6 +3074,7 @@ class Game:
         game.status_message = ""
         game.status_message_timer = 0
         game.supply_pod_message = None
+        game.pending_artifact_link = None
         game.pending_battle = None
         game.active_battle = None
         game.pending_treaty_break = None

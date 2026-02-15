@@ -470,14 +470,14 @@ class IntroScreenManager:
         title_surf = self.title_font.render(title_text, True, (100, 200, 255))
         screen.blit(title_surf, (screen_width // 2 - title_surf.get_width() // 2, 100))
 
-        # Skill level options (only first one enabled)
+        # Skill level options
         skill_options = [
-            (1, '1', True),  # Only this is enabled
-            (2, '2', False),
-            (3, '3', False),
-            (4, '4', False),
-            (5, '5', False),
-            (6, '6 (hardest)', False)
+            (1, 'Citizen',    True),
+            (2, 'Specialist', True),
+            (3, 'Talent',     True),
+            (4, 'Librarian',  True),
+            (5, 'Thinker',    True),
+            (6, 'Transcend',  True),
         ]
 
         button_w = 300
@@ -968,7 +968,7 @@ class IntroScreenManager:
             elif event.key == pygame.K_RETURN:
                 # Start game
                 if self.player_name_input.strip():
-                    return 'start_game', self.selected_faction_id, self.player_name_input.strip(), self.selected_ocean_percentage, self.selected_cloud_cover, self.selected_erosive_forces, self.selected_alien_life
+                    return 'start_game', self.selected_faction_id, self.player_name_input.strip(), self.selected_ocean_percentage, self.selected_cloud_cover, self.selected_erosive_forces, self.selected_alien_life, self.selected_skill_level
             elif len(self.player_name_input) < 50:
                 # Add character
                 char = event.unicode
@@ -983,7 +983,7 @@ class IntroScreenManager:
             elif self.ok_button_rect and self.ok_button_rect.collidepoint(event.pos):
                 # Start game
                 if self.player_name_input.strip():
-                    return ('start_game', self.selected_faction_id, self.player_name_input.strip(), self.selected_ocean_percentage, self.selected_cloud_cover, self.selected_erosive_forces, self.selected_alien_life)
+                    return ('start_game', self.selected_faction_id, self.player_name_input.strip(), self.selected_ocean_percentage, self.selected_cloud_cover, self.selected_erosive_forces, self.selected_alien_life, self.selected_skill_level)
             elif self.cancel_button_rect and self.cancel_button_rect.collidepoint(event.pos):
                 # Back to faction select
                 self.mode = 'faction_select'

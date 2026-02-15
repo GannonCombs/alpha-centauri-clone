@@ -27,3 +27,8 @@ game/saves/
 
 # Claude plans (optional - you can remove this line if you want to track plans)
 .claude/
+
+# TTS / AgentVibes artifacts
+install/
+soprano-tts/
+.mcp.json

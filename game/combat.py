@@ -243,6 +243,18 @@ class Combat:
                         'display': '+50%'
                     })
 
+            # PLANET rating bonus in psi combat (+/-10% per point, attacker only)
+            if vs_unit and self._is_psi_combat(unit, vs_unit):
+                planet_rating = self.game.get_planet_rating(unit.owner)
+                if planet_rating != 0:
+                    planet_mult = max(0.0, 1.0 + planet_rating * 0.10)
+                    sign = '+' if planet_rating > 0 else ''
+                    modifiers.append({
+                        'name': f'PLANET ({sign}{planet_rating})',
+                        'multiplier': planet_mult,
+                        'display': f'{sign}{planet_rating * 10}%'
+                    })
+
         # Combat mode bonuses (both attacker and defender)
         if vs_unit:
             # Projectile weapon vs Energy armor = +25%
@@ -297,6 +309,37 @@ class Combat:
 
         return random.random() < disengage_chance
 
+    def _is_psi_combat(self, attacker, defender):
+        """Return True if this battle uses psi rules.
+
+        Psi rules apply when the attacker has a psi weapon, the defender has
+        psi armor, or either unit is a native lifeform (is_native flag).
+        """
+        attacker_psi = (attacker.weapon_data.get('mode') == 'psi'
+                        or getattr(attacker, 'is_native', False))
+        defender_psi = (defender.armor_data.get('mode') == 'psi'
+                        or getattr(defender, 'is_native', False))
+        return attacker_psi or defender_psi
+
+    def _get_psi_base_strengths(self, attacker, defender):
+        """Return (attacker_base, defender_base) psi strengths at full health.
+
+        In psi combat weapon/armor values are ignored.  Both sides start with
+        a flat strength of 1.0 * current_health.  The attacker then receives:
+          - 3:2 terrain advantage on land (multiplier 1.5), 1:1 on sea/air
+          - ±10% per PLANET rating point (attacker only)
+
+        Morale modifiers are applied separately by get_combat_modifiers().
+        """
+        # Land vs sea/air terrain advantage
+        defender_tile = self.game.game_map.get_tile(defender.x, defender.y)
+        on_land = defender_tile is None or defender_tile.is_land()
+        terrain_mult = 1.5 if on_land else 1.0
+
+        attacker_base = attacker.current_health * terrain_mult
+        defender_base = float(defender.current_health)
+        return attacker_base, defender_base
+
     def calculate_combat_odds(self, attacker, defender):
         """Calculate combat odds for battle prediction screen.
 
@@ -307,21 +350,22 @@ class Combat:
         Returns:
             float: Probability of attacker winning (0.0 to 1.0)
         """
-        # Base strength: weapon/armor * health
-        attacker_weapon_value = attacker.weapon_data['attack']
-        defender_armor_value = defender.armor_data['defense']
-        attacker_base_strength = attacker_weapon_value * attacker.current_health
-        defender_base_strength = defender_armor_value * defender.current_health
+        if self._is_psi_combat(attacker, defender):
+            attacker_base, defender_base = self._get_psi_base_strengths(attacker, defender)
+        else:
+            # Normal combat: base strength = weapon/armor value * health
+            attacker_base = attacker.weapon_data['attack'] * attacker.current_health
+            defender_base = defender.armor_data['defense'] * defender.current_health
 
-        # Apply modifiers (pass opponent for mode bonuses)
+        # Apply modifiers (morale, terrain, facilities, abilities)
         attacker_modifiers = self.get_combat_modifiers(attacker, is_defender=False, vs_unit=defender)
         defender_modifiers = self.get_combat_modifiers(defender, is_defender=True, vs_unit=attacker)
 
-        attacker_strength = attacker_base_strength
+        attacker_strength = attacker_base
         for mod in attacker_modifiers:
             attacker_strength *= mod['multiplier']
 
-        defender_strength = defender_base_strength
+        defender_strength = defender_base
         for mod in defender_modifiers:
             defender_strength *= mod['multiplier']
 
@@ -402,7 +446,18 @@ class Combat:
         for mod in defender_modifiers:
             defender_modifier_total *= mod['multiplier']
 
-        # Get attack and defense values from component data
+        # Psi combat: weapon/armor values are replaced by psi base strengths
+        is_psi = self._is_psi_combat(attacker, defender)
+        if is_psi:
+            psi_atk_base, psi_def_base = self._get_psi_base_strengths(attacker, defender)
+            # Normalize to per-HP values so the round loop can scale by current hp
+            psi_atk_per_hp = psi_atk_base / original_attacker_hp if original_attacker_hp else 1.0
+            psi_def_per_hp = psi_def_base / original_defender_hp if original_defender_hp else 1.0
+        else:
+            psi_atk_per_hp = None
+            psi_def_per_hp = None
+
+        # Get attack and defense values from component data (used in normal combat)
         attacker_weapon_value = attacker.weapon_data['attack']
         defender_armor_value = defender.armor_data['defense']
 
@@ -412,8 +467,12 @@ class Combat:
 
         while sim_attacker_hp > 0 and sim_defender_hp > 0:
             # Calculate odds for this round based on current sim HP and modifiers
-            attacker_strength = attacker_weapon_value * sim_attacker_hp * attacker_modifier_total
-            defender_strength = defender_armor_value * sim_defender_hp * defender_modifier_total
+            if is_psi:
+                attacker_strength = psi_atk_per_hp * sim_attacker_hp * attacker_modifier_total
+                defender_strength = psi_def_per_hp * sim_defender_hp * defender_modifier_total
+            else:
+                attacker_strength = attacker_weapon_value * sim_attacker_hp * attacker_modifier_total
+                defender_strength = defender_armor_value * sim_defender_hp * defender_modifier_total
             total_strength = attacker_strength + defender_strength
 
             if total_strength == 0:

@@ -145,8 +145,6 @@ Centauri Genetics,Matter Transmission and Threshold of Transcendence.
 
 Centauri Meditation,Secrets of Alpha Centauri,Temporal Mechanics.
 
-Additionally, building The Manifold Harmonics also increases resouces from fungus squares.
-
 Psi Combat #
 Some units (usually alien creatures such as Mind Worms) can engage in PSI COMBAT. In Psi Combat, weapon and armor strengths are ignored, and the attacker is given a 3 to 2 advantage on land (1 to 1 for sea and air combat). MORALE level becomes quite important in Psi Combat.
 
@@ -271,8 +269,6 @@ Transcendence Victory
 
 Conquest Victory
 
-Progenitor Victory
-
 Diplomatic Victory
 
 Economic Victory
@@ -388,12 +384,6 @@ Pholus Ridge confers +1 Energy in each square. (Vulnerable)
 Monsoon Jungle confers +1 Nutrient in each square. (Vulnerable)
 
 Freshwater Sea confers +1 Nutrient in each square.
-
-Fossil Field Ridge confers +1 Mineral in each square. (Vulnerable)
-
-Manifold Nexus confers a +1 PLANET rating when inside a faction's borders. Progenitor factions gain an additional +1 RESEARCH rating. (Vulnerable)
-
-Vulnerable: Bonus is removed if square changes elevation to a different 1000m band
 
 Other landmarks have no effect beyond the standard effects of the terrain which they represent.
 
@@ -1135,21 +1125,7 @@ WeaponRise: Change in weapon cost if raised, otherwise 0.
 
 ArmorRise: Change in armour cost if raised, otherwise 0.
 
-The costs of all weapons and armours where applicable, is equal to their strength except for those listed below:
-
-String Disruptor - 30, costs 40 (+10)
-
-Resonance Bolt - 12r, costs 16 (+4)
-
-Pulse 8 Armor - 8p, costs 11 (+3)
-
-Resonance 8 Armor - 8r, costs 11 (+3)
-
-Resonance Laser - 6r, costs 8 (+2)
-
-Pulse 3 Armor - 3p, costs 5 (+2)
-
-Resonance 3 Armor - 3r, costs 5 (+2)
+The costs of all weapons and armours where applicable, is equal to their strength.
 
 When upgrading the following cannot be changed:
 

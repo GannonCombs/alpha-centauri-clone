@@ -109,8 +109,8 @@ def main():
                     running = False
                 elif isinstance(intro_result, tuple) and intro_result[0] == 'start_game':
                     # Start new game with selected faction, name, ocean percentage, cloud cover, erosive forces, and native life
-                    _, faction_id, player_name, ocean_percentage, cloud_cover, erosive_forces, native_life = intro_result
-                    game = Game(faction_id, player_name, ocean_percentage, map_width, map_height, cloud_cover, erosive_forces, native_life)
+                    _, faction_id, player_name, ocean_percentage, cloud_cover, erosive_forces, native_life, skill_level = intro_result
+                    game = Game(faction_id, player_name, ocean_percentage, map_width, map_height, cloud_cover, erosive_forces, native_life, difficulty=skill_level)
                     renderer = Renderer(screen)
                     ui_panel = UIManager()
                     # Give game reference to UI for accessing design workshop
