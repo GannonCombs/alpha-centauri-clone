@@ -1759,6 +1759,50 @@ class Game:
                 return base
         return None
 
+    def _calc_bureaucracy_drones(self, faction_id):
+        """Calculate total bureaucracy drones for a faction this turn.
+
+        Formula: BaseLimit = (8 - difficulty_0idx) * (4 + max(0, efficiency)) * MapRoot / 2
+        MapRoot = sqrt(map_tiles) / sqrt(3200)
+
+        Returns a dict mapping each faction base to its bureaucracy drone share.
+        Excess drones are distributed one-per-base in random order.
+        """
+        import math
+        from game.social_engineering import calculate_se_effects
+
+        faction_bases = [b for b in self.bases if b.owner == faction_id]
+        if not faction_bases:
+            return {}
+
+        # Use actual generated map dimensions, not constructor args
+        map_tiles = self.game_map.width * self.game_map.height
+        map_root = math.sqrt(map_tiles) / math.sqrt(3200)
+
+        # difficulty_0idx: our 1-6 scale maps to 0-5 (guard against None from old saves)
+        difficulty_0idx = max(0, min(5, (self.difficulty or 1) - 1))
+
+        # EFFIC rating (negative treated as 0)
+        if faction_id == self.player_faction_id:
+            efficiency = max(0, calculate_se_effects(self.se_selections).get('EFFIC', 0))
+        else:
+            efficiency = 0  # AI uses default SE
+
+        base_limit = (8 - difficulty_0idx) * (4 + efficiency) * map_root / 2
+        excess = max(0, len(faction_bases) - int(base_limit))
+
+        if excess == 0:
+            return {}
+
+        # Distribute excess drones randomly, one per base
+        import random
+        shuffled = faction_bases[:]
+        random.shuffle(shuffled)
+        result = {b: 0 for b in faction_bases}
+        for i in range(excess):
+            result[shuffled[i % len(shuffled)]] += 1
+        return result
+
     def _calc_inefficiency_loss(self, base, faction_id):
         """Calculate energy lost to inefficiency for a base.
 
@@ -2313,13 +2357,15 @@ class Game:
                 # Process player bases (deferred from end_turn for upkeep display)
                 total_economy = 0
                 total_labs = 0
+                bureaucracy_map = self._calc_bureaucracy_drones(self.player_faction_id)
                 for base in self.bases:
                     if base.owner == self.player_faction_id:
                         # Reset hurry flag at start of turn
                         base.hurried_this_turn = False
                         player_faction = self.factions[self.player_faction_id]
                         ineff_loss = self._calc_inefficiency_loss(base, self.player_faction_id)
-                        completed_item = base.process_turn(self.global_energy_allocation, player_faction, self, inefficiency_loss=ineff_loss)
+                        b_drones = bureaucracy_map.get(base, 0)
+                        completed_item = base.process_turn(self.global_energy_allocation, player_faction, self, inefficiency_loss=ineff_loss, bureaucracy_drones=b_drones)
                         if completed_item:
                             # Store for spawning at start of next turn (after upkeep)
                             self.pending_production.append((base, completed_item))
@@ -2422,13 +2468,15 @@ class Game:
             ai_energy_allocation = {'economy': 50, 'labs': 50, 'psych': 0}
             total_labs = 0
 
+            ai_bureaucracy_map = self._calc_bureaucracy_drones(ai_player.player_id)
             for base in self.bases:
                 if base.owner == ai_player.player_id:
                     # Reset hurry flag at start of AI turn
                     base.hurried_this_turn = False
                     ai_faction = self.factions[ai_player.player_id]
                     ineff_loss = self._calc_inefficiency_loss(base, ai_player.player_id)
-                    completed_item = base.process_turn(ai_energy_allocation, ai_faction, self, inefficiency_loss=ineff_loss)
+                    b_drones = ai_bureaucracy_map.get(base, 0)
+                    completed_item = base.process_turn(ai_energy_allocation, ai_faction, self, inefficiency_loss=ineff_loss, bureaucracy_drones=b_drones)
                     if completed_item:
                         # Store for spawning at start of next turn (after upkeep)
                         self.pending_production.append((base, completed_item))
@@ -2973,7 +3021,7 @@ class Game:
         # Restore simple state
         gs = data['game_state']
         game.turn = gs['turn']
-        game.difficulty = gs.get('difficulty', 1)
+        game.difficulty = gs.get('difficulty') or 1
         game.mission_year = gs['mission_year']
         game.energy_credits = gs['energy_credits']
         game.player_id = gs['player_id']

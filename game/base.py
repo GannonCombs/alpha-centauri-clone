@@ -508,7 +508,7 @@ class Base:
 
         return penalty
 
-    def process_turn(self, energy_allocation=None, faction=None, game=None, inefficiency_loss=0):
+    def process_turn(self, energy_allocation=None, faction=None, game=None, inefficiency_loss=0, bureaucracy_drones=0):
         """Process end of turn for this base.
 
         Adds nutrients, checks for population growth, handles production,
@@ -602,7 +602,7 @@ class Base:
         self.growth_turns_remaining = self._calculate_growth_turns()
 
         # Calculate population happiness after growth so icon counts match population
-        self.calculate_population_happiness()
+        self.calculate_population_happiness(bureaucracy_drones=bureaucracy_drones)
 
         # Calculate unit support cost
         self.calculate_support_cost()
@@ -690,7 +690,7 @@ class Base:
         self.labs_output = int(self.energy_production * labs_percent / total)
         self.psych_output = int(self.energy_production * psych_percent / total)
 
-    def calculate_population_happiness(self):
+    def calculate_population_happiness(self, bureaucracy_drones=0):
         """Calculate workers, drones, and talents based on psych and facilities.
 
         Specialists are a separate citizen category and are not subject to the
@@ -700,6 +700,7 @@ class Base:
 
         Formula:
         - Base drones: 1 drone per 4 citizens beyond size 3 (difficulty scaled)
+        - Bureaucracy drones: extra drones when faction exceeds BaseLimit bases
         - Disloyal drones: Extra drones from recently conquered bases
         - Facilities: Recreation Commons (-2 drones), Hologram Theatre (-2 drones)
         - Psych: 2 psych points = 1 talent (capped to non-specialist pool)
@@ -734,6 +735,9 @@ class Base:
             base_drones += self.disloyal_drones
         else:
             self.disloyal_drones = 0
+
+        # Bureaucracy drones (from exceeding BaseLimit bases)
+        base_drones += bureaucracy_drones
 
         # Apply facility effects
         if 'recreation_commons' in self.facilities:

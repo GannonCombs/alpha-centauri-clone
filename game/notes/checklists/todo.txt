@@ -64,10 +64,11 @@ Use it to test the following issues, but also test debug mode along the way.
 
 8: Sea Transport & Loading
 
-- Sea units can carry up to 4 land units
+- Transport foils can carry up to 4 land units, Transport cruisers up to 8.
 - Loaded units move with transport automatically
 - Unload to adjacent land tiles
 - Loaded units destroyed if transport is destroyed
+- When a unit is in a base along with a transport, press L to load them.
 
 9: Disengage Mechanic
 
