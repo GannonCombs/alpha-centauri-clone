@@ -159,6 +159,8 @@ naturally (movement onto a monolith is the exception.)
 9 Turn auto-ended when the last unit moved into contact with a new faction. End turn needs to wait for diplomacy to finish.
 The End Turn button should then blink, not auto-end.
 10 Still a bug where 3 or 4 factions get eliminated on turn 1. Nothing attacked them. Just a bug.
+11 When an AI faction meets me for the first time and wants to talk, the AI turns keep processing in the background. This
+should not be the case. Everything should pause until the conversation is over.
 
 
 
@@ -181,8 +183,6 @@ Note: this is the ONLY section of todo.txt that can be edited by Claude Code, bu
 the non-military units automatically die. This is true for probe teams, and all versions of colony pods. (And artifacts,
 but they are captured, not killed. We've implemented this.) A note at the bottom should say We <killed or lost> x units.
 5 AI colony pod keeps trying to build a base on a monolith, and gets denied, every turn. Needs an updated algo.
-6 When an AI faction meets me for the first time and wants to talk, the AI turns keep processing in the background. This
-should not be the case. Everything should pause until the conversation is over.
 
 
 

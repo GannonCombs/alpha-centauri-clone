@@ -122,7 +122,8 @@ def main():
             elif event.type == pygame.KEYDOWN:
                 # Block all input during AI processing unless a popup needs attention
                 if game.processing_ai:
-                    ai_popups_blocking = (ui_panel.commlink_request_active or
+                    ai_popups_blocking = (bool(game.pending_commlink_requests) or
+                                          ui_panel.commlink_request_active or
                                           ui_panel.commlink_open or
                                           ui_panel.elimination_popup_active or
                                           ui_panel.surprise_attack_popup_active or
@@ -339,7 +340,8 @@ def main():
             elif event.type == pygame.MOUSEBUTTONDOWN:
                 # Block all input during AI processing unless a popup needs attention
                 if game.processing_ai:
-                    ai_popups_blocking = (ui_panel.commlink_request_active or
+                    ai_popups_blocking = (bool(game.pending_commlink_requests) or
+                                          ui_panel.commlink_request_active or
                                           ui_panel.commlink_open or
                                           ui_panel.elimination_popup_active or
                                           ui_panel.surprise_attack_popup_active or
@@ -448,7 +450,8 @@ def main():
         # Process AI turns with delay (but not if popup is blocking)
         if game.processing_ai:
             # Check if any blocking popup is active
-            popups_blocking = (ui_panel.commlink_request_active or
+            popups_blocking = (bool(game.pending_commlink_requests) or
+                             ui_panel.commlink_request_active or
                              ui_panel.commlink_open or
                              ui_panel.elimination_popup_active or
                              ui_panel.new_designs_popup_active or
@@ -508,7 +511,8 @@ def main():
 
         # Hide cursor during AI turns (unless a popup is waiting for player input)
         if game.processing_ai:
-            ai_popups_blocking = (ui_panel.commlink_request_active or
+            ai_popups_blocking = (bool(game.pending_commlink_requests) or
+                                  ui_panel.commlink_request_active or
                                   ui_panel.commlink_open or
                                   ui_panel.elimination_popup_active or
                                   ui_panel.surprise_attack_popup_active or
