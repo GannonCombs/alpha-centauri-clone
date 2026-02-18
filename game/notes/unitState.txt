@@ -1,0 +1,24 @@
+There are a number of unit states in the game. Each of these is associated with a hotkey which shows above the unit.
+These include:
+H - hold unit
+L - board unit (onto transport)
+G - move unit
+J - move units as a group
+P - patrol
+
+As well as terraformer-specific states:
+M - build mine
+R - build road/magtube
+etc.
+
+
+
+| 1. Press H → unit shows 'H' indicator, leaves cycle                                                     │
+│ 2. Clicking on the unit selects it, thus unholding it. Unit re-enters cycle
+| 2b (Therefore, pressing H again is not possible.)                                                      │
+│ 4. Press L to board transport → no 'H' shown on unit; unit removed from cycle                           │
+│ 5. Transport adjacent to land → boarded unit appears in cycle, selectable                               │
+│ 6. Transport far from land → boarded unit not in cycle                                                  │
+│ 7. Disembark → unit has N-1 moves (not 0), can still move/act                                           │
+│ 8. Click any busy unit → shows confirmation dialog (not just formers)                                   │
+│ 9. Save and load → status persists correctly; no held key errors

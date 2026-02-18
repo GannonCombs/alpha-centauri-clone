@@ -12,7 +12,7 @@ Vendetta ✓
 Integrity ✓
 Atrocities ✓
 Drone Riots ◐ (todo: prevention methods)
-Golden Age
+Golden Age ◐ (need to find formula for perks)
 Morale ◐ (waiting on aliens)
 Monoliths ✓
 Artifacts ◐ (waiting on prototypes)
@@ -40,7 +40,7 @@ Zone of Control ◐
 Bombardment ◐
 Drones ✓
 Talents ✓
-Psych
+Psych ✓
 Landmarks, Volcanos, etc.
 Council Proposals ◐
 Nutrients ◐ (waiting on jungle, gene splicing)

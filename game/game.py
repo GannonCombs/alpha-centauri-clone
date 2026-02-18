@@ -1337,29 +1337,29 @@ class Game:
         for unit in units_to_remove:
             self._remove_unit(unit)
 
-    def _process_unit_healing(self, player_id):
-        """Process unit healing at end of turn using the repair module.
+    def _process_unit_repair(self, player_id):
+        """Process unit repair at end of turn using the repair module.
 
         Args:
-            player_id (int): Player ID whose units to heal
+            player_id (int): Player ID whose units to repair
         """
-        from game.repair import calculate_healing
+        from game.repair import calculate_repair
 
         for unit in self.units:
             if unit.owner != player_id:
                 continue
 
-            # Calculate healing using the repair module
-            can_heal, heal_amount, reason, is_full_repair = calculate_healing(unit, self)
+            # Calculate repair using the repair module
+            can_repair, repair_amount, reason, is_full_repair = calculate_repair(unit, self)
 
-            if can_heal and heal_amount > 0:
-                # Apply healing
-                actual_healed = unit.heal(heal_amount)
+            if can_repair and repair_amount > 0:
+                # Apply repair
+                actual_repaired = unit.repair(repair_amount)
 
                 # Show message for player units
-                if actual_healed > 0 and player_id == self.player_faction_id:
-                    repair_type = "Full repair" if is_full_repair else "Healed"
-                    print(f"{unit.name}: {repair_type} {actual_healed} HP ({reason})")
+                if actual_repaired > 0 and player_id == self.player_faction_id:
+                    repair_type = "Full repair" if is_full_repair else "Repaired"
+                    print(f"{unit.name}: {repair_type} {actual_repaired} HP ({reason})")
 
     def calculate_probe_success(self, probe_unit, target_base):
         """Calculate probability of probe action success.
@@ -2429,7 +2429,7 @@ class Game:
                         process_terraforming(unit, self)
 
                 # Heal AI units
-                self._process_unit_healing(ai_player.player_id)
+                self._process_unit_repair(ai_player.player_id)
 
                 # Queue up all AI units with moves
                 self.ai_unit_queue = [u for u in self.units
@@ -2802,7 +2802,7 @@ class Game:
                 process_terraforming(unit, self)
 
         # Heal player units (upkeep phase — only units that skipped last turn)
-        self._process_unit_healing(self.player_faction_id)
+        self._process_unit_repair(self.player_faction_id)
 
         self.turn += 1
         print(f"Turn {self.turn} started!")
@@ -3142,7 +3142,8 @@ class Game:
                 'permanent_vendetta_factions': list(self.permanent_vendetta_factions),
                 'major_atrocity_committed': self.major_atrocity_committed,
                 'integrity_level': self.integrity_level,
-                'truce_expiry_turns': {str(k): v for k, v in self.truce_expiry_turns.items()}
+                'truce_expiry_turns': {str(k): v for k, v in self.truce_expiry_turns.items()},
+                'global_energy_allocation': self.global_energy_allocation.copy()
             },
             'map': self.game_map.to_dict(),
             'units': [u.to_dict() for u in self.units],
@@ -3204,6 +3205,9 @@ class Game:
         game.major_atrocity_committed = gs.get('major_atrocity_committed', False)
         game.integrity_level = gs.get('integrity_level', 0)
         game.truce_expiry_turns = {int(k): v for k, v in gs.get('truce_expiry_turns', {}).items()}
+        game.global_energy_allocation = gs.get(
+            'global_energy_allocation', {'economy': 50, 'labs': 50, 'psych': 0}
+        )
         # Store diplo_relations for later restoration (after ui_manager is created)
         saved_diplo_relations = gs.get('diplo_relations', {})
 
@@ -3319,11 +3323,6 @@ class Game:
         game.current_upkeep_event_index = 0
         game.auto_cycle_timer = 0
         game.debug = DebugManager()
-        game.global_energy_allocation = {
-            'economy': 50,
-            'labs': 50,
-            'psych': 0
-        }
         game.ui_manager = None  # Will be set by main.py after loading
         game._saved_diplo_relations = saved_diplo_relations  # Temporary storage until ui_manager is created
 

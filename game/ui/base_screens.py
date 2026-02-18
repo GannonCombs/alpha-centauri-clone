@@ -1022,10 +1022,11 @@ class BaseScreenManager:
         energy_title = self.small_font.render("ENERGY ALLOCATION", True, (200, 220, 180))
         screen.blit(energy_title, (energy_alloc_x + energy_alloc_w // 2 - energy_title.get_width() // 2, energy_alloc_y + 8))
 
-        # Get energy allocation percentages (TODO: from social engineering)
-        economy_pct = 50
-        psych_pct = 0
-        labs_pct = 50
+        # Get energy allocation percentages from game object
+        alloc = getattr(game, 'global_energy_allocation', {'economy': 50, 'labs': 50, 'psych': 0})
+        economy_pct = alloc['economy']
+        psych_pct   = alloc['psych']
+        labs_pct    = alloc['labs']
 
         # Real values from base (freshly calculated in refresh above)
         econ_energy = base.economy_output

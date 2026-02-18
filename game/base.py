@@ -96,6 +96,7 @@ class Base:
         self.drones = 0             # Unhappy citizens
         self.talents = 0            # Happy citizens
         self.drone_riot = False     # Riot status
+        self.golden_age = False     # True when drones==0 and talents >= workers+specialists
         self.specialists = []       # List of specialist IDs assigned by the player
 
         # Production management
@@ -623,6 +624,7 @@ class Base:
 
         # Calculate population happiness after growth so icon counts match population
         riot_before = self.drone_riot
+        prev_golden_age = self.golden_age
         self.calculate_population_happiness(bureaucracy_drones=bureaucracy_drones)
         riot_transition = None
         if self.drone_riot and not riot_before:
@@ -640,6 +642,16 @@ class Base:
         if game is not None and riot_transition == 'ended':
             if hasattr(game, 'set_status_message'):
                 game.set_status_message(f"Drone riot ended at {self.name}.")
+
+        # Emit Golden Age event on first entry (player bases only)
+        if self.golden_age and not prev_golden_age:
+            if game is not None and hasattr(game, 'upkeep_events'):
+                if self.owner == game.player_faction_id:
+                    game.upkeep_events.append({
+                        'type': 'golden_age',
+                        'base_name': self.name,
+                        'base': self,
+                    })
 
         # Calculate unit support cost
         self.calculate_support_cost()
@@ -815,6 +827,12 @@ class Base:
         # Check for drone riot
         self.check_drone_riot()
 
+        # Golden Age: no drones AND talents >= workers + specialists
+        self.golden_age = (
+            self.drones == 0
+            and self.talents >= (self.workers + len(self.specialists))
+        )
+
     def apply_specialist_bonuses(self):
         """Add fixed specialist output on top of tile-based energy allocation.
 
@@ -923,6 +941,7 @@ class Base:
             'talents': self.talents,
             'specialists': list(self.specialists),
             'drone_riot': self.drone_riot,
+            'golden_age': self.golden_age,
             'free_support': self.free_support,
             'support_cost_paid': self.support_cost_paid,
             'turns_since_capture': self.turns_since_capture,
@@ -974,6 +993,7 @@ class Base:
         base.talents = data.get('talents', 0)
         base.specialists = data.get('specialists', [])
         base.drone_riot = data.get('drone_riot', False)
+        base.golden_age = data.get('golden_age', False)
         base.free_support = data.get('free_support', 2)
         base.support_cost_paid = data.get('support_cost_paid', 0)
         base.turns_since_capture = data.get('turns_since_capture', None)

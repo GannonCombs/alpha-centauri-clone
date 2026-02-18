@@ -538,9 +538,10 @@ class UIManager:
                 if self.upkeep_zoom_rect and self.upkeep_zoom_rect.collidepoint(pos):
                     event_data = game.get_current_upkeep_event()
                     if event_data and 'base' in event_data:
-                        # Center camera on the base
+                        # Center camera on the base and open base view
                         base = event_data['base']
                         game.center_camera_on_tile = (base.x, base.y)
+                        self.show_base_view(base)
                     # Advance to next event
                     game.advance_upkeep_event()
                     return True
@@ -1893,6 +1894,9 @@ class UIManager:
         elif event['type'] == 'drone_riot':
             title_text = "CIVIL UNREST"
             title_color = (255, 100, 100)
+        elif event['type'] == 'golden_age':
+            title_text = "GOLDEN AGE"
+            title_color = (255, 220, 80)
         elif event['type'] == 'starvation':
             title_text = "FOOD SHORTAGE"
             title_color = (255, 180, 100)
@@ -1955,6 +1959,14 @@ class UIManager:
                 "Increase psych allocation or build facilities",
                 "to restore order."
             ]
+        elif event['type'] == 'golden_age':
+            msg_lines = [
+                f"{event['base_name']} has entered a Golden Age!",
+                "",
+                "Talents now equal or outnumber all other citizens.",
+                "Growth and economy bonuses will apply",
+                "once the full formula is implemented.",
+            ]
         elif event['type'] == 'ai_council':
             msg_lines = [
                 f"The Planetary Council has voted on:",
@@ -1999,7 +2011,8 @@ class UIManager:
         pygame.draw.rect(screen, (65, 85, 100) if is_hover else (45, 55, 65),
                        self.upkeep_ignore_rect, border_radius=8)
         pygame.draw.rect(screen, (100, 140, 160), self.upkeep_ignore_rect, 3, border_radius=8)
-        ignore_text = self.font.render("Continue", True, COLOR_TEXT)
+        btn_label = "Proceed" if event.get('type') == 'golden_age' else "Continue"
+        ignore_text = self.font.render(btn_label, True, COLOR_TEXT)
         screen.blit(ignore_text, (self.upkeep_ignore_rect.centerx - ignore_text.get_width() // 2,
                                  self.upkeep_ignore_rect.centery - 10))
 

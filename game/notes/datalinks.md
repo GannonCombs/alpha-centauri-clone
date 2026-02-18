@@ -366,7 +366,7 @@ Talents are prosperous, highly educated citizens, your intellectual elite. Talen
 Psych #
 Energy diverted to Psych is used to improve the quality of life your citizens experience. Every two units of energy diverted to Psych will convert a normal citizen into an additional Talent in that base.
 
-If no are no normal citizens then every two units of Psych will turn one Drone into a normal citizen.
+If there are no normal citizens then every two units of Psych will turn one Drone into a normal citizen.
 
 Landmarks, Volcanos, etc. #
 Certain major Landmarks on Planet's surface convey special bonuses:
@@ -591,10 +591,6 @@ Unit Section: ALL the units generated from pods are independant
 Supply Pod: Free Unity Rover or Unity Foil.
 
 If Synthetic Fossil Fuels have been discovered, you have a chance of discovering a Unity Chopper.
-
-Not a pod: Free Battle Ogre -mkI, mkII or mkIII.
-
-The more advanced Battle Ogres can only spawn later in the game, and are more likely to be found on larger maps
 
 Not a Pod: - Free Alien artifact
 
@@ -1178,8 +1174,6 @@ Some facilities can fully repair units over one turn:
 The Nano Factory allows the controller to heal units to 100% over one turn anywhere on Planet.
 
 Visiting a Monolith instantly heals to 100%
-
-Any of the Battle Ogres, MkI, MkII and MkIII may not be repaired under any circumstance.
 
 For more information see: Damage and Repair.
 

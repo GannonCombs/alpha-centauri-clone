@@ -160,7 +160,7 @@ def start_terraforming(unit, action_key, game):
     unit.terraforming_turns_left = _build_turns(unit, action_key)
     unit.moves_remaining = 0
     unit.has_moved = True
-    unit.heal_eligible = False
+    unit.repair_eligible = False
 
 
 def cancel_terraforming(unit):

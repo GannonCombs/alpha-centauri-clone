@@ -3,7 +3,7 @@
 ## Entry Point
 
 **main.py**
-Entry point and main game loop. Initializes Pygame with dynamic screen sizing, manages the 60 FPS game loop, handles keyboard/mouse input (SPACE ends unit movement, healing is automatic at turn end), coordinates AI turn processing, and renders all game layers (map, bases, units, UI, status messages) in correct order.
+Entry point and main game loop. Initializes Pygame with dynamic screen sizing, manages the 60 FPS game loop, handles keyboard/mouse input, coordinates AI turn processing, and renders all game layers (map, bases, units, UI, status messages) in correct order.
 
 ## Core Game Package (game/)
 
@@ -22,6 +22,9 @@ Unit class for all mobile game entities. Supports land units, sea units, and air
 
 **game/base.py**
 Base (city) class with population growth mechanics. Tracks population, nutrients accumulation, progressive growth requirements, garrison units, production queue, facilities, and processes turn-based growth automatically. Provides get_garrison_units() method for dynamic garrison calculation from tile units instead of cached garrison list.
+
+**game/faction.py**
+Faction state management. Defines the Faction class containing all per-faction game state: tech tree, unit designs (DesignData), energy credits, diplomatic relations, contacts, and AI personality/strategic state. Provides get_voting_power() with Empath Guild, Clinical Immortality, and Lal's double-vote bonuses. Planet Buster atrocity revokes voting rights.
 
 **game/ai.py**
 Classic rule-based AI using decision-making algorithms. Colony pods find good base locations, military units pursue player targets or explore randomly.
@@ -47,11 +50,29 @@ Social Engineering system managing Politics, Economics, Values, and Future Socie
 **game/unit_components.py**
 Unit component system for the Design Workshop. Provides utilities for chassis, weapons, armor, and reactors. Generates unit names based on component combinations and handles unit design validation.
 
+**game/design_data.py**
+Per-faction unit design storage. Defines the DesignData class with 64 design slots (SMAC-style). Initializes faction-specific starting designs (e.g. Former for Gaians, Rover for Spartans). Provides add/remove/get/set design methods.
+
 **game/combat.py**
 Combat resolution system handling all battle mechanics. Calculates combat modifiers using formula-based morale (+12.5% per level above Green), terrain, facilities, and special abilities. Implements combat bonuses: mobile units (speeder/hovertank) get +25% vs infantry in open terrain, infantry get +25% attacking bases, artillery gets +25% per 1000m altitude advantage vs land units or +50% vs ships. Computes combat odds for predictions, simulates round-by-round combat with 1-3 damage per hit, manages unit disengagement when damaged below 50% HP, handles retreat movement, and coordinates battle animations. Maintains pending_battle (player confirmation) and active_battle (ongoing animation) state.
 
 **game/repair.py**
 Unit repair and healing system implementing full SMAC repair formula. Base 10% healing per turn with additive +10% bonuses for: friendly territory, base location, airbase, bunker, fungus tiles. Full repair facilities: Command Center (land units), Naval Yard (sea units), Aerospace Complex (air units), Biology Lab (native units). Special cases: Nano Factory provides 100% repair anywhere, Monoliths provide instant 100% repair. Caps at 80% healing in field or 100% in bases. Provides calculate_healing() function returning heal amount, eligibility, reason, and full repair flag.
+
+**game/terraforming.py**
+Terraforming system for Former units. Handles all former action types: add improvements, remove improvements (fungus), terraform (raise/lower land, level terrain), and modify_tile (aquifer/river). Calculates tile resource yields including improvement bonuses, fixed yields (borehole/forest), altitude-tier energy, and rocky mine bonuses.
+
+**game/commerce.py**
+Commerce income system. CommerceCalculator pairs faction bases by energy output and generates commerce pools divided by economic tech count. Handles Treaty (halved) vs Pact (full) income, Global Trade Pact doubling, Planetary Governor +1 bonus, Morgan faction +1 bonus, and atrocity sanctions. Called once per turn during upkeep.
+
+**game/atrocity.py**
+Atrocity system for war crimes committed by the player. Simple atrocities (nerve_staple, nerve_gas, genetic_warfare, obliterate_base): commerce sanctions for 10×count turns, target faction permanently hostile (Vendetta), integrity drops one level. Major atrocity (planet_buster): all of the above plus every faction immediately declares Vendetta and player vote count permanently becomes 0. Integrity levels: Noble → Faithful → Scrupulous → Dependable → Ruthless → Treacherous.
+
+**game/score.py**
+Score computation system. Components: (1) 1pt per citizen in player bases, (2) diplomatic/economic victory bonus for allied/neutral faction citizens, (3) 1pt per citizen in surrendered bases, (4) 1pt per commerce income unit, (5) 1pt per tech discovered, (6) 10pts for Transcendent Thought, (7) 25pts per secret project, (8) victory type bonus minus 2pts/turn elapsed, (9) native life multiplier (rare −25%, abundant +25%). Iron Man modifier not yet implemented.
+
+**game/governor.py**
+Governor system for automated base production selection. Four modes: BUILD (defensive units, happiness/resource facilities, infrastructure), CONQUER (offensive military, Command Center), DISCOVER (science facilities, probe teams, research secret projects), EXPLORE (colony pods, scouts, formers). Used by both player-toggled base governors and AI faction production logic.
 
 **game/commlink_text.py**
 Dialog system for talking with other factions. Handles variable substitution in dialog text using faction-specific flavor text and context.
@@ -63,8 +84,8 @@ Debug/cheat mode for testing game features. Press Ctrl+Shift+D to toggle debug m
 
 Centralized data definitions for all game content.
 
-**game/data/constants.py**
-Game-wide constants and configuration. Defines tile size, screen dimensions, FPS, color definitions for rendering (ocean, land, UI elements), unit type constants, and timing parameters for AI turns and scrolling.
+**game/data/display.py**
+Display and rendering configuration values. Defines TILE_SIZE (70px), FPS (60), UI_PANEL_HEIGHT, runtime-initialized screen dimensions (SCREEN_WIDTH/HEIGHT/MAP_AREA_HEIGHT/UI_PANEL_Y set by main.py), all color constants (ocean, land variants by rainfall, grid, UI elements, council), and timing constants (AI_TURN_DELAY, SCROLL_DELAY). Replaces the former constants.py.
 
 **game/data/data.py**
 Master data file containing SMAC faction definitions (Gaians, Hive, University, Morganites, Spartans, Believers, Peacekeepers) with leader names, colors, starting techs, bonuses, base names, and extensive flavor text for diplomacy. Also defines Council PROPOSALS (Governor, Unity Core, Trade Pact, etc.) and SE_EFFECTS for Social Engineering modifiers.
@@ -80,6 +101,9 @@ Technology tree data. Defines all available technologies with names, categories,
 
 **game/data/social_engineering_data.py**
 Social Engineering choices data. Defines available options for Politics, Economics, Values, and Future Society categories with associated stat modifiers and restrictions.
+
+**game/data/terraforming_data.py**
+Terraforming improvement definitions. IMPROVEMENTS dict defines all land and ocean improvements (farm, mine, solar, road, mag tube, borehole, forest, fungus, condenser, echelon mirror, soil enricher, sensor array, bunker, airbase, kelp farm, mining platform, tidal harness, etc.) with hotkeys, build times, terrain requirements, tech prerequisites, slot assignments, resource yields, and action types. Also defines EXCLUSIVE_SLOTS, SPEED_MODIFIERS (super_former, fungicide_tanks), land/ocean hotkey maps, and TERRAFORM_MAP_LETTERS for in-game display.
 
 **game/data/commlink_text_data.py**
 Commlink dialogue data. Contains the complete dialogue tree for faction communications including greetings, diplomatic proposals, threats, and context-specific responses. Supports variable substitution for personalized faction interactions.
@@ -137,11 +161,17 @@ Additional social/political interfaces. Handles faction relationships, reputatio
 
 Development notes and planning documents.
 
-**game/notes/todo.txt**
-Current development tasks and planned features.
+**game/notes/datalinks.md**
+Authoritative SMAC rules reference. Comprehensive documentation of game mechanics including combat formulas, resource calculations, facility effects, social engineering, and other gameplay systems. Should be read before implementing any game mechanic.
 
 **game/notes/diplomacyNotes.txt**
 Diplomacy system design notes and SMAC reference material.
+
+**game/notes/terraforming.txt**
+Terraforming reference notes from the original SMAC. Documents all terraforming improvements with SMAC prerequisites, build times, and effects. Used as reference when implementing and validating the terraforming system.
+
+**game/notes/unitState.txt**
+Unit state behavior documentation. Describes hold, board/transport, disembark, and busy-unit mechanics with expected behavior for each state transition.
 
 **game/notes/AI_GARRISON_PLAN.txt**
 AI garrison mechanics planning document.
@@ -156,7 +186,7 @@ Debug mode feature documentation and usage guide.
 Log of completed features from development session 2.
 
 **game/notes/FEATURES_IMPLEMENTED.txt**
-Master list of all implemented features.
+Master list of all implemented features and known stubs.
 
 **game/notes/UNIT_STACKING_PLAN.txt**
 Unit stacking system design and implementation plan.
@@ -166,6 +196,12 @@ Temporary notes and ideas on hold.
 
 **game/notes/checklists/**
 Subdirectory containing implementation checklists for tracking completion status of game content.
+
+**game/notes/checklists/todo.txt**
+Current development tasks, planned features, and known bugs. Primary bug tracking list — only add checkmarks here, do not remove entries.
+
+**game/notes/checklists/concept_implementation_checklist.txt**
+Checklist of basic game concepts (rainfall, terrain, etc.) to track which have been implemented to SMAC accuracy.
 
 **game/notes/checklists/tech_implementation_checklist.txt**
 Checklist of all 78 technologies from the tech tree. Used to track which techs have been fully implemented, which are waiting on features, and which remain to be implemented.
@@ -180,7 +216,7 @@ Checklist of all 33 secret projects (wonders). Used to track which projects have
 Subdirectory containing original SMAC reference material (alpha.txt, concepts.txt, Script.txt).
 
 **game/notes/factionNotes/**
-Subdirectory for faction-specific design notes and flavor text research.
+Subdirectory for faction-specific design notes and flavor text research. Contains original SMAC faction files: BELIEVE.TXT, GAIANS.TXT, HIVE.TXT, MORGAN.TXT, PEACE.TXT, SPARTANS.TXT, UNIV.TXT.
 
 ## Documentation
 

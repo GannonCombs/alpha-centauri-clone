@@ -66,7 +66,7 @@ class Unit:
         self.ability1 = ability1
         self.ability2 = ability2
         self.has_moved = False
-        self.heal_eligible = True  # True if unit skipped its turn entirely (eligible for natural healing)
+        self.repair_eligible = True  # True if unit skipped its turn entirely (eligible for natural repair)
         self.held = False  # If True, unit won't be auto-cycled for actions
 
         # Derive reactor level from component data
@@ -422,8 +422,8 @@ class Unit:
         unit.moves_remaining = 0  # Unloading consumes all moves
         return True
 
-    def can_heal(self, in_friendly_base=False, base=None, under_bombardment=False):
-        """DEPRECATED: Use game.repair.calculate_healing() instead.
+    def can_repair(self, in_friendly_base=False, base=None, under_bombardment=False):
+        """DEPRECATED: Use game.repair.calculate_repair() instead.
 
         This method is kept for backwards compatibility but redirects to the
         comprehensive repair system in repair.py.
@@ -434,33 +434,33 @@ class Unit:
             under_bombardment (bool): Whether base is under artillery bombardment (ignored)
 
         Returns:
-            tuple: (can_heal, heal_amount, reason) - reason is string explaining why/why not
+            tuple: (can_repair, repair_amount, reason) - reason is string explaining why/why not
 
         Note:
             This is a simplified version. For full SMAC repair formula with all
-            bonuses and facilities, use game.repair.calculate_healing(unit, game).
+            bonuses and facilities, use game.repair.calculate_repair(unit, game).
         """
-        # Can't heal if at full health
+        # Can't repair if at full health
         if self.current_health >= self.max_health:
             return (False, 0, "Already at full health")
 
-        # Can't heal if unit moved this turn
+        # Can't repair if unit moved this turn
         if self.has_moved:
             return (False, 0, "Unit has moved this turn")
 
-        # Simplified healing for backwards compatibility
-        # Real healing is handled by repair.py module
-        heal_amount = max(1, int(self.max_health * 0.10))
-        return (True, heal_amount, f"Healing {heal_amount} HP")
+        # Simplified repair for backwards compatibility
+        # Real repair is handled by repair.py module
+        repair_amount = max(1, int(self.max_health * 0.10))
+        return (True, repair_amount, f"Repaired {repair_amount} HP")
 
-    def heal(self, amount):
-        """Heal unit by specified amount (capped at max_health).
+    def repair(self, amount):
+        """Repair unit by specified amount (capped at max_health).
 
         Args:
-            amount (int): Amount to heal
+            amount (int): Amount to repair
 
         Returns:
-            int: Actual amount healed
+            int: Actual amount repaired
         """
         old_health = self.current_health
         self.current_health = min(self.max_health, self.current_health + amount)
@@ -470,7 +470,7 @@ class Unit:
         """Reset movement points and flags for a new turn."""
         # Capture heal eligibility before clearing has_moved: unit must not have
         # moved or acted at all this turn to qualify for natural healing next upkeep.
-        self.heal_eligible = not self.has_moved
+        self.repair_eligible = not self.has_moved
         self.moves_remaining = float(self.max_moves())
         self.moves_this_turn = 0
         self.has_moved = False

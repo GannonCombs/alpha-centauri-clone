@@ -398,11 +398,12 @@ def main():
                                 game.set_status_message(f"{held_unit.name} unheld")
                     elif event.key == pygame.K_SPACE:
                         # End movement and skip turn (healing happens automatically at end of turn)
-                        # Manual SPACE key healing was removed - units now heal automatically
+                        # Do NOT set has_moved = True here — a unit that skips its turn in place
+                        # should remain repair-eligible (repair_eligible = not has_moved).
                         if game.selected_unit and game.selected_unit.owner == game.player_faction_id:
-                            # Just end movement - unit will heal automatically at end of turn
+                            # Drain moves so the unit won't be auto-cycled back, but leave
+                            # has_moved untouched so it stays heal-eligible.
                             game.selected_unit.moves_remaining = 0
-                            game.selected_unit.has_moved = True
                             game.set_status_message(f"{game.selected_unit.name} movement ended")
 
                             # Track that last action was an action (not hold)
