@@ -329,7 +329,7 @@ Attacker does not have the Comm Jammer ability.
 
 Unit does not have the HOLD order, and is not in a bunker or airbase.
 
-A valid retreat square is avaiable, which is not a fungus square (unless Pholus Mutagen) and is not adjacent to an enemy unit.
+A valid retreat square is available, which is not a fungus square (unless Pholus Mutagen) and is not adjacent to an enemy unit.
 
 Zone of Control #
 Every unit exerts a Zone of Control into every adjacent square (but units in sea squares do not exert zones of control into land squares, nor vice versa).
@@ -347,13 +347,13 @@ Probe teams and units with the Cloaking ability may ignore this rule.
 Air and Sea units exert zones of control, but are not affected by them.
 
 Bombardment #
-Naval units, land units with the Heavy Artillery ability and Spore Launchers may conduct Bombardment by selecting the Long Range Fire option from the Action menu.
+Naval units and land units with the Heavy Artillery ability may conduct Bombardment by selecting the Long Range Fire option from the Action menu.
 
 Bombardment has the advantage of potentially damaging every enemy unit in a particular square and the disadvantage that land units can never be reduced below 50% damage by bombardment.
 
 If a unit is bombarded it will not heal for the turn, it will also cancel a former's terraforming
 
-If bombardment is attempted against a square containing an enemy naval or artillery unit, the bombardment is cancelled and an Artillery Duel is initiated, with the attacking and defending artillery (or naval) units fighting attack-vs-attack strength. Armor values are ignored for Artillery Duels.
+If bombardment is attempted against a square containing an enemy naval or artillery unit, the bombardment is canceled and an Artillery Duel is initiated, with the attacking and defending artillery (or naval) units fighting attack-vs-attack strength. Armor values are ignored for Artillery Duels.
 
 Bombardment may also be used to destroy square improvements (Xenofungus cannot be destroyed by bombardment)
 

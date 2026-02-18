@@ -171,6 +171,10 @@ it. It becomes a permanent part of the map. Also, where you have "Xenofungus" in
 similar thing for "River", drawing it the same light blue as the river?
 15 Found a base mini-map that isn't accurate. It's pretending there's a row of green land beneath it that isn't there.
 The base is founded on the bottom row, so that might be affecting it.
+16 Building a base on enemy land is equivalent to starting an attack. A dialog popup should appear from that faction,
+saying "This is my land, <name> and I will not have you building bases on it." Two buttons, basically saying ok fine, and
+kiss my ass. Saying the latter auto-starts a vendetta with that faction and loses you 1 integrity.
+17 Hitting W is still ending turn right now, if there was no one else to move. This is a big bug.
 
 
 
@@ -191,18 +195,12 @@ Note: this is the ONLY section of todo.txt that can be edited by Claude Code, bu
 the non-military units automatically die. This is true for probe teams, and all versions of colony pods. (And artifacts,
 but they are captured, not killed. We've implemented this.) A note at the bottom should say We <killed or lost> x units.
 4 AI colony pod keeps trying to build a base on a monolith, and gets denied, every turn. Needs an updated algo.
-5 Growth is still messed up. It should not show two growth meters, especially disagreeing ones.
-6 Building a base on enemy land is equivalent to starting an attack. A dialog popup should appear from that faction,
-saying "This is my land, <name> and I will not have you building bases on it." Two buttons, basically saying ok fine, and
-kiss my ass. Saying the latter auto-starts a vendetta with that faction and loses you 1 integrity.
-7 Hitting W is still ending turn right now, if there was no one else to move. This is a big bug.
-8 I had a transport foil in a non-base water tile. In an adjacent land tile was a land unit. I told it the arrow key
-to board the transport. It could not move into it. It should be able to do this. This should take 1 move.
-9 Holding l for a scout patrol to board a transport has a major bug. The cargo for the transport correctly says 1/4 after,
-but the scout patrol is still in the cycle. l should act similarly to h, in the sense that the player still has its moves,
-but is taken out of the cycle. Worse, hitting l again changes the transport's cargo to 2/4. And the scout patrol is STILL
-in the cycle! So we have an infinite character glitch.
-
+5 Growth is still messed up. It should not show two growth meters.
+6 STILL is not consistently showing new unit designs! This time it happened for Industrial Base, which I have seen pop
+up new unit designs in several previous games.
+7 A unit finally debarked from a transport, but it came out held. At NO point should a transported unit be held. The l
+command is the l command. It means board transport. When you debark, you lose this status. I am also able to select the
+held unit without the H disappearing. This should never happen! This was all solved already!!!
 
 
 ***************************************************************************
@@ -219,4 +217,3 @@ in the cycle! So we have an infinite character glitch.
 4 Advanced unit movement (G command, J command, drag path)
 5 Isometric
 6 Diplomacy trees (it is half-built, but may need a redesign)
-7 Secret Project view

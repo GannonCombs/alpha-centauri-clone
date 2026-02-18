@@ -125,6 +125,9 @@ class Game:
 
         # Facilities and Projects
         self.built_projects = set()  # Global set of secret projects built (one per game)
+        self.secret_project_notifications = []  # Queue of {type, project_name, faction_id, ...} popups
+        self.known_ai_secret_projects = set()  # (faction_id, project_name) already notified
+        self.known_ai_secret_project_warnings = set()  # (faction_id, project_name) 1-turn warnings fired
 
         # Social Engineering (player selections)
         self.se_selections = {
@@ -150,6 +153,7 @@ class Game:
         self.game_over = False
         self.winner = None  # 0 = human, 1+ = AI player
         self.victory_type = None  # conquest, diplomatic, economic, transcendence, scenario
+        self.resigned = False  # True when player chose to retire via main menu
         self.player_ever_had_base = False  # Track if player has founded at least one base
         self.enemy_ever_had_base = False  # Track if enemy has founded at least one base
 
@@ -603,6 +607,21 @@ class Game:
 
         target_tile = self.game_map.get_tile(target_x, target_y)
 
+        # Land unit boarding a transport on an adjacent ocean tile via movement.
+        # This intercepts before can_move_to (which would reject land-on-ocean).
+        if unit.type == 'land' and target_tile.is_ocean() and unit.moves_remaining > 0:
+            transport = next(
+                (u for u in target_tile.units
+                 if getattr(u, 'transport_capacity', 0) > 0
+                 and u.owner == unit.owner
+                 and u.can_load_unit(unit)),
+                None
+            )
+            if transport:
+                unit.moves_remaining = max(0.0, unit.moves_remaining - 1.0)
+                unit.held = True  # Remove from cycle (boarding is a terminal action)
+                return self.load_unit_onto_transport(unit, transport)
+
         # Check if unit can move there
         from_tile = self.game_map.get_tile(unit.x, unit.y)
         if not unit.can_move_to(target_tile):
@@ -827,6 +846,18 @@ class Game:
             if unit not in target_tile.base.garrison:
                 target_tile.base.garrison.append(unit)
                 print(f"{unit.name} garrisoned at {target_tile.base.name}")
+
+            # Sea transport docking at a land base: auto-unload all cargo
+            if unit.type == 'sea' and target_tile.is_land() and getattr(unit, 'loaded_units', []):
+                for cargo_unit in list(unit.loaded_units):
+                    unit.unload_unit(cargo_unit, target_tile.base.x, target_tile.base.y)
+                    self.game_map.add_unit_at(target_tile.base.x, target_tile.base.y, cargo_unit)
+                    cargo_unit.held = False  # Restore to normal cycling next turn
+                    if cargo_unit not in target_tile.base.garrison:
+                        target_tile.base.garrison.append(cargo_unit)
+                    print(f"{cargo_unit.name} auto-unloaded from {unit.name} at {target_tile.base.name}")
+                if unit.owner == self.player_faction_id:
+                    self.set_status_message(f"{unit.name} docked — cargo unloaded at {target_tile.base.name}")
 
             # Artifact + Network Node: prompt to link if base has an unlinked network node
             if (unit.weapon == 'artifact'
@@ -1154,7 +1185,7 @@ class Game:
 
         # Check if target tile is land
         target_tile = self.game_map.get_tile(target_x, target_y)
-        if not target_tile or target_tile.terrain == 'ocean':
+        if not target_tile or not target_tile.is_land():
             self.set_status_message("Cannot unload into ocean")
             return False
 
@@ -2216,8 +2247,13 @@ class Game:
                 # Reset timer
                 self.auto_cycle_timer = 0
 
-    def cycle_units(self):
-        """Select next friendly unit (W key). Cycles only through unheld units that still have moves."""
+    def cycle_units(self, allow_auto_end=True):
+        """Select next friendly unit. Cycles only through unheld units that still have moves.
+
+        Args:
+            allow_auto_end: If False, skip auto-end-turn check (use when player manually
+                            presses W — they're explicitly asking to cycle, not end turn).
+        """
         friendly_units = [u for u in self.units if u.is_friendly(self.player_faction_id)]
 
         if not friendly_units:
@@ -2228,9 +2264,10 @@ class Game:
                             if u.moves_remaining > 0 and not u.held
                             and not (getattr(u, 'is_former', False) and u.terraforming_action)]
 
-        # If no units need attention, check for auto-end
+        # If no units need attention, optionally check for auto-end
         if not units_with_moves:
-            self.check_auto_end_turn()
+            if allow_auto_end:
+                self.check_auto_end_turn()
             return
 
         # Cycle through units in sequence
@@ -2524,6 +2561,8 @@ class Game:
             total_labs = 0
 
             ai_bureaucracy_map = self._calc_bureaucracy_drones(ai_player.player_id)
+            from game.data.facility_data import SECRET_PROJECTS
+            _secret_project_names = {p['name'] for p in SECRET_PROJECTS}
             for base in self.bases:
                 if base.owner == ai_player.player_id:
                     # Reset hurry flag at start of AI turn
@@ -2536,6 +2575,33 @@ class Game:
                         # Store for spawning at start of next turn (after upkeep)
                         self.pending_production.append((base, completed_item))
                     total_labs += base.labs_output
+
+                    # Notify player when an AI faction starts or is 1 turn from finishing a secret project
+                    prod = base.current_production
+                    if prod in _secret_project_names:
+                        start_key = (ai_player.player_id, prod)
+                        if start_key not in self.known_ai_secret_projects:
+                            self.known_ai_secret_projects.add(start_key)
+                            self.secret_project_notifications.append({
+                                'type': 'started',
+                                'project_name': prod,
+                                'faction_id': ai_player.player_id,
+                            })
+                        warn_key = (ai_player.player_id, prod)
+                        if (base.production_turns_remaining <= 1
+                                and warn_key not in self.known_ai_secret_project_warnings):
+                            self.known_ai_secret_project_warnings.add(warn_key)
+                            player_also = any(
+                                b.current_production == prod
+                                for b in self.bases
+                                if b.owner == self.player_faction_id
+                            )
+                            self.secret_project_notifications.append({
+                                'type': 'warning',
+                                'project_name': prod,
+                                'faction_id': ai_player.player_id,
+                                'player_also_building': player_also,
+                            })
 
             # Process AI tech research with labs output
             ai_tech_tree = self.factions[ai_player.player_id].tech_tree
@@ -2994,6 +3060,7 @@ class Game:
         self.game_over = False
         self.winner = None
         self.victory_type = None
+        self.resigned = False
         self.player_ever_had_base = False
         self.enemy_ever_had_base = False
         self.supreme_leader_complete = False
@@ -3118,6 +3185,9 @@ class Game:
         game.player_faction_id = gs.get('player_faction_id', 0)  # Default to 0 for old saves
         game.player_name = gs.get('player_name', None)
         game.built_projects = set(gs['built_projects'])
+        game.secret_project_notifications = []
+        game.known_ai_secret_projects = set()
+        game.known_ai_secret_project_warnings = set()
         game.se_selections = gs['se_selections']
         game.game_over = gs['game_over']
         game.winner = gs['winner']

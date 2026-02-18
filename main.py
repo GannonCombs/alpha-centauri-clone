@@ -239,7 +239,7 @@ def main():
                 elif not ui_handled:
                     # UI didn't handle it - process game keys
                     if event.key == pygame.K_w:
-                        game.cycle_units()
+                        game.cycle_units(allow_auto_end=False)
                     elif event.key == pygame.K_b:
                         unit = game.selected_unit
                         if unit and unit.owner == game.player_faction_id:
@@ -249,7 +249,16 @@ def main():
                                 # Found a new base
                                 can_found, error_msg = game.can_found_base(unit)
                                 if can_found:
-                                    ui_panel.show_base_naming_dialog(unit, game)
+                                    territory_owner = game.territory.get_tile_owner(unit.x, unit.y)
+                                    if (territory_owner is not None
+                                            and territory_owner != game.player_faction_id
+                                            and not game.has_pact_with(game.player_faction_id, territory_owner)
+                                            and territory_owner not in game.eliminated_factions):
+                                        ui_panel.encroachment_popup_active = True
+                                        ui_panel.encroachment_unit = unit
+                                        ui_panel.encroachment_faction_id = territory_owner
+                                    else:
+                                        ui_panel.show_base_naming_dialog(unit, game)
                                 else:
                                     game.set_status_message(f"Cannot found base: {error_msg}")
                             elif (base_at_tile and base_at_tile.owner == game.player_faction_id):
@@ -360,6 +369,7 @@ def main():
                             ) if tile else None
                             if transport:
                                 game.load_unit_onto_transport(unit, transport)
+                                unit.held = True  # Remove from cycle without zeroing moves
                                 game.selected_unit = None
                                 game.cycle_units()
                             else:
@@ -478,7 +488,34 @@ def main():
                             elif game.selected_unit:
                                 target_x = game.selected_unit.x + dx
                                 target_y = game.selected_unit.y + dy
-                                game.try_move_unit(game.selected_unit, target_x, target_y)
+                                wrapped_x = target_x % game.game_map.width
+                                unit = game.selected_unit
+                                # Debark popup: sea transport with cargo moving toward land
+                                if (0 <= target_y < game.game_map.height
+                                        and unit.type == 'sea'
+                                        and getattr(unit, 'loaded_units', [])):
+                                    tgt = game.game_map.get_tile(wrapped_x, target_y)
+                                    debarkable = [u for u in unit.loaded_units
+                                                  if u.moves_remaining > 0]
+                                    if (tgt and tgt.is_land()
+                                            and not (tgt.base and tgt.base.owner == unit.owner)
+                                            and debarkable):
+                                        ui_panel.debark_popup_active = True
+                                        ui_panel.debark_transport = unit
+                                        ui_panel.debark_target_x = wrapped_x
+                                        ui_panel.debark_target_y = target_y
+                                        ui_panel.debark_selected_unit = None
+                                        ui_panel.debark_unit_rects = []
+                                    else:
+                                        was_held = getattr(unit, 'held', False)
+                                        game.try_move_unit(unit, target_x, target_y)
+                                        if not was_held and getattr(unit, 'held', False):
+                                            game.cycle_units()
+                                else:
+                                    was_held = getattr(unit, 'held', False)
+                                    game.try_move_unit(unit, target_x, target_y)
+                                    if not was_held and getattr(unit, 'held', False):
+                                        game.cycle_units()
 
             elif event.type == pygame.MOUSEBUTTONDOWN:
                 # Block all input during AI processing unless a popup needs attention
@@ -518,6 +555,11 @@ def main():
                     if hasattr(game, '_saved_diplo_relations'):
                         ui_panel.diplomacy.diplo_relations = game._saved_diplo_relations.copy()
                         delattr(game, '_saved_diplo_relations')  # Clean up temporary storage
+                elif isinstance(ui_handled, tuple) and ui_handled[0] == 'return_to_menu':
+                    game = None
+                    renderer = None
+                    ui_panel = None
+                    intro_screen.mode = 'intro'
                 elif not ui_handled:
                     # UI didn't handle it - pass to game if in map area
                     if mouse_y < display.MAP_AREA_HEIGHT:

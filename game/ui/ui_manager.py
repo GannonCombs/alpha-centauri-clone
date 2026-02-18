@@ -30,6 +30,7 @@ class UIManager:
         self.active_screen = "GAME"
         self.commlink_open = False
         self.main_menu_open = False
+        self.game_submenu_open = False
 
         # Initialize all screen managers
         self.dialogs = DialogManager(self.font, self.small_font)
@@ -58,6 +59,29 @@ class UIManager:
         # Upkeep event popup buttons
         self.upkeep_zoom_rect = None
         self.upkeep_ignore_rect = None
+
+        # Debark popup (unload cargo from transport toward land tile)
+        self.debark_popup_active = False
+        self.debark_transport = None
+        self.debark_target_x = None
+        self.debark_target_y = None
+        self.debark_selected_unit = None
+        self.debark_unit_rects = []   # list of (rect, unit)
+        self.debark_ok_rect = None
+        self.debark_cancel_rect = None
+
+        # Encroachment popup (founding base on enemy territory)
+        self.encroachment_popup_active = False
+        self.encroachment_unit = None
+        self.encroachment_faction_id = None
+        self.encroachment_btn_leave_rect = None
+        self.encroachment_btn_build_rect = None
+
+        # Secret Projects view (F5)
+        self.secret_projects_ok_rect = None
+
+        # Secret project started notification popup
+        self.secret_project_notify_ok_rect = None
 
         # Commlink request popup
         self.commlink_request_active = False
@@ -157,6 +181,15 @@ class UIManager:
             Button(self.main_menu_rect.x + 5, self.main_menu_rect.y + 5, main_menu_w - 10, 40, "Game"),
             Button(self.main_menu_rect.x + 5, self.main_menu_rect.y + 50, main_menu_w - 10, 40, "Help"),
             Button(self.main_menu_rect.x + 5, self.main_menu_rect.y + 95, main_menu_w - 10, 40, "Exit")
+        ]
+
+        # "Game" drop-right submenu (opens when "Game" is clicked)
+        submenu_w, submenu_h = 200, 50
+        submenu_x = self.main_menu_rect.right  # flush against the right edge
+        submenu_y = self.main_menu_rect.y + 5  # aligned with the Game button
+        self.game_submenu_rect = pygame.Rect(submenu_x, submenu_y, submenu_w, submenu_h)
+        self.game_submenu_buttons = [
+            Button(self.game_submenu_rect.x + 5, self.game_submenu_rect.y + 5, submenu_w - 10, 40, "Resign"),
         ]
 
         # Minimap & Commlink Positioning - right side of UI panel
@@ -350,6 +383,15 @@ class UIManager:
                     self.social_screens.tech_tree_open = True
                     return True
 
+            if event.key == pygame.K_F5:
+                # Toggle Secret Projects view
+                if self.active_screen == "SECRET_PROJECTS":
+                    self.active_screen = "GAME"
+                    return True
+                elif self.active_screen == "GAME" and not self.commlink_open and not self.main_menu_open:
+                    self.active_screen = "SECRET_PROJECTS"
+                    return True
+
             if event.key == pygame.K_c:
                 # Center camera on selected unit
                 if self.active_screen == "GAME" and game.selected_unit:
@@ -376,6 +418,9 @@ class UIManager:
                     self.social_screens.social_engineering_screen.se_selections = None
                     self.social_screens.social_engineering_screen.se_confirm_dialog_open = False
                     return True
+                elif self.active_screen == "SECRET_PROJECTS":
+                    self.active_screen = "GAME"
+                    return True
                 elif self.active_screen == "DESIGN_WORKSHOP":
                     # Check if a component selection panel is open
                     if self.social_screens.design_workshop_screen.dw_editing_panel is not None:
@@ -395,6 +440,7 @@ class UIManager:
                     self.active_screen = "GAME"
                     self.commlink_open = False
                     self.main_menu_open = False
+                    self.game_submenu_open = False
                     self.diplomacy.diplo_stage = "greeting"
                     self.council.council_stage = "select_proposal"
                     self.council.selected_proposal = None
@@ -671,6 +717,66 @@ class UIManager:
                     self.raze_base_target = None
                 return True
 
+            # Secret project started notification popup
+            if getattr(game, 'secret_project_notifications', []):
+                pos = pygame.mouse.get_pos()
+                if self.secret_project_notify_ok_rect and self.secret_project_notify_ok_rect.collidepoint(pos):
+                    game.secret_project_notifications.pop(0)
+                return True
+
+            # Debark popup — unload a unit from a transport onto an adjacent land tile
+            if self.debark_popup_active:
+                pos = pygame.mouse.get_pos()
+                # Unit selection buttons
+                for rect, unit in self.debark_unit_rects:
+                    if rect.collidepoint(pos):
+                        self.debark_selected_unit = unit
+                        return True
+                # OK — unload selected unit
+                if self.debark_ok_rect and self.debark_ok_rect.collidepoint(pos):
+                    if self.debark_selected_unit is not None:
+                        game.unload_unit_from_transport(
+                            self.debark_transport,
+                            self.debark_selected_unit,
+                            self.debark_target_x,
+                            self.debark_target_y,
+                        )
+                    self.debark_popup_active = False
+                    self.debark_transport = None
+                    self.debark_selected_unit = None
+                    self.debark_unit_rects = []
+                    return True
+                # Cancel
+                if self.debark_cancel_rect and self.debark_cancel_rect.collidepoint(pos):
+                    self.debark_popup_active = False
+                    self.debark_transport = None
+                    self.debark_selected_unit = None
+                    self.debark_unit_rects = []
+                return True
+
+            # Encroachment popup — founding base on enemy territory
+            if self.encroachment_popup_active:
+                pos = pygame.mouse.get_pos()
+                if self.encroachment_btn_leave_rect and self.encroachment_btn_leave_rect.collidepoint(pos):
+                    # Back down — cancel founding
+                    self.encroachment_popup_active = False
+                    self.encroachment_unit = None
+                    self.encroachment_faction_id = None
+                elif self.encroachment_btn_build_rect and self.encroachment_btn_build_rect.collidepoint(pos):
+                    # Build anyway — set vendetta, lose 1 integrity, proceed to naming
+                    faction_id = self.encroachment_faction_id
+                    unit = self.encroachment_unit
+                    self.encroachment_popup_active = False
+                    self.encroachment_unit = None
+                    self.encroachment_faction_id = None
+                    if faction_id is not None:
+                        if self.diplomacy.diplo_relations.get(faction_id) != "Vendetta":
+                            self.diplomacy.diplo_relations[faction_id] = "Vendetta"
+                        game.integrity_level = max(0, game.integrity_level - 1)
+                    if unit is not None:
+                        self.show_base_naming_dialog(unit, game)
+                return True
+
             # Surprise attack popup button
             if self.surprise_attack_popup_active:
                 pos = pygame.mouse.get_pos()
@@ -801,12 +907,17 @@ class UIManager:
             # Game over screen takes highest priority
             if game.game_over:
                 if self.game_over_new_game_rect and self.game_over_new_game_rect.collidepoint(event.pos):
-                    # New Game clicked
-                    game.new_game()
-                    self.active_screen = "GAME"
-                    self.commlink_open = False
-                    self.main_menu_open = False
-                    return True
+                    if getattr(game, 'resigned', False):
+                        # Return to Main Menu after retiring
+                        return ('return_to_menu', None)
+                    else:
+                        # New Game clicked
+                        game.new_game()
+                        self.active_screen = "GAME"
+                        self.commlink_open = False
+                        self.main_menu_open = False
+                        self.game_submenu_open = False
+                        return True
                 elif self.game_over_exit_rect and self.game_over_exit_rect.collidepoint(event.pos):
                     # Exit clicked
                     import sys
@@ -857,7 +968,11 @@ class UIManager:
                 # Block all other clicks when message is showing
                 return True
 
-            if self.active_screen == "TECH_TREE":
+            if self.active_screen == "SECRET_PROJECTS":
+                if self.secret_projects_ok_rect and self.secret_projects_ok_rect.collidepoint(event.pos):
+                    self.active_screen = "GAME"
+                return True
+            elif self.active_screen == "TECH_TREE":
                 result = self.social_screens.handle_tech_tree_click(event.pos, game)
                 if result == 'close':
                     self.active_screen = "GAME"
@@ -916,18 +1031,36 @@ class UIManager:
                 self.commlink_open = not self.commlink_open
                 if self.commlink_open:
                     self.main_menu_open = False  # Exclusivity
+                    self.game_submenu_open = False
                 return True
 
-            # Handle clicks inside Main Menu
+            # Handle clicks inside Main Menu (and its Game submenu)
             if self.main_menu_open:
-                if self.main_menu_rect.collidepoint(event.pos):
+                # Check Game submenu first (it's layered on top)
+                if self.game_submenu_open and self.game_submenu_rect.collidepoint(event.pos):
+                    for btn in self.game_submenu_buttons:
+                        if btn.handle_event(event):
+                            if btn.text == "Resign":
+                                self.main_menu_open = False
+                                self.game_submenu_open = False
+                                game.game_over = True
+                                game.victory_type = None
+                                game.resigned = True
+                            return True
+                    return True  # Consume click inside submenu
+                elif self.main_menu_rect.collidepoint(event.pos):
                     for btn in self.main_menu_buttons:
                         if btn.handle_event(event):
-                            self.main_menu_open = False
+                            if btn.text == "Game":
+                                self.game_submenu_open = not self.game_submenu_open
+                            else:
+                                self.main_menu_open = False
+                                self.game_submenu_open = False
                             return True
                     return True  # Consume click inside menu
                 else:
-                    self.main_menu_open = False  # Clicked outside
+                    self.main_menu_open = False
+                    self.game_submenu_open = False
 
             # Handle clicks inside Commlink Menu
             if self.commlink_open:
@@ -1023,6 +1156,9 @@ class UIManager:
             if self.main_menu_open:
                 for btn in self.main_menu_buttons:
                     btn.handle_event(event)
+                if self.game_submenu_open:
+                    for btn in self.game_submenu_buttons:
+                        btn.handle_event(event)
             if self.commlink_open:
                 for btn in self.faction_buttons:
                     btn.handle_event(event)
@@ -1050,7 +1186,9 @@ class UIManager:
                 self.renounce_pact_popup_active or
                 self.pact_pronounce_popup_active or
                 self.major_atrocity_popup_active or
-                self.raze_base_popup_active)
+                self.raze_base_popup_active or
+                self.encroachment_popup_active or
+                self.debark_popup_active)
 
     def draw(self, screen, game, renderer=None):
         """Render the UI panel with game info, buttons, and active modals.
@@ -1321,6 +1459,13 @@ class UIManager:
             for btn in self.main_menu_buttons:
                 btn.draw(screen, self.font)
 
+            # Game drop-right submenu
+            if self.game_submenu_open:
+                pygame.draw.rect(screen, (20, 25, 30), self.game_submenu_rect)
+                pygame.draw.rect(screen, COLOR_BUTTON_BORDER, self.game_submenu_rect, 3)
+                for btn in self.game_submenu_buttons:
+                    btn.draw(screen, self.font)
+
         # Layer 4b: Commlink Drop-up
         if self.commlink_open and self.active_screen == "GAME":
             # Update faction buttons based on current contacts
@@ -1391,7 +1536,9 @@ class UIManager:
                                        self.council_btn.rect.centery - text_surf.get_height() // 2))
 
         # Layer 5: Overlays
-        if self.active_screen == "TECH_TREE":
+        if self.active_screen == "SECRET_PROJECTS":
+            self._draw_secret_projects_view(screen, game)
+        elif self.active_screen == "TECH_TREE":
             self.social_screens.draw_tech_tree(screen, game)
         elif self.active_screen == "SOCIAL_ENGINEERING":
             self.social_screens.draw_social_engineering(screen, game)
@@ -1552,6 +1699,15 @@ class UIManager:
 
         if self.raze_base_popup_active and self.raze_base_target:
             self._draw_raze_base_popup(screen, game)
+
+        if self.debark_popup_active:
+            self._draw_debark_popup(screen, game)
+
+        if self.encroachment_popup_active:
+            self._draw_encroachment_popup(screen, game)
+
+        if getattr(game, 'secret_project_notifications', []):
+            self._draw_secret_project_notification(screen, game)
 
         # Game over screen (highest priority)
         if game.game_over:
@@ -2428,6 +2584,335 @@ class UIManager:
         screen.blit(ok_s, (self.pact_pronounce_ok_rect.centerx - ok_s.get_width() // 2,
                             self.pact_pronounce_ok_rect.centery - ok_s.get_height() // 2))
 
+    def _draw_debark_popup(self, screen, game):
+        """Popup for selecting which loaded unit to debark onto an adjacent land tile."""
+        from game.data.display import COLOR_BUTTON, COLOR_BUTTON_HOVER, COLOR_BUTTON_BORDER, COLOR_BUTTON_HIGHLIGHT
+
+        transport = self.debark_transport
+        if not transport:
+            return
+
+        debarkable = [u for u in getattr(transport, 'loaded_units', [])
+                      if u.moves_remaining > 0]
+
+        popup_w = 400
+        btn_h = 36
+        popup_h = 80 + len(debarkable) * (btn_h + 6) + 60  # header + unit btns + ok/cancel row
+        self._draw_overlay(screen)
+        popup_rect = self._centered_popup_rect(popup_w, popup_h)
+        self._draw_popup_box(screen, popup_rect)
+
+        # Title
+        title = self.font.render(f"Debark from {transport.name}", True, (200, 220, 240))
+        screen.blit(title, (popup_rect.x + 20, popup_rect.y + 16))
+        sub = self.small_font.render("Select a unit to unload:", True, (160, 180, 190))
+        screen.blit(sub, (popup_rect.x + 20, popup_rect.y + 44))
+
+        # Unit buttons
+        self.debark_unit_rects = []
+        btn_x = popup_rect.x + 20
+        btn_w = popup_w - 40
+        mouse_pos = pygame.mouse.get_pos()
+        y = popup_rect.y + 68
+        for unit in debarkable:
+            rect = pygame.Rect(btn_x, y, btn_w, btn_h)
+            self.debark_unit_rects.append((rect, unit))
+            selected = (unit is self.debark_selected_unit)
+            if selected:
+                bg = (50, 80, 110)
+                border = COLOR_BUTTON_HIGHLIGHT
+            elif rect.collidepoint(mouse_pos):
+                bg = COLOR_BUTTON_HOVER
+                border = COLOR_BUTTON_BORDER
+            else:
+                bg = COLOR_BUTTON
+                border = COLOR_BUTTON_BORDER
+            pygame.draw.rect(screen, bg, rect, border_radius=6)
+            pygame.draw.rect(screen, border, rect, 2, border_radius=6)
+            label = f"{unit.name}  (moves: {unit.moves_remaining:.0f}/{unit.max_moves()})"
+            lbl_surf = self.small_font.render(label, True, (220, 230, 240))
+            screen.blit(lbl_surf, (rect.x + 10, rect.centery - lbl_surf.get_height() // 2))
+            y += btn_h + 6
+
+        # OK / Cancel buttons
+        ok_w = cancel_w = 120
+        spacing = 16
+        total = ok_w + spacing + cancel_w
+        ok_x = popup_rect.centerx - total // 2
+        cancel_x = ok_x + ok_w + spacing
+        btn_y = popup_rect.bottom - 52
+
+        ok_rect = pygame.Rect(ok_x, btn_y, ok_w, 40)
+        cancel_rect = pygame.Rect(cancel_x, btn_y, cancel_w, 40)
+        self.debark_ok_rect = ok_rect
+        self.debark_cancel_rect = cancel_rect
+
+        ok_enabled = self.debark_selected_unit is not None
+        ok_bg = (40, 80, 50) if ok_enabled else (35, 40, 45)
+        ok_border = (80, 160, 80) if ok_enabled else (60, 70, 80)
+        pygame.draw.rect(screen, COLOR_BUTTON_HOVER if ok_rect.collidepoint(mouse_pos) and ok_enabled else ok_bg,
+                         ok_rect, border_radius=6)
+        pygame.draw.rect(screen, ok_border, ok_rect, 2, border_radius=6)
+        ok_surf = self.font.render("OK", True, (220, 240, 220) if ok_enabled else (100, 110, 115))
+        screen.blit(ok_surf, (ok_rect.centerx - ok_surf.get_width() // 2,
+                               ok_rect.centery - ok_surf.get_height() // 2))
+
+        pygame.draw.rect(screen, COLOR_BUTTON_HOVER if cancel_rect.collidepoint(mouse_pos) else COLOR_BUTTON,
+                         cancel_rect, border_radius=6)
+        pygame.draw.rect(screen, COLOR_BUTTON_BORDER, cancel_rect, 2, border_radius=6)
+        cancel_surf = self.font.render("Cancel", True, COLOR_TEXT)
+        screen.blit(cancel_surf, (cancel_rect.centerx - cancel_surf.get_width() // 2,
+                                   cancel_rect.centery - cancel_surf.get_height() // 2))
+
+    def _draw_encroachment_popup(self, screen, game):
+        """Popup when player tries to found a base on another faction's territory."""
+        from game.data.display import COLOR_BUTTON, COLOR_BUTTON_HOVER, COLOR_BUTTON_BORDER, COLOR_BUTTON_HIGHLIGHT
+        from game.data.data import FACTION_DATA
+
+        faction_id = self.encroachment_faction_id
+        faction = FACTION_DATA[faction_id] if faction_id is not None and faction_id < len(FACTION_DATA) else {}
+        faction_name = faction.get('name', 'Unknown')
+        leader_name = faction.get('leader_name', faction_name)
+        faction_color = faction.get('color', (180, 160, 100))
+
+        self._draw_overlay(screen)
+
+        popup_w, popup_h = 520, 220
+        popup_rect = self._centered_popup_rect(popup_w, popup_h)
+        self._draw_popup_box(screen, popup_rect, border_color=faction_color)
+
+        # Faction name header
+        header_surf = self.font.render(f"{leader_name} ({faction_name})", True, faction_color)
+        screen.blit(header_surf, (popup_rect.x + 20, popup_rect.y + 16))
+
+        # Message
+        player_faction = FACTION_DATA[game.player_faction_id] if game.player_faction_id < len(FACTION_DATA) else {}
+        player_name = player_faction.get('name', 'you')
+        msg1 = f"This is our land, {player_name}, and we will"
+        msg2 = "not have you building bases on it."
+        screen.blit(self.small_font.render(msg1, True, COLOR_TEXT), (popup_rect.x + 20, popup_rect.y + 60))
+        screen.blit(self.small_font.render(msg2, True, COLOR_TEXT), (popup_rect.x + 20, popup_rect.y + 80))
+
+        # Buttons
+        btn_w, btn_h = 200, 40
+        btn_y = popup_rect.y + popup_h - 60
+        leave_x = popup_rect.x + popup_w // 2 - btn_w - 10
+        build_x = popup_rect.x + popup_w // 2 + 10
+
+        leave_rect = pygame.Rect(leave_x, btn_y, btn_w, btn_h)
+        build_rect = pygame.Rect(build_x, btn_y, btn_w, btn_h)
+        self.encroachment_btn_leave_rect = leave_rect
+        self.encroachment_btn_build_rect = build_rect
+
+        mouse_pos = pygame.mouse.get_pos()
+        leave_hover = leave_rect.collidepoint(mouse_pos)
+        build_hover = build_rect.collidepoint(mouse_pos)
+
+        pygame.draw.rect(screen, COLOR_BUTTON_HOVER if leave_hover else COLOR_BUTTON, leave_rect, border_radius=6)
+        pygame.draw.rect(screen, COLOR_BUTTON_BORDER, leave_rect, 2, border_radius=6)
+        leave_surf = self.small_font.render("Fine, we'll leave.", True, COLOR_TEXT)
+        screen.blit(leave_surf, (leave_rect.centerx - leave_surf.get_width() // 2,
+                                 leave_rect.centery - leave_surf.get_height() // 2))
+
+        pygame.draw.rect(screen, COLOR_BUTTON_HOVER if build_hover else (80, 30, 30), build_rect, border_radius=6)
+        pygame.draw.rect(screen, (180, 60, 60), build_rect, 2, border_radius=6)
+        build_surf = self.small_font.render("We'll build here.", True, (255, 160, 160))
+        screen.blit(build_surf, (build_rect.centerx - build_surf.get_width() // 2,
+                                 build_rect.centery - build_surf.get_height() // 2))
+
+        # Warning under aggressive button
+        warn = self.small_font.render("(Vendetta + -1 Integrity)", True, (200, 100, 100))
+        screen.blit(warn, (build_rect.centerx - warn.get_width() // 2, build_rect.bottom + 4))
+
+    def _draw_secret_project_notification(self, screen, game):
+        """Modal popup for secret project started or 1-turn-away warning."""
+        from game.data.data import FACTION_DATA
+        from game.data.display import COLOR_TEXT, COLOR_BUTTON, COLOR_BUTTON_HOVER, COLOR_BUTTON_BORDER
+
+        notifications = getattr(game, 'secret_project_notifications', [])
+        if not notifications:
+            return
+        notif = notifications[0]
+        notif_type = notif.get('type', 'started')
+        project_name = notif['project_name']
+        faction_id = notif['faction_id']
+        faction = FACTION_DATA[faction_id] if faction_id < len(FACTION_DATA) else {}
+        faction_name = faction.get('name', 'Unknown')
+        faction_color = faction.get('color', (180, 160, 100))
+
+        self._draw_overlay(screen, alpha=160)
+
+        if notif_type == 'warning':
+            player_also = notif.get('player_also_building', False)
+            popup_h = 220 if player_also else 190
+            popup_w = 500
+            header_text = "SECRET PROJECT ALERT"
+            header_color = (255, 180, 60)
+            border_color = (200, 140, 40)
+            line1 = f"{faction_name} is one turn away"
+            line2 = f"from completing {project_name}."
+            line3 = "You are also building it — rush production!" if player_also else None
+        else:
+            popup_h = 190
+            popup_w = 480
+            header_text = "SECRET PROJECT BEGUN"
+            header_color = (200, 210, 255)
+            border_color = faction_color
+            line1 = f"{faction_name} has begun work on"
+            line2 = project_name + "."
+            line3 = None
+
+        popup_rect = self._centered_popup_rect(popup_w, popup_h)
+        self._draw_popup_box(screen, popup_rect, border_color=border_color)
+
+        header = self.font.render(header_text, True, header_color)
+        screen.blit(header, (popup_rect.centerx - header.get_width() // 2, popup_rect.y + 18))
+
+        y = popup_rect.y + 56
+        l1 = self.small_font.render(line1, True, COLOR_TEXT)
+        screen.blit(l1, (popup_rect.centerx - l1.get_width() // 2, y))
+        y += 20
+        l2 = self.small_font.render(line2, True, faction_color)
+        screen.blit(l2, (popup_rect.centerx - l2.get_width() // 2, y))
+        if line3:
+            y += 22
+            l3 = self.small_font.render(line3, True, (255, 220, 100))
+            screen.blit(l3, (popup_rect.centerx - l3.get_width() // 2, y))
+
+        # OK button
+        ok_w, ok_h = 90, 34
+        ok_rect = pygame.Rect(popup_rect.centerx - ok_w // 2, popup_rect.y + popup_h - 50, ok_w, ok_h)
+        self.secret_project_notify_ok_rect = ok_rect
+        mouse_pos = pygame.mouse.get_pos()
+        ok_hover = ok_rect.collidepoint(mouse_pos)
+        pygame.draw.rect(screen, COLOR_BUTTON_HOVER if ok_hover else COLOR_BUTTON, ok_rect, border_radius=6)
+        pygame.draw.rect(screen, COLOR_BUTTON_BORDER, ok_rect, 2, border_radius=6)
+        ok_surf = self.font.render("OK", True, COLOR_TEXT)
+        screen.blit(ok_surf, (ok_rect.centerx - ok_surf.get_width() // 2,
+                               ok_rect.centery - ok_surf.get_height() // 2))
+
+    def _draw_secret_projects_view(self, screen, game):
+        """Full-screen view showing in-progress and completed secret projects."""
+        from game.data.facility_data import SECRET_PROJECTS
+        from game.data.data import FACTION_DATA
+        from game.data.display import COLOR_TEXT, COLOR_BUTTON, COLOR_BUTTON_HOVER, COLOR_BUTTON_BORDER
+        from game.data import display as disp
+
+        # Fill full screen
+        screen.fill((12, 18, 28))
+
+        sw, sh = disp.SCREEN_WIDTH, disp.SCREEN_HEIGHT
+        mouse_pos = pygame.mouse.get_pos()
+
+        # Title bar
+        title_surf = self.font.render("SECRET PROJECTS", True, (200, 210, 255))
+        screen.blit(title_surf, (sw // 2 - title_surf.get_width() // 2, 20))
+        pygame.draw.line(screen, (60, 80, 110), (40, 50), (sw - 40, 50), 1)
+
+        # Build lookup: project name → faction_id currently building it
+        in_progress_by_name = {}
+        built_projects = getattr(game, 'built_projects', set())
+        for base in game.bases:
+            prod = getattr(base, 'current_production', None)
+            if prod:
+                for proj in SECRET_PROJECTS:
+                    if proj['name'] == prod and proj['id'] not in built_projects:
+                        if proj['name'] not in in_progress_by_name:
+                            in_progress_by_name[proj['name']] = base.owner
+
+        # Only in-progress and completed; in-progress first
+        visible_projects = []
+        for proj in SECRET_PROJECTS:
+            if proj['name'] in in_progress_by_name:
+                visible_projects.append((proj, True, False))
+            elif proj['id'] in built_projects:
+                visible_projects.append((proj, False, True))
+
+        # Layout: 2 columns, cards sized to fill screen
+        cols = 2
+        col_spacing = 20
+        row_spacing = 14
+        pad_x = 80
+        pad_top = 70
+        pad_bottom = 70
+
+        card_w = (sw - pad_x * 2 - (cols - 1) * col_spacing) // cols
+        rows = max(1, (len(visible_projects) + cols - 1) // cols)
+        available_h = sh - pad_top - pad_bottom
+        card_h = max(80, (available_h - (rows - 1) * row_spacing) // rows)
+
+        grid_x = pad_x
+        grid_y = pad_top
+
+        if not visible_projects:
+            msg = self.font.render("No secret projects are in progress or completed.", True, (120, 130, 145))
+            screen.blit(msg, (sw // 2 - msg.get_width() // 2, sh // 2 - msg.get_height() // 2))
+        else:
+            for i, (proj, is_inprogress, is_built) in enumerate(visible_projects):
+                row = i // cols
+                col = i % cols
+                cx = grid_x + col * (card_w + col_spacing)
+                cy = grid_y + row * (card_h + row_spacing)
+                card_rect = pygame.Rect(cx, cy, card_w, card_h)
+
+                if is_inprogress:
+                    bg_color = (18, 38, 18)
+                    border_color = (70, 150, 70)
+                else:
+                    bg_color = (28, 24, 14)
+                    border_color = (110, 90, 35)
+
+                pygame.draw.rect(screen, bg_color, card_rect, border_radius=6)
+                pygame.draw.rect(screen, border_color, card_rect, 2, border_radius=6)
+
+                # Project name (word-wrapped, max 2 lines)
+                name_words = proj['name'].split()
+                name_lines = []
+                cur = ""
+                for word in name_words:
+                    test = (cur + " " + word).strip()
+                    if self.small_font.size(test)[0] <= card_w - 14:
+                        cur = test
+                    else:
+                        if cur:
+                            name_lines.append(cur)
+                        cur = word
+                if cur:
+                    name_lines.append(cur)
+
+                text_y = cy + 10
+                for line in name_lines[:2]:
+                    surf = self.small_font.render(line, True, COLOR_TEXT)
+                    screen.blit(surf, (cx + 8, text_y))
+                    text_y += 16
+
+                # Status at bottom of card
+                if is_inprogress:
+                    fid = in_progress_by_name[proj['name']]
+                    fname = FACTION_DATA[fid].get('name', 'Unknown') if fid < len(FACTION_DATA) else 'Unknown'
+                    fcolor = FACTION_DATA[fid].get('color', (160, 200, 160)) if fid < len(FACTION_DATA) else (160, 200, 160)
+                    faction_surf = self.small_font.render(fname, True, fcolor)
+                    screen.blit(faction_surf, (cx + 8, cy + card_h - 34))
+                    ip_surf = self.small_font.render("In Progress", True, (220, 80, 80))
+                    screen.blit(ip_surf, (cx + 8, cy + card_h - 18))
+                else:
+                    done_surf = self.small_font.render("Completed", True, (160, 150, 60))
+                    screen.blit(done_surf, (cx + 8, cy + card_h - 18))
+
+        # OK button at bottom center
+        ok_w, ok_h = 100, 36
+        ok_rect = pygame.Rect(sw // 2 - ok_w // 2, sh - pad_bottom + 16, ok_w, ok_h)
+        self.secret_projects_ok_rect = ok_rect
+        ok_hover = ok_rect.collidepoint(mouse_pos)
+        pygame.draw.rect(screen, COLOR_BUTTON_HOVER if ok_hover else COLOR_BUTTON, ok_rect, border_radius=6)
+        pygame.draw.rect(screen, COLOR_BUTTON_BORDER, ok_rect, 2, border_radius=6)
+        ok_surf = self.font.render("OK", True, COLOR_TEXT)
+        screen.blit(ok_surf, (ok_rect.centerx - ok_surf.get_width() // 2,
+                               ok_rect.centery - ok_surf.get_height() // 2))
+
+        hint = self.small_font.render("Press F5 or Esc to close", True, (80, 90, 100))
+        screen.blit(hint, (sw // 2 - hint.get_width() // 2, sh - pad_bottom + 56))
+
     def _draw_raze_base_popup(self, screen, game):
         """Confirm dialog before razing (obliterating) an own base."""
         base = self.raze_base_target
@@ -2576,8 +3061,10 @@ class UIManager:
 
         # Title
         title_font = pygame.font.Font(None, 48)
-        player_wins = getattr(game, 'victory_type', None) is not None
-        if player_wins:
+        if getattr(game, 'resigned', False):
+            title_text = "RETIRED"
+            title_color = (180, 160, 100)
+        elif getattr(game, 'victory_type', None) is not None:
             vtype = game.victory_type.capitalize()
             title_text = f"VICTORY! ({vtype})"
             title_color = (100, 255, 100)
@@ -2663,7 +3150,8 @@ class UIManager:
         new_game_hover = new_game_rect.collidepoint(pygame.mouse.get_pos())
         pygame.draw.rect(screen, COLOR_BUTTON_HOVER if new_game_hover else COLOR_BUTTON, new_game_rect, border_radius=8)
         pygame.draw.rect(screen, COLOR_BUTTON_HIGHLIGHT if new_game_hover else COLOR_BUTTON_BORDER, new_game_rect, 2, border_radius=8)
-        new_game_surf = self.font.render("New Game", True, COLOR_TEXT)
+        left_btn_label = "Main Menu" if getattr(game, 'resigned', False) else "New Game"
+        new_game_surf = self.font.render(left_btn_label, True, COLOR_TEXT)
         screen.blit(new_game_surf, (new_game_rect.centerx - new_game_surf.get_width() // 2, new_game_rect.centery - 10))
 
         exit_x = dialog_x + dialog_w // 2 + button_spacing // 2

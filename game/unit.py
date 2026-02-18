@@ -375,6 +375,10 @@ class Unit:
         if len(self.loaded_units) >= self.transport_capacity:
             return False
 
+        # Prevent double-loading the same unit
+        if unit in self.loaded_units:
+            return False
+
         # Only land units can be loaded onto transports
         if unit.type != 'land':
             return False
@@ -414,6 +418,7 @@ class Unit:
         self.loaded_units.remove(unit)
         unit.x = x
         unit.y = y
+        unit.held = False  # Debarking clears held status set when boarding
         unit.moves_remaining = 0  # Unloading consumes all moves
         return True
 
