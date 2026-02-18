@@ -130,6 +130,9 @@ def main():
                                           ui_panel.break_treaty_popup_active or
                                           ui_panel.pact_evacuation_popup_active or
                                           ui_panel.active_screen == "DIPLOMACY" or
+                                          ui_panel.renounce_pact_popup_active or
+                                          ui_panel.pact_pronounce_popup_active or
+                                          ui_panel.major_atrocity_popup_active or
                                           game.upkeep_phase_active or
                                           game.combat.pending_battle is not None or
                                           game.combat.active_battle is not None)
@@ -168,7 +171,8 @@ def main():
                     if ui_panel.active_screen == "BASE_VIEW":
                         if (ui_panel.base_screens.hurry_production_open or
                             ui_panel.base_screens.production_selection_open or
-                            ui_panel.base_screens.queue_management_open):
+                            ui_panel.base_screens.queue_management_open or
+                            ui_panel.base_screens.nerve_staple_popup_open):
                             # Let the base view handler close the popup
                             ui_panel.handle_event(event, game)
                             continue
@@ -231,13 +235,21 @@ def main():
                     if event.key == pygame.K_w:
                         game.cycle_units()
                     elif event.key == pygame.K_b:
-                        # Found a base if colony pod is selected
-                        if game.selected_unit and game.selected_unit.is_colony_pod():
-                            can_found, error_msg = game.can_found_base(game.selected_unit)
-                            if can_found:
-                                ui_panel.show_base_naming_dialog(game.selected_unit, game)
-                            else:
-                                game.set_status_message(f"Cannot found base: {error_msg}")
+                        unit = game.selected_unit
+                        if unit and unit.owner == game.player_faction_id:
+                            tile = game.game_map.get_tile(unit.x, unit.y)
+                            base_at_tile = tile.base if tile else None
+                            if unit.is_colony_pod():
+                                # Found a new base
+                                can_found, error_msg = game.can_found_base(unit)
+                                if can_found:
+                                    ui_panel.show_base_naming_dialog(unit, game)
+                                else:
+                                    game.set_status_message(f"Cannot found base: {error_msg}")
+                            elif (base_at_tile and base_at_tile.owner == game.player_faction_id):
+                                # Raze the base the unit is standing in
+                                ui_panel.raze_base_popup_active = True
+                                ui_panel.raze_base_target = base_at_tile
                     elif event.key == pygame.K_f:
                         unit = game.selected_unit
                         if unit and unit.owner == game.player_faction_id:
@@ -473,6 +485,9 @@ def main():
                                           ui_panel.break_treaty_popup_active or
                                           ui_panel.pact_evacuation_popup_active or
                                           ui_panel.active_screen == "DIPLOMACY" or
+                                          ui_panel.renounce_pact_popup_active or
+                                          ui_panel.pact_pronounce_popup_active or
+                                          ui_panel.major_atrocity_popup_active or
                                           game.upkeep_phase_active or
                                           game.combat.pending_battle is not None or
                                           game.combat.active_battle is not None)
@@ -585,6 +600,10 @@ def main():
                              ui_panel.break_treaty_popup_active or
                              ui_panel.pact_evacuation_popup_active or
                              ui_panel.active_screen == "DIPLOMACY" or
+                             ui_panel.renounce_pact_popup_active or
+                             ui_panel.pact_pronounce_popup_active or
+                             ui_panel.major_atrocity_popup_active or
+                             ui_panel.raze_base_popup_active or
                              game.upkeep_phase_active or
                              game.combat.pending_battle is not None or
                              game.combat.active_battle is not None)
@@ -646,6 +665,7 @@ def main():
                                   ui_panel.break_treaty_popup_active or
                                   ui_panel.pact_evacuation_popup_active or
                                   ui_panel.active_screen == "DIPLOMACY" or
+                                  ui_panel.major_atrocity_popup_active or
                                   game.upkeep_phase_active or
                                   game.combat.pending_battle is not None or
                                   game.combat.active_battle is not None)

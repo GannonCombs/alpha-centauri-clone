@@ -55,7 +55,9 @@ class Base:
         self.x = x
         self.y = y
         self.owner = owner  # Player ID (0 = human, 1+ = AI)
+        self.original_owner = owner  # Never changes on capture — for atrocity tracking
         self.name = name
+        self.nerve_stapled = False  # True after nerve stapling; suppresses all drones
 
         # Base attributes
         self.population = 1
@@ -620,10 +622,33 @@ class Base:
         self.growth_turns_remaining = self._calculate_growth_turns()
 
         # Calculate population happiness after growth so icon counts match population
+        riot_before = self.drone_riot
         self.calculate_population_happiness(bureaucracy_drones=bureaucracy_drones)
+        riot_transition = None
+        if self.drone_riot and not riot_before:
+            riot_transition = 'started'
+        elif not self.drone_riot and riot_before:
+            riot_transition = 'ended'
+
+        # Notify the player when riot status changes
+        if game is not None and riot_transition == 'started':
+            if hasattr(game, 'upkeep_events'):
+                game.upkeep_events.append({
+                    'type': 'drone_riot',
+                    'base_name': self.name,
+                })
+        if game is not None and riot_transition == 'ended':
+            if hasattr(game, 'set_status_message'):
+                game.set_status_message(f"Drone riot ended at {self.name}.")
 
         # Calculate unit support cost
         self.calculate_support_cost()
+
+        # Drone riot: suppress surplus energy (economy and labs outputs go to zero)
+        # Nutrients still feed the population (handled above), psych still applies.
+        if self.drone_riot:
+            self.economy_output = 0
+            self.labs_output = 0
 
         # Handle production (halt if drone riot)
         if self.current_production and not self.drone_riot:
@@ -777,6 +802,11 @@ class Base:
         # Cap talents to what remains in the non-specialist pool after drones
         base_talents = min(base_talents, max(0, non_spec - base_drones))
 
+        # Nerve staple suppresses all drones permanently
+        if getattr(self, 'nerve_stapled', False):
+            base_drones = 0
+            base_talents = min(base_talents, non_spec)
+
         # Final population breakdown
         self.drones = base_drones
         self.talents = base_talents
@@ -800,15 +830,20 @@ class Base:
             self.psych_output   += spec.get('psych', 0)
 
     def check_drone_riot(self):
-        """Check if drones outnumber talents, causing a riot."""
+        """Check if drones outnumber talents, causing a riot.
+
+        Returns:
+            str: 'started' if riot just began, 'ended' if it just ended, else None
+        """
         if self.drones > self.talents:
             if not self.drone_riot:
                 self.drone_riot = True
-                print(f"DRONE RIOT at {self.name}! Drones: {self.drones}, Talents: {self.talents}")
+                return 'started'
         else:
             if self.drone_riot:
                 self.drone_riot = False
-                print(f"Drone riot ended at {self.name}")
+                return 'ended'
+        return None
 
     def calculate_free_support(self):
         """Calculate number of units this base can support for free.
@@ -892,6 +927,8 @@ class Base:
             'support_cost_paid': self.support_cost_paid,
             'turns_since_capture': self.turns_since_capture,
             'disloyal_drones': self.disloyal_drones,
+            'original_owner': self.original_owner,
+            'nerve_stapled': self.nerve_stapled,
             'production_queue': list(self.production_queue),
             'hurried_this_turn': self.hurried_this_turn,
             'governor_enabled': self.governor_enabled,
@@ -941,6 +978,8 @@ class Base:
         base.support_cost_paid = data.get('support_cost_paid', 0)
         base.turns_since_capture = data.get('turns_since_capture', None)
         base.disloyal_drones = data.get('disloyal_drones', 0)
+        base.original_owner = data.get('original_owner', base.owner)
+        base.nerve_stapled = data.get('nerve_stapled', False)
         base.hurried_this_turn = data.get('hurried_this_turn', False)
         base.production_queue = data.get('production_queue', [])
         base.governor_enabled = data.get('governor_enabled', False)

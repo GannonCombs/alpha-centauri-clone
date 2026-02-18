@@ -232,6 +232,27 @@ def draw_citizen_icon(screen, cx, cy, size, ctype):
     _CITIZEN_ICON_FUNCS.get(ctype, draw_worker_icon)(screen, cx, cy, size)
 
 
+def _draw_nerve_staple_icon(screen, cx, cy, size, already_stapled=False):
+    """Draw the nerve staple button: red face with white blindfold.
+
+    If already_stapled, draw greyed out to indicate it's been used.
+    """
+    radius = size // 2 - 2
+    face_color = (180, 60, 60) if not already_stapled else (100, 60, 60)
+    pygame.draw.circle(screen, face_color, (cx, cy), radius)
+    pygame.draw.circle(screen, (220, 220, 220), (cx, cy), radius, 2)
+    # White blindfold band across eyes
+    band_h = max(4, size // 8)
+    band_y = cy - size // 10
+    pygame.draw.rect(screen, (230, 230, 230),
+                     (cx - radius, band_y - band_h // 2, radius * 2, band_h))
+    # Small mouth curve (frown)
+    mouth_y = cy + size // 8
+    pygame.draw.arc(screen, (60, 30, 30),
+                    (cx - size // 6, mouth_y - size // 12, size // 3, size // 8),
+                    3.14, 0, 2)
+
+
 def _get_available_specialists(tech_tree, population):
     """Return list of specialist dicts the player can currently assign."""
     from game.data.unit_data import SPECIALISTS
@@ -310,6 +331,12 @@ class BaseScreenManager:
         self.queue_clear_rect = None
         self.queue_close_rect = None
 
+        # Nerve staple
+        self.nerve_staple_icon_rect = None
+        self.nerve_staple_popup_open = False
+        self.nerve_staple_confirm_rect = None
+        self.nerve_staple_cancel_rect = None
+
     def show_base_naming(self, unit, game):
         """Show the base naming dialog for a colony pod."""
         self.base_naming_unit = unit
@@ -330,6 +357,7 @@ class BaseScreenManager:
         self.selected_production_item = None
         self.queue_management_open = False
         self.citizen_context_open = False
+        self.nerve_staple_popup_open = False
 
     def draw_base_naming(self, screen):
         """Draw the base naming dialog."""
@@ -630,6 +658,18 @@ class BaseScreenManager:
         base_title_y = top_bar_y + top_bar_h + 6
         screen.blit(base_title_surf,
                     (screen_w // 2 - base_title_surf.get_width() // 2, base_title_y))
+
+        # DRONE RIOT banner — shown directly below the base title when rioting
+        if base.drone_riot:
+            riot_font = pygame.font.Font(None, 28)
+            riot_surf = riot_font.render("** DRONE RIOT **", True, (255, 60, 60))
+            riot_bg_w = riot_surf.get_width() + 20
+            riot_bg_h = riot_surf.get_height() + 6
+            riot_bg_x = screen_w // 2 - riot_bg_w // 2
+            riot_bg_y = base_title_y + base_title_surf.get_height() + 2
+            pygame.draw.rect(screen, (60, 10, 10), (riot_bg_x, riot_bg_y, riot_bg_w, riot_bg_h), border_radius=4)
+            pygame.draw.rect(screen, (200, 40, 40), (riot_bg_x, riot_bg_y, riot_bg_w, riot_bg_h), 2, border_radius=4)
+            screen.blit(riot_surf, (riot_bg_x + 10, riot_bg_y + 3))
 
         # TOP CENTER: Zoomed map view — fat cross domain (5×5 minus corners)
         map_view_w = 220
@@ -1064,6 +1104,22 @@ class BaseScreenManager:
                                civ_icon_size, civ_icon_size)
             draw_citizen_icon(screen, cx, civ_cy, civ_icon_size, ctype)
             self.civ_icon_rects.append((rect, ctype, spec_idx))
+
+        # Nerve staple button — red face with white blindfold, far right of citizen bar
+        # Only shown for player's own bases
+        if base.owner == game.player_faction_id:
+            ns_size = 36
+            ns_x = civilian_bar_x + civilian_bar_w - ns_size - 6
+            ns_y = civ_cy - ns_size // 2
+            self.nerve_staple_icon_rect = pygame.Rect(ns_x, ns_y, ns_size, ns_size)
+            _draw_nerve_staple_icon(screen, ns_x + ns_size // 2, civ_cy, ns_size,
+                                    already_stapled=base.nerve_stapled)
+        else:
+            self.nerve_staple_icon_rect = None
+
+        # Draw nerve staple popup if open
+        if self.nerve_staple_popup_open:
+            self._draw_nerve_staple_popup(screen, base, game)
 
         # GARRISON BAR: Units in base (always show bar like citizens panel)
         garrison_y = civilian_y + civilian_h + 30  # Increased spacing to avoid overlap
@@ -1779,6 +1835,83 @@ class BaseScreenManager:
                                      item_rect.centery - label_surf.get_height() // 2))
             self.citizen_context_item_rects.append((item_rect, action))
 
+    def _execute_nerve_staple(self, base, game):
+        """Apply nerve staple effect: eliminate drones, apply sanctions, track atrocity."""
+        from game.atrocity import commit_atrocity
+        base.nerve_stapled = True
+        base.calculate_population_happiness()
+
+        # Determine target faction: original owner if captured base within 50 turns
+        target_fid = None
+        if (base.turns_since_capture is not None and base.turns_since_capture < 50
+                and base.original_owner != game.player_faction_id):
+            target_fid = base.original_owner
+
+        commit_atrocity(game, 'nerve_staple', target_faction_id=target_fid)
+
+        sanction_turns = 10 * game.atrocity_count
+        game.set_status_message(
+            f"Nerve Stapling complete. {sanction_turns}-turn sanctions imposed."
+        )
+
+    def _draw_nerve_staple_popup(self, screen, base, game):
+        """Draw nerve staple confirmation dialog."""
+        from game.data import display as _display
+        box_w, box_h = 560, 260
+        box_x = _display.SCREEN_WIDTH // 2 - box_w // 2
+        box_y = _display.SCREEN_HEIGHT // 2 - box_h // 2
+
+        overlay = pygame.Surface((_display.SCREEN_WIDTH, _display.SCREEN_HEIGHT))
+        overlay.set_alpha(170)
+        overlay.fill((0, 0, 0))
+        screen.blit(overlay, (0, 0))
+
+        pygame.draw.rect(screen, (50, 20, 20), (box_x, box_y, box_w, box_h), border_radius=12)
+        pygame.draw.rect(screen, (180, 60, 60), (box_x, box_y, box_w, box_h), 3, border_radius=12)
+
+        title_surf = self.font.render("NERVE STAPLE", True, (240, 80, 80))
+        screen.blit(title_surf, (box_x + box_w // 2 - title_surf.get_width() // 2, box_y + 20))
+
+        atrocity_count = getattr(game, 'atrocity_count', 0)
+        sanction_turns = 10 * (atrocity_count + 1)
+        lines = [
+            "Nerve Stapling the citizens is an ATROCITY.",
+            f"All drones will be eliminated immediately.",
+            f"Commerce sanctions will last {sanction_turns} turns.",
+        ]
+        if (base.turns_since_capture is not None and base.turns_since_capture < 50
+                and base.original_owner != game.player_faction_id):
+            from game.data.data import FACTION_DATA
+            orig = FACTION_DATA[base.original_owner]
+            lines.append(f"{orig.get('$FACTION', orig['name'])} will never parley with us.")
+        for i, line in enumerate(lines):
+            col = (220, 180, 180) if i < 3 else (255, 140, 80)
+            ls = self.small_font.render(line, True, col)
+            screen.blit(ls, (box_x + box_w // 2 - ls.get_width() // 2, box_y + 80 + i * 22))
+
+        btn_w, btn_h = 140, 40
+        btn_y = box_y + box_h - 60
+        # Confirm button
+        cx = box_x + box_w // 2 - btn_w - 15
+        self.nerve_staple_confirm_rect = pygame.Rect(cx, btn_y, btn_w, btn_h)
+        is_hover_c = self.nerve_staple_confirm_rect.collidepoint(pygame.mouse.get_pos())
+        pygame.draw.rect(screen, (140, 30, 30) if is_hover_c else (100, 20, 20),
+                         self.nerve_staple_confirm_rect, border_radius=8)
+        pygame.draw.rect(screen, (200, 60, 60), self.nerve_staple_confirm_rect, 2, border_radius=8)
+        ok_s = self.font.render("PROCEED", True, (240, 200, 200))
+        screen.blit(ok_s, (self.nerve_staple_confirm_rect.centerx - ok_s.get_width() // 2,
+                            self.nerve_staple_confirm_rect.centery - ok_s.get_height() // 2))
+        # Cancel button
+        cx2 = box_x + box_w // 2 + 15
+        self.nerve_staple_cancel_rect = pygame.Rect(cx2, btn_y, btn_w, btn_h)
+        is_hover_x = self.nerve_staple_cancel_rect.collidepoint(pygame.mouse.get_pos())
+        pygame.draw.rect(screen, (60, 70, 80) if is_hover_x else (40, 50, 60),
+                         self.nerve_staple_cancel_rect, border_radius=8)
+        pygame.draw.rect(screen, (120, 140, 160), self.nerve_staple_cancel_rect, 2, border_radius=8)
+        cancel_s = self.font.render("CANCEL", True, (200, 210, 220))
+        screen.blit(cancel_s, (self.nerve_staple_cancel_rect.centerx - cancel_s.get_width() // 2,
+                                self.nerve_staple_cancel_rect.centery - cancel_s.get_height() // 2))
+
     def handle_base_view_right_click(self, pos, game):
         """Handle right-clicks in the base view screen (for garrison context menu)."""
         # Check if right-clicking on a garrison unit
@@ -2021,6 +2154,23 @@ class BaseScreenManager:
                 return None
 
             # Click outside popup closes it
+            return None
+
+        # Nerve staple popup handling (must be before other checks so popup captures all clicks)
+        if self.nerve_staple_popup_open:
+            if self.nerve_staple_confirm_rect and self.nerve_staple_confirm_rect.collidepoint(pos):
+                self._execute_nerve_staple(base, game)
+                self.nerve_staple_popup_open = False
+                return None
+            if self.nerve_staple_cancel_rect and self.nerve_staple_cancel_rect.collidepoint(pos):
+                self.nerve_staple_popup_open = False
+                return None
+            return None  # Consume all other clicks while popup is open
+
+        # Nerve staple icon click (own bases only, not already stapled)
+        if (not is_enemy_base and not base.nerve_stapled
+                and self.nerve_staple_icon_rect and self.nerve_staple_icon_rect.collidepoint(pos)):
+            self.nerve_staple_popup_open = True
             return None
 
         # Check map tile clicks (toggle worked/unworked) — only for own bases

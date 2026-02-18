@@ -134,6 +134,10 @@ class Faction:
         if not game:
             return 0
 
+        # Major atrocity (planet buster) permanently revokes voting rights
+        if self.id == game.player_faction_id and getattr(game, 'major_atrocity_committed', False):
+            return 0
+
         # Get all bases owned by this faction
         faction_bases = [b for b in game.bases if b.owner == self.id]
 

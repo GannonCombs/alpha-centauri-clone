@@ -5,17 +5,17 @@ Basic Concepts:
 Rainfall ✓ (not SMAC formula)
 Rockiness ✓ (not SMAC formula)
 Altitude ✓
-Pact of Brotherhood ◐
-Treaty of Friendship ◐
-Blood Truce ◐
+Pact of Brotherhood ✓
+Treaty of Friendship ◐ (waiting on moods)
+Blood Truce ✓
 Vendetta ✓
-Integrity
-Atrocities
-Drone Riots
+Integrity ✓
+Atrocities ✓
+Drone Riots ◐ (todo: prevention methods)
 Golden Age
-Morale ◐
+Morale ◐ (waiting on aliens)
 Monoliths ✓
-Artifacts ◐
+Artifacts ◐ (waiting on prototypes)
 Fungus/Xenofungus ◐
 Psi Combat ✓
 Waypoints
@@ -32,9 +32,9 @@ Ecology (Basic)
 Planetary Council ◐
 Planetary Governor ◐
 Commerce (Basic) ✓
-Victory and Defeat
-Territory/Borders ◐
-Might
+Victory and Defeat ✓
+Territory/Borders ◐ (waiting on mood, and confirm sea base tiles)
+Might (need formula)
 Disengage ◐
 Zone of Control ◐
 Bombardment ◐
@@ -43,11 +43,11 @@ Talents ✓
 Psych
 Landmarks, Volcanos, etc.
 Council Proposals ◐
-Nutrients ◐
+Nutrients ◐ (waiting on jungle, gene splicing)
 Minerals ◐
 Energy ◐
 Economy ✓
-Labs
+Labs (what is the formula?)
 Energy Reserves ◐
 Specialists ✓
 Diplomatic Relations ◐
@@ -61,13 +61,13 @@ Unit Cost (Advanced)
 Inefficiency (Advanced) ◐ (Needs Children's Creche piece)
 Ecology (Advanced)
 Commerce (Advanced) ◐ (planetary governor, global pact pieces)
-Score
-Victory (Diplomatic)
-Victory (Conquest)
-Victory (Transcendence)
-Victory (Economic)
+Score ◐ (todo: iron man in custom settings)
+Victory (Diplomatic) ◐ (need to ensure all victory criteria are accurate)
+Victory (Conquest) ◐
+Victory (Transcendence) ◐
+Victory (Economic) ◐
 Retirement
-Might Formula
+Might Formula (need full formula)
 Drones (Advanced)
 Bureaucracy ✓
 Ecology (Revised)
@@ -76,7 +76,7 @@ Morale (Advanced) ◐
 Hurry Cost
 Upgrade Cost
 Repair (Advanced) ✓
-Altitude (Advanced) ◐
+Altitude (Advanced) ◐ (raise terrain, global warming/cooling)
 Random Events(Advanced)
 Perihelion Event
 Wild Natives and Fungus

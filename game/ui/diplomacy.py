@@ -262,6 +262,11 @@ class DiplomacyManager:
                 # If uncommitted (first meeting), establish Truce
                 if current_relation == "Uncommitted":
                     self.diplo_relations[faction_id] = 'Truce'
+                    # Record Blood Truce expiry: 15–20 turns from now
+                    if self.game is not None:
+                        import random
+                        expiry = self.game.turn + random.randint(15, 20)
+                        self.game.truce_expiry_turns[faction_id] = expiry
             # Exit immediately - no dialog, just close
             return 'close'
         elif action == 'diplo':
@@ -270,11 +275,13 @@ class DiplomacyManager:
             self.diplo_stage = 'proposal'
         elif action == 'propose_pact':
             # Player proposes pact - AI decides immediately
-            # For now, always accept (later: base on relationship)
             faction_id = next((i for i, f in enumerate(FACTION_DATA) if f['name'] == self.target_faction['name']), None)
-            if faction_id is not None:
+            permanent_vendetta = self.game and faction_id in getattr(self.game, 'permanent_vendetta_factions', set())
+            if faction_id is not None and not permanent_vendetta:
                 self.diplo_relations[faction_id] = 'Pact'
-            self.diplo_stage = 'accept_pact'  # AI accepts (show MAKEPACT)
+                self.diplo_stage = 'accept_pact'  # AI accepts (show MAKEPACT)
+            else:
+                self.diplo_stage = 'reject_pact'  # AI refuses
         elif action == 'accept_pact':
             # After showing AI's acceptance, return to diplo
             self.diplo_stage = 'diplo'
@@ -284,16 +291,21 @@ class DiplomacyManager:
         elif action == 'propose_treaty':
             # Player proposes treaty - AI decides immediately (no intermediate dialog)
             faction_id = next((i for i, f in enumerate(FACTION_DATA) if f['name'] == self.target_faction['name']), None)
-            if faction_id is not None:
+            permanent_vendetta = self.game and faction_id in getattr(self.game, 'permanent_vendetta_factions', set())
+            if faction_id is not None and not permanent_vendetta:
                 self.diplo_relations[faction_id] = 'Treaty'
-            self.diplo_stage = 'accept_treaty'  # AI accepts (for now, always accept)
+                self.diplo_stage = 'accept_treaty'  # AI accepts
+            else:
+                self.diplo_stage = 'reject_treaty'  # AI refuses
         elif action == 'ai_decide_treaty':
             # AI decides whether to accept player's treaty proposal
-            # For now, always accept (later: base on relationship)
             faction_id = next((i for i, f in enumerate(FACTION_DATA) if f['name'] == self.target_faction['name']), None)
-            if faction_id is not None:
+            permanent_vendetta = self.game and faction_id in getattr(self.game, 'permanent_vendetta_factions', set())
+            if faction_id is not None and not permanent_vendetta:
                 self.diplo_relations[faction_id] = 'Treaty'
-            self.diplo_stage = 'accept_treaty'  # AI accepts
+                self.diplo_stage = 'accept_treaty'  # AI accepts
+            else:
+                self.diplo_stage = 'reject_treaty'  # AI refuses
         elif action == 'accept_treaty':
             # After showing AI's acceptance, return to diplo
             self.diplo_stage = 'diplo'

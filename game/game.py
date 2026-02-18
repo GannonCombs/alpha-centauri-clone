@@ -92,6 +92,19 @@ class Game:
         self.supply_pod_tech_event = None  # Tech event to show immediately after pod message
         self.mid_turn_upkeep = False  # True when upkeep phase triggered mid-turn (skip _start_new_turn)
 
+        # Atrocity tracking
+        self.atrocity_count = 0                  # Total atrocities committed by player
+        self.sanctions_turns_remaining = 0       # Turns of commerce sanctions remaining
+        self.permanent_vendetta_factions = set() # Faction IDs that will never make peace
+        self.major_atrocity_committed = False    # Planet buster used — votes permanently 0
+        self.pending_major_atrocity_popup = False  # Show major atrocity declaration popup
+
+        # Integrity (0=Noble … 5=Treacherous, only decreases)
+        self.integrity_level = 0
+
+        # Blood Truce expiry: faction_id -> turn number when Truce expires
+        self.truce_expiry_turns = {}
+
         # Battle system
         self.combat = Combat(self)
         self.pending_battle = None  # Dict with attacker, defender, target_x, target_y
@@ -2810,6 +2823,22 @@ class Game:
         # Reset auto-end turn tracking
         self.last_unit_action = None
 
+        # Count down commerce sanctions
+        if self.sanctions_turns_remaining > 0:
+            self.sanctions_turns_remaining -= 1
+            if self.sanctions_turns_remaining == 0:
+                self.set_status_message("Economic sanctions against us have been lifted.")
+
+        # Expire Blood Truces that have run their course
+        if self.truce_expiry_turns and hasattr(self, 'ui_manager') and self.ui_manager:
+            diplo = self.ui_manager.diplomacy
+            expired = [fid for fid, expiry in self.truce_expiry_turns.items()
+                       if self.turn >= expiry]
+            for fid in expired:
+                if diplo.diplo_relations.get(fid) == 'Truce':
+                    diplo.diplo_relations[fid] = 'Uncommitted'
+                del self.truce_expiry_turns[fid]
+
         # Advance terraforming for player formers
         from game.terraforming import process_terraforming
         for unit in self.units:
@@ -3152,7 +3181,13 @@ class Game:
                 'eliminated_factions': list(self.eliminated_factions),
                 'factions_that_had_bases': list(self.factions_that_had_bases),
                 'infiltrated_datalinks': list(self.infiltrated_datalinks),
-                'diplo_relations': self.ui_manager.diplomacy.diplo_relations.copy() if hasattr(self, 'ui_manager') and hasattr(self.ui_manager, 'diplomacy') else {}
+                'diplo_relations': self.ui_manager.diplomacy.diplo_relations.copy() if hasattr(self, 'ui_manager') and hasattr(self.ui_manager, 'diplomacy') else {},
+                'atrocity_count': self.atrocity_count,
+                'sanctions_turns_remaining': self.sanctions_turns_remaining,
+                'permanent_vendetta_factions': list(self.permanent_vendetta_factions),
+                'major_atrocity_committed': self.major_atrocity_committed,
+                'integrity_level': self.integrity_level,
+                'truce_expiry_turns': {str(k): v for k, v in self.truce_expiry_turns.items()}
             },
             'map': self.game_map.to_dict(),
             'units': [u.to_dict() for u in self.units],
@@ -3205,6 +3240,12 @@ class Game:
         game.eliminated_factions = set(gs.get('eliminated_factions', []))
         game.factions_that_had_bases = set(gs.get('factions_that_had_bases', []))
         game.infiltrated_datalinks = set(gs.get('infiltrated_datalinks', []))
+        game.atrocity_count = gs.get('atrocity_count', 0)
+        game.sanctions_turns_remaining = gs.get('sanctions_turns_remaining', 0)
+        game.permanent_vendetta_factions = set(gs.get('permanent_vendetta_factions', []))
+        game.major_atrocity_committed = gs.get('major_atrocity_committed', False)
+        game.integrity_level = gs.get('integrity_level', 0)
+        game.truce_expiry_turns = {int(k): v for k, v in gs.get('truce_expiry_turns', {}).items()}
         # Store diplo_relations for later restoration (after ui_manager is created)
         saved_diplo_relations = gs.get('diplo_relations', {})
 
@@ -3291,6 +3332,7 @@ class Game:
         game.supply_pod_message = None
         game.supply_pod_tech_event = None
         game.mid_turn_upkeep = False
+        game.pending_major_atrocity_popup = False
         game.pending_artifact_link = None
         game.pending_busy_former = None
         game.pending_terraform_cost = None

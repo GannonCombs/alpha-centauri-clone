@@ -115,6 +115,27 @@ class UIManager:
         self.pact_evacuation_ok_rect = None
         self.pact_evacuation_pending_battle = None  # Store battle to proceed after dismissing popup
 
+        # Renounce Pact popup (player initiates pact renouncement from commlink right-click)
+        self.renounce_pact_popup_active = False
+        self.renounce_pact_faction_id = None
+        self.renounce_pact_ok_rect = None
+
+        # Pact pronounce popup (pact partner pronounces on a surprise attacker)
+        self.pact_pronounce_queue = []   # List of {'pactbro_id': int, 'attacker_id': int}
+        self.pact_pronounce_popup_active = False
+        self.pact_pronounce_current = None   # current {'pactbro_id', 'attacker_id'}
+        self.pact_pronounce_ok_rect = None
+
+        # Major atrocity popup (planet buster — all factions declare vendetta)
+        self.major_atrocity_popup_active = False
+        self.major_atrocity_ok_rect = None
+
+        # Raze base popup (player presses B while in own base)
+        self.raze_base_popup_active = False
+        self.raze_base_target = None   # The Base object to raze
+        self.raze_base_ok_rect = None
+        self.raze_base_cancel_rect = None
+
         # Unit stack panel
         self.unit_stack_scroll_offset = 0
         self.unit_stack_left_arrow_rect = None
@@ -206,6 +227,19 @@ class UIManager:
                 if self.new_designs_popup_active:
                     self.new_designs_popup_active = False
                     game.new_designs_available = False
+                    return True
+                if self.renounce_pact_popup_active:
+                    self._resolve_renounce_pact(game)
+                    return True
+                if self.pact_pronounce_popup_active:
+                    self._advance_pact_pronounce()
+                    return True
+                if self.major_atrocity_popup_active:
+                    self.major_atrocity_popup_active = False
+                    game.pending_major_atrocity_popup = False
+                    return True
+                if self.raze_base_popup_active:
+                    self._execute_raze_base(game)
                     return True
 
             # Block all game keys while modal popups are open
@@ -418,6 +452,31 @@ class UIManager:
         # 2. Mouse Logic
         # Right-click handling (for context menus)
         if event.type == pygame.MOUSEBUTTONDOWN and event.button == 3:
+            # Commlink panel: right-click faction button → pact options
+            if self.commlink_open and self.active_screen == "GAME":
+                pos = event.pos
+                for btn in self.faction_buttons:
+                    if btn.rect.collidepoint(pos):
+                        # Find which faction this button belongs to
+                        fid = next((f for f in game.faction_contacts
+                                    if f != game.player_faction_id
+                                    and f not in game.eliminated_factions
+                                    and FACTION_DATA[f]['$FULLNAME'] == btn.text), None)
+                        if fid is not None:
+                            relation = self.diplomacy.diplo_relations.get(fid, 'Uncommitted')
+                            options = []
+                            if relation == 'Pact':
+                                def _make_renounce(faction_id):
+                                    def _do():
+                                        self.renounce_pact_faction_id = faction_id
+                                        self.renounce_pact_popup_active = True
+                                        self.commlink_open = False
+                                    return _do
+                                options.append(('Renounce Pact', _make_renounce(fid)))
+                            if options:
+                                self.context_menu.show(pos[0], pos[1], options)
+                                return True
+
             # Handle garrison context menu in base view (read-only for enemy bases)
             if self.active_screen == "BASE_VIEW":
                 _vb = self.base_screens.viewing_base
@@ -523,6 +582,12 @@ class UIManager:
                     # Set relation to Vendetta
                     self.diplomacy.diplo_relations[self.break_treaty_target_faction] = "Vendetta"
                     self.break_treaty_popup_active = False
+                    # Clear any Blood Truce expiry timer
+                    game.truce_expiry_turns.pop(self.break_treaty_target_faction, None)
+
+                    # Breaking any agreement lowers integrity
+                    from game.atrocity import drop_integrity
+                    drop_integrity(game)
 
                     # If there was a pact, evacuate units and show popup
                     if had_pact:
@@ -575,6 +640,38 @@ class UIManager:
                 # Don't allow clicks through popup
                 return True
 
+            # Renounce Pact popup
+            if self.renounce_pact_popup_active:
+                pos = pygame.mouse.get_pos()
+                if self.renounce_pact_ok_rect and self.renounce_pact_ok_rect.collidepoint(pos):
+                    self._resolve_renounce_pact(game)
+                return True
+
+            # Pact pronounce popup (pact partner reacts to surprise attack)
+            if self.pact_pronounce_popup_active:
+                pos = pygame.mouse.get_pos()
+                if self.pact_pronounce_ok_rect and self.pact_pronounce_ok_rect.collidepoint(pos):
+                    self._advance_pact_pronounce()
+                return True
+
+            # Major atrocity popup (planet buster — all factions declare vendetta)
+            if self.major_atrocity_popup_active:
+                pos = pygame.mouse.get_pos()
+                if self.major_atrocity_ok_rect and self.major_atrocity_ok_rect.collidepoint(pos):
+                    self.major_atrocity_popup_active = False
+                    game.pending_major_atrocity_popup = False
+                return True
+
+            # Raze base popup
+            if self.raze_base_popup_active:
+                pos = pygame.mouse.get_pos()
+                if self.raze_base_ok_rect and self.raze_base_ok_rect.collidepoint(pos):
+                    self._execute_raze_base(game)
+                elif self.raze_base_cancel_rect and self.raze_base_cancel_rect.collidepoint(pos):
+                    self.raze_base_popup_active = False
+                    self.raze_base_target = None
+                return True
+
             # Surprise attack popup button
             if self.surprise_attack_popup_active:
                 pos = pygame.mouse.get_pos()
@@ -583,6 +680,7 @@ class UIManager:
                     # Set both to Vendetta
                     self.diplomacy.diplo_relations[self.surprise_attack_faction] = "Vendetta"
                     self.surprise_attack_popup_active = False
+                    self._queue_pact_pronounce_popups(self.surprise_attack_faction, game)
                     self.surprise_attack_faction = None
                     return True
                 # Don't allow clicks through popup
@@ -949,7 +1047,11 @@ class UIManager:
                 self.pact_evacuation_popup_active or
                 self.busy_former_popup_active or
                 self.terraform_cost_popup_active or
-                self.movement_overflow_popup_active)
+                self.movement_overflow_popup_active or
+                self.renounce_pact_popup_active or
+                self.pact_pronounce_popup_active or
+                self.major_atrocity_popup_active or
+                self.raze_base_popup_active)
 
     def draw(self, screen, game, renderer=None):
         """Render the UI panel with game info, buttons, and active modals.
@@ -999,6 +1101,21 @@ class UIManager:
 
         credits_text = self.small_font.render(f"Credits: {game.energy_credits}", True, (200, 220, 100))
         screen.blit(credits_text, (info_x, info_y + 18))
+
+        # Integrity level
+        from game.atrocity import get_integrity_label
+        integrity_label = get_integrity_label(game)
+        _INTEGRITY_COLORS = {
+            'Noble':       (140, 210, 255),
+            'Faithful':    (160, 220, 160),
+            'Scrupulous':  (200, 220, 140),
+            'Dependable':  (220, 200, 120),
+            'Ruthless':    (220, 140,  80),
+            'Treacherous': (220,  60,  60),
+        }
+        int_color = _INTEGRITY_COLORS.get(integrity_label, COLOR_TEXT)
+        int_text = self.small_font.render(f"Integrity: {integrity_label}", True, int_color)
+        screen.blit(int_text, (info_x, info_y + 36))
 
         # Layer 3: Fixed Buttons
         self.main_menu_button.draw(screen, self.font)
@@ -1418,6 +1535,22 @@ class UIManager:
 
         if self.pact_evacuation_popup_active:
             self._draw_pact_evacuation_popup(screen, game)
+
+        if self.renounce_pact_popup_active:
+            self._draw_renounce_pact_popup(screen, game)
+
+        if self.pact_pronounce_popup_active:
+            self._draw_pact_pronounce_popup(screen, game)
+
+        # Major atrocity popup (planet buster — all factions declare vendetta)
+        if not self.major_atrocity_popup_active and getattr(game, 'pending_major_atrocity_popup', False):
+            self.major_atrocity_popup_active = True
+
+        if self.major_atrocity_popup_active:
+            self._draw_major_atrocity_popup(screen, game)
+
+        if self.raze_base_popup_active and self.raze_base_target:
+            self._draw_raze_base_popup(screen, game)
 
         # Game over screen (highest priority)
         if game.game_over:
@@ -2192,9 +2325,293 @@ class UIManager:
         screen.blit(ok_text, (self.pact_evacuation_ok_rect.centerx - ok_text.get_width() // 2,
                              self.pact_evacuation_ok_rect.centery - 10))
 
+    # ------------------------------------------------------------------
+    # Pact renouncement helpers
+    # ------------------------------------------------------------------
+
+    def _resolve_renounce_pact(self, game):
+        """Apply pact renouncement: drop to Treaty, evacuate units, close popup."""
+        fid = self.renounce_pact_faction_id
+        self.renounce_pact_popup_active = False
+        self.renounce_pact_faction_id = None
+        if fid is None:
+            return
+        # Drop relation to Treaty
+        self.diplomacy.diplo_relations[fid] = 'Treaty'
+        # Renouncing a pact is breaking an agreement — integrity drops
+        from game.atrocity import drop_integrity
+        drop_integrity(game)
+        # Evacuate units in each other's bases
+        player_evac = game.evacuate_units_from_former_pact(game.player_faction_id, fid)
+        game.evacuate_units_from_former_pact(fid, game.player_faction_id)
+        if player_evac > 0:
+            self.pact_evacuation_popup_active = True
+            self.pact_evacuation_count = player_evac
+            self.pact_evacuation_pending_battle = None
+
+    def _queue_pact_pronounce_popups(self, attacker_id, game):
+        """Queue pact-pronounce popups for every current pact partner."""
+        for fid, rel in self.diplomacy.diplo_relations.items():
+            if rel == 'Pact' and fid != attacker_id:
+                self.pact_pronounce_queue.append(
+                    {'pactbro_id': fid, 'attacker_id': attacker_id}
+                )
+        self._advance_pact_pronounce()
+
+    def _advance_pact_pronounce(self):
+        """Show the next queued pact-pronounce popup, or close if queue empty."""
+        self.pact_pronounce_popup_active = False
+        self.pact_pronounce_current = None
+        if self.pact_pronounce_queue:
+            self.pact_pronounce_current = self.pact_pronounce_queue.pop(0)
+            self.pact_pronounce_popup_active = True
+
+    def _draw_renounce_pact_popup(self, screen, game):
+        """Draw the AI response popup when player renounces a pact."""
+        fid = self.renounce_pact_faction_id
+        if fid is None:
+            return
+
+        overlay = pygame.Surface((display.SCREEN_WIDTH, display.SCREEN_HEIGHT))
+        overlay.set_alpha(180)
+        overlay.fill((0, 0, 0))
+        screen.blit(overlay, (0, 0))
+
+        box_w, box_h = 640, 280
+        box_x = display.SCREEN_WIDTH // 2 - box_w // 2
+        box_y = display.SCREEN_HEIGHT // 2 - box_h // 2
+        pygame.draw.rect(screen, (30, 35, 45), (box_x, box_y, box_w, box_h), border_radius=12)
+        pygame.draw.rect(screen, (120, 140, 180), (box_x, box_y, box_w, box_h), 3, border_radius=12)
+
+        faction_data = FACTION_DATA[fid]
+        title = f"PACT RENOUNCED — {faction_data['name'].upper()}"
+        title_surf = self.font.render(title, True, (180, 200, 240))
+        screen.blit(title_surf, (box_x + box_w // 2 - title_surf.get_width() // 2, box_y + 24))
+
+        # BROKEPACT dialog: "I have little use for a false $PACTBROTHERORSISTER0, $TITLE1 $NAME2."
+        player_fd = FACTION_DATA[game.player_faction_id]
+        player_gender = player_fd.get('gender', 'M')
+        pact_sibling = "Pact Sister" if player_gender == 'F' else "Pact Brother"
+        player_title = player_fd.get('$TITLE', '')
+        player_name  = player_fd.get('$FULLNAME', player_fd.get('leader', ''))
+        player_display = f"{player_title} {player_name}".strip()
+        raw_quote = (f'"I have little use for a false {pact_sibling}, '
+                     f'{player_display}. '
+                     f'Tread carefully when next we meet."')
+        # Word-wrap to fit box
+        words = raw_quote.split()
+        lines, current = [], ''
+        max_w = box_w - 60
+        for word in words:
+            test = f"{current} {word}".strip()
+            if self.small_font.size(test)[0] <= max_w:
+                current = test
+            else:
+                if current:
+                    lines.append(current)
+                current = word
+        if current:
+            lines.append(current)
+        for i, line in enumerate(lines):
+            ls = self.small_font.render(line, True, (200, 210, 230))
+            screen.blit(ls, (box_x + box_w // 2 - ls.get_width() // 2, box_y + 80 + i * 22))
+
+        btn_w, btn_h = 140, 46
+        ok_x = box_x + box_w // 2 - btn_w // 2
+        btn_y = box_y + box_h - 68
+        self.renounce_pact_ok_rect = pygame.Rect(ok_x, btn_y, btn_w, btn_h)
+        is_hover = self.renounce_pact_ok_rect.collidepoint(pygame.mouse.get_pos())
+        pygame.draw.rect(screen, (60, 80, 110) if is_hover else (40, 55, 80),
+                         self.renounce_pact_ok_rect, border_radius=8)
+        pygame.draw.rect(screen, (120, 150, 200), self.renounce_pact_ok_rect, 3, border_radius=8)
+        ok_s = self.font.render("OK", True, COLOR_TEXT)
+        screen.blit(ok_s, (self.renounce_pact_ok_rect.centerx - ok_s.get_width() // 2,
+                            self.renounce_pact_ok_rect.centery - ok_s.get_height() // 2))
+
+    def _draw_pact_pronounce_popup(self, screen, game):
+        """Draw pact-brother/sister pronouncement popup after a surprise attack."""
+        info = self.pact_pronounce_current
+        if not info:
+            return
+
+        overlay = pygame.Surface((display.SCREEN_WIDTH, display.SCREEN_HEIGHT))
+        overlay.set_alpha(180)
+        overlay.fill((0, 0, 0))
+        screen.blit(overlay, (0, 0))
+
+        box_w, box_h = 620, 230
+        box_x = display.SCREEN_WIDTH // 2 - box_w // 2
+        box_y = display.SCREEN_HEIGHT // 2 - box_h // 2
+        pygame.draw.rect(screen, (35, 30, 20), (box_x, box_y, box_w, box_h), border_radius=12)
+        pygame.draw.rect(screen, (200, 160, 80), (box_x, box_y, box_w, box_h), 3, border_radius=12)
+
+        title_surf = self.font.render("PACT RESPONSE", True, (240, 200, 100))
+        screen.blit(title_surf, (box_x + box_w // 2 - title_surf.get_width() // 2, box_y + 24))
+
+        bro_name  = FACTION_DATA[info['pactbro_id']]['name']
+        atk_name  = FACTION_DATA[info['attacker_id']]['name']
+        # "Pact Brother" vs "Pact Sister" based on leader gender
+        gender = FACTION_DATA[info['pactbro_id']].get('gender', 'M')
+        sibling = 'Pact Sister' if gender == 'F' else 'Pact Brother'
+
+        line1 = f"On behalf of your pact, {bro_name}"
+        line2 = f"({sibling}) has pronounced Vendetta on {atk_name}!"
+        for i, line in enumerate([line1, line2]):
+            ls = self.small_font.render(line, True, (220, 210, 180))
+            screen.blit(ls, (box_x + box_w // 2 - ls.get_width() // 2, box_y + 90 + i * 24))
+
+        btn_w, btn_h = 140, 46
+        ok_x = box_x + box_w // 2 - btn_w // 2
+        btn_y = box_y + box_h - 64
+        self.pact_pronounce_ok_rect = pygame.Rect(ok_x, btn_y, btn_w, btn_h)
+        is_hover = self.pact_pronounce_ok_rect.collidepoint(pygame.mouse.get_pos())
+        pygame.draw.rect(screen, (90, 70, 30) if is_hover else (65, 50, 20),
+                         self.pact_pronounce_ok_rect, border_radius=8)
+        pygame.draw.rect(screen, (200, 160, 80), self.pact_pronounce_ok_rect, 3, border_radius=8)
+        ok_s = self.font.render("OK", True, COLOR_TEXT)
+        screen.blit(ok_s, (self.pact_pronounce_ok_rect.centerx - ok_s.get_width() // 2,
+                            self.pact_pronounce_ok_rect.centery - ok_s.get_height() // 2))
+
+    def _draw_raze_base_popup(self, screen, game):
+        """Confirm dialog before razing (obliterating) an own base."""
+        base = self.raze_base_target
+        if not base:
+            return
+
+        overlay = pygame.Surface((display.SCREEN_WIDTH, display.SCREEN_HEIGHT))
+        overlay.set_alpha(170)
+        overlay.fill((0, 0, 0))
+        screen.blit(overlay, (0, 0))
+
+        box_w, box_h = 560, 230
+        box_x = display.SCREEN_WIDTH // 2 - box_w // 2
+        box_y = display.SCREEN_HEIGHT // 2 - box_h // 2
+        pygame.draw.rect(screen, (45, 20, 10), (box_x, box_y, box_w, box_h), border_radius=12)
+        pygame.draw.rect(screen, (200, 100, 40), (box_x, box_y, box_w, box_h), 3, border_radius=12)
+
+        title_surf = self.font.render("RAZE BASE", True, (240, 140, 60))
+        screen.blit(title_surf, (box_x + box_w // 2 - title_surf.get_width() // 2, box_y + 20))
+
+        atrocity_count = getattr(game, 'atrocity_count', 0)
+        sanction_turns = 10 * (atrocity_count + 1)
+        lines = [
+            f'Raze "{base.name}" and kill all {base.population} citizen(s)?',
+            "This is an ATROCITY against civilian populations.",
+            f"Commerce sanctions will last {sanction_turns} turns.",
+        ]
+        for i, line in enumerate(lines):
+            col = (255, 160, 80) if i == 1 else (210, 190, 170)
+            ls = self.small_font.render(line, True, col)
+            screen.blit(ls, (box_x + box_w // 2 - ls.get_width() // 2, box_y + 75 + i * 24))
+
+        btn_w, btn_h = 140, 40
+        btn_y = box_y + box_h - 58
+        # OK (raze)
+        ok_x = box_x + box_w // 2 - btn_w - 15
+        self.raze_base_ok_rect = pygame.Rect(ok_x, btn_y, btn_w, btn_h)
+        is_hover_ok = self.raze_base_ok_rect.collidepoint(pygame.mouse.get_pos())
+        pygame.draw.rect(screen, (140, 50, 20) if is_hover_ok else (100, 35, 10),
+                         self.raze_base_ok_rect, border_radius=8)
+        pygame.draw.rect(screen, (220, 100, 40), self.raze_base_ok_rect, 2, border_radius=8)
+        ok_s = self.font.render("RAZE", True, (255, 210, 170))
+        screen.blit(ok_s, (self.raze_base_ok_rect.centerx - ok_s.get_width() // 2,
+                            self.raze_base_ok_rect.centery - ok_s.get_height() // 2))
+        # Cancel
+        cx2 = box_x + box_w // 2 + 15
+        self.raze_base_cancel_rect = pygame.Rect(cx2, btn_y, btn_w, btn_h)
+        is_hover_x = self.raze_base_cancel_rect.collidepoint(pygame.mouse.get_pos())
+        pygame.draw.rect(screen, (60, 70, 80) if is_hover_x else (40, 50, 60),
+                         self.raze_base_cancel_rect, border_radius=8)
+        pygame.draw.rect(screen, (120, 140, 160), self.raze_base_cancel_rect, 2, border_radius=8)
+        cancel_s = self.font.render("CANCEL", True, (200, 210, 220))
+        screen.blit(cancel_s, (self.raze_base_cancel_rect.centerx - cancel_s.get_width() // 2,
+                                self.raze_base_cancel_rect.centery - cancel_s.get_height() // 2))
+
+    def _execute_raze_base(self, game):
+        """Destroy the base and apply atrocity consequences."""
+        from game.atrocity import commit_atrocity
+        base = self.raze_base_target
+        if not base:
+            self.raze_base_popup_active = False
+            return
+
+        # Determine target faction (original owner if captured base)
+        target_fid = None
+        if base.original_owner != game.player_faction_id:
+            target_fid = base.original_owner
+
+        base_name = base.name
+
+        # Remove the base from the map and game
+        tile = game.game_map.get_tile(base.x, base.y)
+        if tile:
+            tile.base = None
+        if base in game.bases:
+            game.bases.remove(base)
+
+        # Close base view if it was open
+        if self.base_screens.viewing_base is base:
+            self.base_screens.viewing_base = None
+
+        game.territory.update_territory(game.bases)
+        game.check_faction_elimination()
+        game.check_victory()
+
+        commit_atrocity(game, 'obliterate_base', target_faction_id=target_fid)
+
+        sanction_turns = 10 * game.atrocity_count
+        game.set_status_message(
+            f"{base_name} razed. {sanction_turns}-turn commerce sanctions imposed."
+        )
+
+        self.raze_base_popup_active = False
+        self.raze_base_target = None
+
+    def _draw_major_atrocity_popup(self, screen, game):
+        """Draw MAJOR ATROCITY popup: planet buster used — all factions declare vendetta."""
+        overlay = pygame.Surface((display.SCREEN_WIDTH, display.SCREEN_HEIGHT))
+        overlay.set_alpha(190)
+        overlay.fill((0, 0, 0))
+        screen.blit(overlay, (0, 0))
+
+        box_w, box_h = 620, 280
+        box_x = display.SCREEN_WIDTH // 2 - box_w // 2
+        box_y = display.SCREEN_HEIGHT // 2 - box_h // 2
+        pygame.draw.rect(screen, (60, 10, 10), (box_x, box_y, box_w, box_h), border_radius=12)
+        pygame.draw.rect(screen, (200, 40, 40), (box_x, box_y, box_w, box_h), 3, border_radius=12)
+
+        title_surf = self.font.render("MAJOR ATROCITY COMMITTED", True, (255, 60, 60))
+        screen.blit(title_surf, (box_x + box_w // 2 - title_surf.get_width() // 2, box_y + 20))
+
+        sanction_turns = 10 * getattr(game, 'atrocity_count', 1)
+        lines = [
+            "The use of a Planet Buster is an unforgivable crime",
+            "against all humanity on Chiron.",
+            f"ALL FACTIONS have declared Vendetta against us.",
+            f"Commerce sanctions imposed for {sanction_turns} turns.",
+            "Our votes in the Planetary Council are forfeit forever.",
+        ]
+        for i, line in enumerate(lines):
+            col = (255, 120, 120) if i == 2 else (210, 180, 180)
+            ls = self.small_font.render(line, True, col)
+            screen.blit(ls, (box_x + box_w // 2 - ls.get_width() // 2, box_y + 72 + i * 22))
+
+        btn_w, btn_h = 120, 40
+        ok_x = box_x + box_w // 2 - btn_w // 2
+        btn_y = box_y + box_h - 60
+        self.major_atrocity_ok_rect = pygame.Rect(ok_x, btn_y, btn_w, btn_h)
+        is_hover = self.major_atrocity_ok_rect.collidepoint(pygame.mouse.get_pos())
+        pygame.draw.rect(screen, (100, 20, 20) if is_hover else (70, 15, 15),
+                         self.major_atrocity_ok_rect, border_radius=8)
+        pygame.draw.rect(screen, (200, 50, 50), self.major_atrocity_ok_rect, 2, border_radius=8)
+        ok_s = self.font.render("OK", True, (240, 200, 200))
+        screen.blit(ok_s, (self.major_atrocity_ok_rect.centerx - ok_s.get_width() // 2,
+                            self.major_atrocity_ok_rect.centery - ok_s.get_height() // 2))
+
     def _draw_game_over(self, screen, game):
-        """Draw the game over screen with victory/defeat message and buttons."""
+        """Draw the game over screen with victory/defeat message, score, and buttons."""
         from game.data.display import COLOR_BUTTON, COLOR_BUTTON_HOVER, COLOR_BUTTON_BORDER, COLOR_BUTTON_HIGHLIGHT
+        from game.score import calculate_score
 
         # Semi-transparent overlay
         overlay = pygame.Surface((display.SCREEN_WIDTH, display.SCREEN_HEIGHT))
@@ -2202,8 +2619,8 @@ class UIManager:
         overlay.fill((10, 15, 20))
         screen.blit(overlay, (0, 0))
 
-        # Dialog box
-        dialog_w, dialog_h = 600, 400
+        # Dialog box — taller to fit score breakdown
+        dialog_w, dialog_h = 620, 560
         dialog_x = display.SCREEN_WIDTH // 2 - dialog_w // 2
         dialog_y = display.SCREEN_HEIGHT // 2 - dialog_h // 2
         dialog_rect = pygame.Rect(dialog_x, dialog_y, dialog_w, dialog_h)
@@ -2213,29 +2630,86 @@ class UIManager:
 
         # Title
         title_font = pygame.font.Font(None, 48)
-        if game.winner == game.player_id:
-            title_text = "VICTORY!"
+        player_wins = getattr(game, 'victory_type', None) is not None
+        if player_wins:
+            vtype = game.victory_type.capitalize()
+            title_text = f"VICTORY! ({vtype})"
             title_color = (100, 255, 100)
-            message = "You have conquered all enemy bases!"
         else:
             title_text = "DEFEAT"
             title_color = (255, 100, 100)
-            message = "All your bases have been destroyed."
 
         title_surf = title_font.render(title_text, True, title_color)
-        screen.blit(title_surf, (dialog_x + dialog_w // 2 - title_surf.get_width() // 2, dialog_y + 40))
+        screen.blit(title_surf, (dialog_x + dialog_w // 2 - title_surf.get_width() // 2, dialog_y + 24))
 
-        # Message
-        message_surf = self.font.render(message, True, COLOR_TEXT)
-        screen.blit(message_surf, (dialog_x + dialog_w // 2 - message_surf.get_width() // 2, dialog_y + 120))
+        # Score calculation
+        try:
+            sc = calculate_score(game)
+        except Exception:
+            sc = None
 
-        # Buttons
-        button_y = dialog_y + dialog_h - 100
+        y = dialog_y + 80
+
+        if sc is not None:
+            # Total score — prominent
+            score_font = pygame.font.Font(None, 42)
+            score_surf = score_font.render(f"SCORE:  {sc['total']}", True, (220, 200, 100))
+            screen.blit(score_surf, (dialog_x + dialog_w // 2 - score_surf.get_width() // 2, y))
+            y += 46
+
+            # Divider
+            pygame.draw.line(screen, (80, 100, 110), (dialog_x + 30, y), (dialog_x + dialog_w - 30, y), 1)
+            y += 10
+
+            # Breakdown rows
+            breakdown = [
+                ("Citizens",          sc['citizens'],        None),
+                ("Diplo/Econ bonus",  sc['diplo_bonus'],     None if sc['diplo_bonus'] else "(victory type only)"),
+                ("Surrendered bases", sc['surrendered'],     None),
+                ("Commerce income",   sc['commerce'],        None),
+                ("Technologies",      sc['techs'],           None),
+                ("Transcendent Thought", sc['transcendent'], None),
+                (f"Secret Projects (×{sc['secret_count']})", sc['secret_projects'], None),
+                ("Victory bonus",     sc['victory_bonus'],   None),
+            ]
+
+            row_y = y
+            col_label_x = dialog_x + 40
+            col_value_x = dialog_x + dialog_w - 80
+            line_h = 24
+            for label, value, note in breakdown:
+                if note and value == 0:
+                    color = (80, 90, 100)
+                    row_surf = self.small_font.render(f"{label}:  —", True, color)
+                else:
+                    color = (180, 200, 190) if value > 0 else (100, 110, 120)
+                    row_surf = self.small_font.render(label + ":", True, color)
+                    val_surf = self.small_font.render(str(value), True, color)
+                    screen.blit(val_surf, (col_value_x - val_surf.get_width(), row_y + 2))
+                screen.blit(row_surf, (col_label_x, row_y + 2))
+                row_y += line_h
+
+            y = row_y + 6
+
+            # Divider
+            pygame.draw.line(screen, (80, 100, 110), (dialog_x + 30, y), (dialog_x + dialog_w - 30, y), 1)
+            y += 8
+
+            # Native life multiplier note
+            nl = sc['native_life']
+            if nl != 'average':
+                pct = "+25%" if nl == 'abundant' else "-25%"
+                nl_color = (100, 200, 100) if nl == 'abundant' else (200, 130, 80)
+                nl_surf = self.small_font.render(f"Native Life ({nl.capitalize()}):  {pct}", True, nl_color)
+                screen.blit(nl_surf, (col_label_x, y + 2))
+                y += line_h
+
+        # Buttons near bottom
+        button_y = dialog_y + dialog_h - 80
         button_w = 200
-        button_h = 60
+        button_h = 50
         button_spacing = 40
 
-        # New Game button
         new_game_x = dialog_x + dialog_w // 2 - button_w - button_spacing // 2
         new_game_rect = pygame.Rect(new_game_x, button_y, button_w, button_h)
         self.game_over_new_game_rect = new_game_rect
@@ -2246,7 +2720,6 @@ class UIManager:
         new_game_surf = self.font.render("New Game", True, COLOR_TEXT)
         screen.blit(new_game_surf, (new_game_rect.centerx - new_game_surf.get_width() // 2, new_game_rect.centery - 10))
 
-        # Exit button
         exit_x = dialog_x + dialog_w // 2 + button_spacing // 2
         exit_rect = pygame.Rect(exit_x, button_y, button_w, button_h)
         self.game_over_exit_rect = exit_rect

@@ -1186,13 +1186,13 @@ For more information see: Damage and Repair.
 Altitude (Advanced) #
 The maximum altitude difference between any two adjacent squares is one 1000m band.
 
-For example a square at 1000-1999m may be adjecent to any square between 1-2999m.
+For example a square at 1000-1999m may be adjacent to any square between 1-2999m.
 
 If one square changes altitude through terraforming ALL other squares will be instantly adjusted to preserve this rule.
 
 If global warming/cooling would cause a square to violate this rule, that square will instantly be adjusted by raising or lowering it by 1000m to preserve the altitude rule.
 
-This can cause a square to be 'washed' of improvments, units or even a base. It can also cause a 'raised' tile to actually lose altitude or a 'lowered' one to gain altitude.
+This can cause a square to be 'washed' of improvements, units or even a base. It can also cause a 'raised' tile to actually lose altitude or a 'lowered' one to gain altitude.
 
 Random Events(Advanced) #
 The Mechanics of how random events occur is described below:
@@ -1203,7 +1203,7 @@ No Random Event occurs before Turn 75 � (DIFF x 10) where Citizen is 0 DIFF an
 
 Each turn the game randomly picks a number between 1 and 100 (If no base exists� in built sequencing numbering order � there is no event)
 
-If the base is size 4 or less, or it is the only base of it's faction, or it is already under a random event time line (e.g. minerals boom for 10 years) � then there is no event
+If the base is size 4 or less, or it is the only base of its faction, or it is already under a random event timeline (e.g. minerals boom for 10 years) � then there is no event
 
 Some random events chosen will naturally have no effect, so no event is shown that turn (e.g. Asteroid strikes Nessus Prime - no effect if there are no Mining Stations)
 
@@ -1219,23 +1219,23 @@ Increased Eco Damage
 Each Perihelion lasts for 20 years. It first occurs at 2190, and every 80 years after that.
 
 Wild Natives and Fungus #
-There is a small chance whenever a land or sea unit is moved into an unnocupied fungus square that is not adjacent to a Sensor Array or base that the fungus will 'spawn' a wild native lifeform.
+There is a small chance whenever a land or sea unit is moved into an unoccupied fungus square that is not adjacent to a Sensor Array or base that the fungus will 'spawn' a wild native lifeform.
 
-This can be used to "Hunt for natives" by repeatedly entering unnocupied fungus tiles.
+This can be used to "Hunt for natives" by repeatedly entering unoccupied fungus tiles.
 
 Sensor arrays can be defensively placed to prevent an unwanted 'discovery'.
 
 When attacking wild lifeforms some special bonuses apply:
 
-If succesful the 'husks' can be harvested for their planetpearls at a bonus of 10ec per Life Cycle level (starting at 10 for hatchling)
+If successful the 'husks' can be harvested for their planetpearls at a bonus of 10ec per Life Cycle level (starting at 10 for hatchling)
 
-Any psi damage recieved will be spread (at 100%) to all of the same type of native in the tile
+Any psi damage received will be spread (at 100%) to all of the same type of native in the tile
 
-Destroying any one native kils all of the rest too (and gives appropriate planetpearl bonuses)
+Destroying any one native kills all of the rest too (and gives appropriate planetpearl bonuses)
 
-locusts of chirion are a special case to the above two rules, and each one must be damaged seperately
+locusts of chiron are a special case to the above two rules, and each one must be damaged separately
 
-Some wild lifeforms may be catured if your faction posseses a positive PLANET rating, if you control too many natives of any type (regardless of how they were accquired) you will be unable to capture any more until either you lose control of some or you increase your PLANET rating further.
+Some wild lifeforms may be captured if your faction possesses a positive PLANET rating, if you control too many natives of any type (regardless of how they were accquired) you will be unable to capture any more until either you lose control of some or you increase your PLANET rating further.
 
 Some approximate values for the odds to discover a native unit per square are given below:
 

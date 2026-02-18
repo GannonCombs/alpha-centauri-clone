@@ -145,38 +145,33 @@ Bugs:
 
 
 
-1 My diplomatic statuses have disappeared as turns pass. It now shows nothing. Speaking to the factions, it's clear this
-is not just a bug in display. I'm able to propose treaties and pacts all over again. Obv, these should persist.
-2 A scout patrol of mine attacked and won. The next turn, it was still Already Moved. This should never happen.
-3 A unit of mine took a base and wasn't healed. Any unit taking a base automatically fully heals.
-4 Saw an AI unit on an island tile it couldn't have walked to, before getting a transport. They were on the bottom row
+1 A scout patrol of mine attacked and won. The next turn, it was still Already Moved. This should never happen.
+2 A unit of mine took a base and wasn't healed. Any unit taking a base automatically fully heals.
+3 Saw an AI unit on an island tile it couldn't have walked to, before getting a transport. They were on the bottom row
 of the map; are there invisible tiles there that are playable?
-5 Got a diplomatic milestone popup when missing commlinks.
-6 Healing should not occur at turn end. It happens in upkeep of the next turn.
-7 Production times are off. Merchant Exchange takes 20 turns on Turn 1 for Morgan.
-8 Healing isn't working correctly. It's applying the bonuses correctly, but when the units are moving. It should only
+4 Got a diplomatic milestone popup when missing commlinks.
+5 Healing should not occur at turn end. It happens in upkeep of the next turn.
+6 Production times are off. Merchant Exchange takes 20 turns on Turn 1 for Morgan.
+7 Healing isn't working correctly. It's applying the bonuses correctly, but when the units are moving. It should only
 be when they've skipped their turn entirely. If a unit has even partially moved or acted that turn, healing doesn't happen
 naturally (movement onto a monolith is the exception.)
-9 Turn auto-ended when the last unit moved into contact with a new faction. End turn needs to wait for diplomacy to finish.
+8 Turn auto-ended when the last unit moved into contact with a new faction. End turn needs to wait for diplomacy to finish.
 The End Turn button should then blink, not auto-end.
-10 Still a bug where 3 or 4 factions get eliminated on turn 1. Nothing attacked them. Just a bug.
-11 When an AI faction meets me for the first time and wants to talk, the AI turns keep processing in the background. This
+9 Still a bug where 3 or 4 factions get eliminated on turn 1. Nothing attacked them. Just a bug.
+10 When an AI faction meets me for the first time and wants to talk, the AI turns keep processing in the background. This
 should not be the case. Everything should pause until the conversation is over.
-12 Supply pod commlink auto-started a call. Should just add contact to commlink panel silently.
-13 Alien artifact in base with network node — no popup appeared. Now triggers on unit selection.
+11 Alien artifact in base with network node — no popup appeared. Now triggers on unit selection.
     Updated popup: "What would you like to do?" with "Link to Network Node" / "Keep for later".
-14 Applied Physics (laser) not generating new unit designs. Bug: no armor available → best_armor=None
-    caused creation guard to fail. Now always creates no-armor offensive variants for land/sea.
-15 Transport design auto-created transport infantry. Only sea chassis now get transport weapon designs.
-16 'l' key to board transport did nothing — K_l handler was missing. Now boards transport on same tile.
-17 Unit panel: added "Cargo: x/y" line for sea transports.
-18 Land unit in sea base could walk directly to adjacent land tile. Now blocked unless amphibious pods.
-19 The selecting and de-selecting of the tiles the base works in the mini-map is broken. De-selection should not automatically
+12 'l' key to board transport did nothing — K_l handler was missing. Now boards transport on same tile.
+13 Land unit in sea base could walk directly to adjacent land tile. Now blocked unless amphibious pods.
+14 The selecting and de-selecting of the tiles the base works in the mini-map is broken. De-selection should not automatically
 re-select. The user will click once to de-select, and click a non-worked tile to select. The user can also de-select multiple
 tiles in a row before selecting new ones.
-20 I got the underground river supply pod. No river appeared. Make sure you not only generate this in the backend, but draw
+15 I got the underground river supply pod. No river appeared. Make sure you not only generate this in the backend, but draw
 it. It becomes a permanent part of the map. Also, where you have "Xenofungus" in pink in the terrain pane, could you do a
 similar thing for "River", drawing it the same light blue as the river?
+16 Found a base mini-map that isn't accurate. It's pretending there's a row of green land beneath it that isn't there.
+The base is founded on the bottom row, so that might be affecting it.
 
 
 
@@ -193,16 +188,20 @@ Note: this is the ONLY section of todo.txt that can be edited by Claude Code, bu
 
 1 Got a drone riot popup. Zoom to base did not popup the base view.
 2 FACTION_DATA contains single quotes and double quotes. Perhaps we should make consistent.
-3 When I'm surprise attacked, another popup appears for each Pact brother or sister I have, saying, "On behalf of your
- pact, <pactbors> has pronounced on <attacker>!"
-4 When certain non-combat units are on the same tile as military units, and another faction destroys all the military units,
+3 When certain non-combat units are on the same tile as military units, and another faction destroys all the military units,
 the non-military units automatically die. This is true for probe teams, and all versions of colony pods. (And artifacts,
 but they are captured, not killed. We've implemented this.) A note at the bottom should say We <killed or lost> x units.
-5 AI colony pod keeps trying to build a base on a monolith, and gets denied, every turn. Needs an updated algo.
-6 Found a base mini-map that isn't accurate. It's pretending there's a row of green land beneath it that isn't there.
-The base is founded on the bottom row, so that might be affecting it. Also, the minimap should show our new land type additions,
-including fungus, arid land, and rocks, but isn't.
-7 Growth is still messed up. It should not show two growth meters, especially disagreeing ones.
+4 AI colony pod keeps trying to build a base on a monolith, and gets denied, every turn. Needs an updated algo.
+5 Growth is still messed up. It should not show two growth meters, especially disagreeing ones.
+6 Building a base on enemy land is equivalent to starting an attack. A dialog popup should appear from that faction,
+saying "This is my land, <name> and I will not have you building bases on it." Two buttons, basically saying ok fine, and
+kiss my ass. Saying the latter auto-starts a vendetta with that faction and loses you 1 integrity.
+7 Hitting W is still ending turn right now, if there was no one else to move. This is a big bug.
+8 I had a transport foil in a non-base water tile. In an adjacent land tile was a land unit. I told it the arrow key
+to board the transport. It could not move into it. It should be able to do this. This should take 1 move.
+9 The sea transport was unable to get back into the land base. It should be able to, so long as the base has an adjacent
+water tile which the transport can access. It "swims into the base" so to speak.
+10 Cargo: x/y is showing now, but overflowing its pane. Make the unit pane larger.
 
 
 ***************************************************************************

@@ -231,7 +231,8 @@ class CommerceCalculator:
 
     def _has_sanctions(self, faction_id):
         """Check if faction has sanctions (from atrocities)."""
-        # TODO: Implement when atrocities/sanctions system exists
+        if faction_id == self.game.player_faction_id:
+            return getattr(self.game, 'sanctions_turns_remaining', 0) > 0
         return False
 
     def get_commerce_display_data(self):
