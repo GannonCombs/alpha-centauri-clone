@@ -1,0 +1,12 @@
+This is a note to outline how repair works in the codebase, since it keeps breaking.
+
+In repair.py:
+- calculate_repair()
+- _calculate_repair_percentage()
+- _check_full_repair_facility()
+- _is_in_friendly_territory()
+- _has_bunker()
+- _is_in_fungus()
+- _faction_has_nano_factory()
+- _faction_has_xenoempathy_dome()
+- _is_base_under_bombardment()

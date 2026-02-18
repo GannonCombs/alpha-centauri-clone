@@ -75,7 +75,7 @@ Self Destruction
 Morale (Advanced) ◐
 Hurry Cost
 Upgrade Cost
-Repair (Advanced) ✓
+Repair (Advanced) ◐ (waiting on Nano Factory, Xenoempathy, and more)
 Altitude (Advanced) ◐ (raise terrain, global warming/cooling)
 Random Events(Advanced)
 Perihelion Event
