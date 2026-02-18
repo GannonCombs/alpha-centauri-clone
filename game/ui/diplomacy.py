@@ -1,5 +1,7 @@
 """Faction diplomacy interface."""
 
+import random
+
 import pygame
 from game.data import display
 from game.data.display import COLOR_TEXT, COLOR_BUTTON_BORDER
@@ -18,6 +20,7 @@ class DiplomacyManager:
 
         # State
         self.target_faction = None
+        self.target_faction_id = None  # Cached index into FACTION_DATA
         self.player_faction = None  # Will be set when opening diplomacy
         self.game = None  # Game reference for accessing faction data
         self.diplo_stage = "greeting"  # greeting, diplo, proposal, exit, etc.
@@ -50,6 +53,9 @@ class DiplomacyManager:
             game: Game instance (for accessing faction energy_credits)
         """
         self.target_faction = faction
+        self.target_faction_id = next(
+            (i for i, f in enumerate(FACTION_DATA) if f['name'] == faction['name']), None
+        )
         self.player_faction = FACTION_DATA[player_faction_index]  # Get actual player faction
         self.game = game  # Store game reference
         self.diplo_stage = "greeting"
@@ -82,7 +88,7 @@ class DiplomacyManager:
         name_surf = self.font.render(self.target_faction['$FULLNAME'], True, self.target_faction['color'])
         screen.blit(name_surf, (info_x, info_y))
 
-        faction_id = next((i for i, f in enumerate(FACTION_DATA) if f['name'] == self.target_faction['name']), None)
+        faction_id = self.target_faction_id
         relation = self.diplo_relations.get(faction_id, "Uncommitted")
 
         info_lines = [f"STATUS: {relation}", f"MOOD: {self.diplo_mood}",
@@ -256,7 +262,7 @@ class DiplomacyManager:
         # Map actions to stages
         if action == 'exit':
             # On exit, establish Truce if no formal relationship exists
-            faction_id = next((i for i, f in enumerate(FACTION_DATA) if f['name'] == self.target_faction['name']), None)
+            faction_id = self.target_faction_id
             if faction_id is not None:
                 current_relation = self.diplo_relations.get(faction_id, "Uncommitted")
                 # If uncommitted (first meeting), establish Truce
@@ -264,7 +270,6 @@ class DiplomacyManager:
                     self.diplo_relations[faction_id] = 'Truce'
                     # Record Blood Truce expiry: 15–20 turns from now
                     if self.game is not None:
-                        import random
                         expiry = self.game.turn + random.randint(15, 20)
                         self.game.truce_expiry_turns[faction_id] = expiry
             # Exit immediately - no dialog, just close
@@ -275,7 +280,7 @@ class DiplomacyManager:
             self.diplo_stage = 'proposal'
         elif action == 'propose_pact':
             # Player proposes pact - AI decides immediately
-            faction_id = next((i for i, f in enumerate(FACTION_DATA) if f['name'] == self.target_faction['name']), None)
+            faction_id = self.target_faction_id
             permanent_vendetta = self.game and faction_id in getattr(self.game, 'permanent_vendetta_factions', set())
             if faction_id is not None and not permanent_vendetta:
                 self.diplo_relations[faction_id] = 'Pact'
@@ -290,7 +295,7 @@ class DiplomacyManager:
             self.diplo_stage = 'diplo'
         elif action == 'propose_treaty':
             # Player proposes treaty - AI decides immediately (no intermediate dialog)
-            faction_id = next((i for i, f in enumerate(FACTION_DATA) if f['name'] == self.target_faction['name']), None)
+            faction_id = self.target_faction_id
             permanent_vendetta = self.game and faction_id in getattr(self.game, 'permanent_vendetta_factions', set())
             if faction_id is not None and not permanent_vendetta:
                 self.diplo_relations[faction_id] = 'Treaty'
@@ -299,7 +304,7 @@ class DiplomacyManager:
                 self.diplo_stage = 'reject_treaty'  # AI refuses
         elif action == 'ai_decide_treaty':
             # AI decides whether to accept player's treaty proposal
-            faction_id = next((i for i, f in enumerate(FACTION_DATA) if f['name'] == self.target_faction['name']), None)
+            faction_id = self.target_faction_id
             permanent_vendetta = self.game and faction_id in getattr(self.game, 'permanent_vendetta_factions', set())
             if faction_id is not None and not permanent_vendetta:
                 self.diplo_relations[faction_id] = 'Treaty'
@@ -316,7 +321,7 @@ class DiplomacyManager:
             self.diplo_stage = 'propose_tech'
         elif action == 'propose_loan':
             # Player asks AI for a loan - AI decides based on available credits
-            faction_id = next((i for i, f in enumerate(FACTION_DATA) if f['name'] == self.target_faction['name']), None)
+            faction_id = self.target_faction_id
 
             # Check if AI faction has enough credits to lend
             # AI needs at least 100 credits to offer a loan

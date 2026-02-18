@@ -21,6 +21,26 @@ from game.ui.intro_screen import IntroScreenManager
 from game.ui.save_load_dialog import SaveLoadDialogManager
 from game.ui.exit_dialog import ExitDialogManager
 
+def has_blocking_popup(game, ui_panel):
+    """Return True if any popup or modal is waiting for player input during AI processing."""
+    return (bool(game.pending_commlink_requests) or
+            ui_panel.commlink_request_active or
+            ui_panel.commlink_open or
+            ui_panel.elimination_popup_active or
+            ui_panel.new_designs_popup_active or
+            ui_panel.surprise_attack_popup_active or
+            ui_panel.break_treaty_popup_active or
+            ui_panel.pact_evacuation_popup_active or
+            ui_panel.active_screen == "DIPLOMACY" or
+            ui_panel.renounce_pact_popup_active or
+            ui_panel.pact_pronounce_popup_active or
+            ui_panel.major_atrocity_popup_active or
+            ui_panel.raze_base_popup_active or
+            game.upkeep_phase_active or
+            game.combat.pending_battle is not None or
+            game.combat.active_battle is not None)
+
+
 def main():
     """Initialize and run the game."""
     # Initialize Pygame
@@ -122,21 +142,7 @@ def main():
             elif event.type == pygame.KEYDOWN:
                 # Block all input during AI processing unless a popup needs attention
                 if game.processing_ai:
-                    ai_popups_blocking = (bool(game.pending_commlink_requests) or
-                                          ui_panel.commlink_request_active or
-                                          ui_panel.commlink_open or
-                                          ui_panel.elimination_popup_active or
-                                          ui_panel.surprise_attack_popup_active or
-                                          ui_panel.break_treaty_popup_active or
-                                          ui_panel.pact_evacuation_popup_active or
-                                          ui_panel.active_screen == "DIPLOMACY" or
-                                          ui_panel.renounce_pact_popup_active or
-                                          ui_panel.pact_pronounce_popup_active or
-                                          ui_panel.major_atrocity_popup_active or
-                                          game.upkeep_phase_active or
-                                          game.combat.pending_battle is not None or
-                                          game.combat.active_battle is not None)
-                    if not ai_popups_blocking:
+                    if not has_blocking_popup(game, ui_panel):
                         continue
 
                 # Check for exit dialog first
@@ -477,21 +483,7 @@ def main():
             elif event.type == pygame.MOUSEBUTTONDOWN:
                 # Block all input during AI processing unless a popup needs attention
                 if game.processing_ai:
-                    ai_popups_blocking = (bool(game.pending_commlink_requests) or
-                                          ui_panel.commlink_request_active or
-                                          ui_panel.commlink_open or
-                                          ui_panel.elimination_popup_active or
-                                          ui_panel.surprise_attack_popup_active or
-                                          ui_panel.break_treaty_popup_active or
-                                          ui_panel.pact_evacuation_popup_active or
-                                          ui_panel.active_screen == "DIPLOMACY" or
-                                          ui_panel.renounce_pact_popup_active or
-                                          ui_panel.pact_pronounce_popup_active or
-                                          ui_panel.major_atrocity_popup_active or
-                                          game.upkeep_phase_active or
-                                          game.combat.pending_battle is not None or
-                                          game.combat.active_battle is not None)
-                    if not ai_popups_blocking:
+                    if not has_blocking_popup(game, ui_panel):
                         continue
 
                 # Check for exit dialog first
@@ -591,22 +583,7 @@ def main():
         # Process AI turns with delay (but not if popup is blocking)
         if game.processing_ai:
             # Check if any blocking popup is active
-            popups_blocking = (bool(game.pending_commlink_requests) or
-                             ui_panel.commlink_request_active or
-                             ui_panel.commlink_open or
-                             ui_panel.elimination_popup_active or
-                             ui_panel.new_designs_popup_active or
-                             ui_panel.surprise_attack_popup_active or
-                             ui_panel.break_treaty_popup_active or
-                             ui_panel.pact_evacuation_popup_active or
-                             ui_panel.active_screen == "DIPLOMACY" or
-                             ui_panel.renounce_pact_popup_active or
-                             ui_panel.pact_pronounce_popup_active or
-                             ui_panel.major_atrocity_popup_active or
-                             ui_panel.raze_base_popup_active or
-                             game.upkeep_phase_active or
-                             game.combat.pending_battle is not None or
-                             game.combat.active_battle is not None)
+            popups_blocking = has_blocking_popup(game, ui_panel)
 
             if not popups_blocking:
                 current_time = pygame.time.get_ticks()
@@ -657,19 +634,7 @@ def main():
 
         # Hide cursor during AI turns (unless a popup is waiting for player input)
         if game.processing_ai:
-            ai_popups_blocking = (bool(game.pending_commlink_requests) or
-                                  ui_panel.commlink_request_active or
-                                  ui_panel.commlink_open or
-                                  ui_panel.elimination_popup_active or
-                                  ui_panel.surprise_attack_popup_active or
-                                  ui_panel.break_treaty_popup_active or
-                                  ui_panel.pact_evacuation_popup_active or
-                                  ui_panel.active_screen == "DIPLOMACY" or
-                                  ui_panel.major_atrocity_popup_active or
-                                  game.upkeep_phase_active or
-                                  game.combat.pending_battle is not None or
-                                  game.combat.active_battle is not None)
-            pygame.mouse.set_visible(ai_popups_blocking)
+            pygame.mouse.set_visible(has_blocking_popup(game, ui_panel))
         else:
             pygame.mouse.set_visible(True)
 

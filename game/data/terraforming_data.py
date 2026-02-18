@@ -467,3 +467,17 @@ LAND_HOTKEYS = {imp['hotkey']: key
 OCEAN_HOTKEYS = {imp['hotkey']: key
                  for key, imp in IMPROVEMENTS.items()
                  if imp['terrain'] in ('ocean', 'both')}
+
+# Single-character map indicators shown on units that are actively terraforming.
+# These are display letters, not hotkeys — some differ to avoid collisions
+# (e.g. forest uses 'o' so 'f' stays unambiguous for farm).
+TERRAFORM_MAP_LETTERS = {
+    'farm': 'f', 'forest': 'o', 'mine': 'm', 'solar': 's',
+    'road': 'r', 'mag_tube': 't', 'sensor_array': 'n',
+    'borehole': 'b', 'condenser': 'c', 'echelon_mirror': 'e',
+    'soil_enricher': 'l', 'remove_fungus': 'x',
+    'raise_land': '+', 'lower_land': '-', 'level_terrain': 'v',
+    'aquifer': 'q', 'bunker': 'k', 'airbase': 'a',
+    'kelp_farm': 'f', 'mining_platform': 'm', 'tidal_harness': 's',
+    'remove_sea_fungus': 'x',
+}

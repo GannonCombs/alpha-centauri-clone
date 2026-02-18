@@ -203,8 +203,7 @@ class UIManager:
                            faction["$FULLNAME"],
                            faction["color"],
                            COLOR_BLACK)
-                btn.player_id = faction_id  # Store faction_id (same as player_id now)
-                btn.faction_id = faction_id  # Also store faction_id
+                btn.faction_id = faction_id
                 self.faction_buttons.append(btn)
                 button_index += 1
 
@@ -936,7 +935,7 @@ class UIManager:
                     for btn in self.faction_buttons:
                         if btn.handle_event(event):
                             # Get the faction for this player_id
-                            faction_id = btn.player_id  # player_id IS faction_id
+                            faction_id = btn.faction_id
                             if faction_id is not None and faction_id < len(FACTION_DATA):
                                 # Open diplomacy with correct player faction ID
                                 self.diplomacy.open_diplomacy(FACTION_DATA[faction_id], player_faction_index=game.player_faction_id, game=game)
@@ -1148,7 +1147,9 @@ class UIManager:
             # Position left of battle panel
             info_x = 370
             info_y = display.UI_PANEL_Y + 20
-            info_box = pygame.Rect(info_x - 10, info_y - 5, 280, 135)
+            has_cargo = getattr(unit, 'transport_capacity', 0) > 0
+            box_h = 155 if has_cargo else 135
+            info_box = pygame.Rect(info_x - 10, info_y - 5, 280, box_h)
             pygame.draw.rect(screen, (35, 40, 45), info_box)
             pygame.draw.rect(screen, COLOR_BUTTON_BORDER, info_box, 2)
             screen.blit(self.font.render(f"Unit: {unit.name}", True, COLOR_TEXT), (info_x, info_y))
@@ -1347,7 +1348,7 @@ class UIManager:
                         status_text = "PACT"
                     elif status == "Treaty":
                         status_text = "TREATY"
-                    elif status == "Truce" or status == "Formal Truce": #TODO: error?
+                    elif status == "Truce":
                         status_text = "TRUCE"
                     # Informal Truce shows as blank (empty string)
 
@@ -1680,26 +1681,50 @@ class UIManager:
                     screen.blit(viewport_surface, (viewport_x, viewport_y))
                     pygame.draw.rect(screen, (255, 255, 255), viewport_rect, 2)
 
+    # --- Popup drawing helpers ---
+
+    def _draw_overlay(self, screen, alpha=180):
+        """Draw a semi-transparent dark overlay over the entire screen."""
+        overlay = pygame.Surface((display.SCREEN_WIDTH, display.SCREEN_HEIGHT))
+        overlay.set_alpha(alpha)
+        overlay.fill((0, 0, 0))
+        screen.blit(overlay, (0, 0))
+
+    def _centered_popup_rect(self, width, height):
+        """Return a centered pygame.Rect for a popup dialog."""
+        x = display.SCREEN_WIDTH // 2 - width // 2
+        y = display.SCREEN_HEIGHT // 2 - height // 2
+        return pygame.Rect(x, y, width, height)
+
+    def _draw_popup_box(self, screen, rect, border_color=(100, 140, 160), bg_color=(30, 40, 50)):
+        """Draw a rounded popup box with border."""
+        pygame.draw.rect(screen, bg_color, rect, border_radius=12)
+        pygame.draw.rect(screen, border_color, rect, 3, border_radius=12)
+
+    def _draw_popup_button(self, screen, rect, label, font=None,
+                           normal_color=(45, 55, 65), hover_color=(65, 85, 100),
+                           border_color=(100, 140, 160)):
+        """Draw a hover-aware button centered in rect. Returns True if hovered."""
+        if font is None:
+            font = self.font
+        is_hover = rect.collidepoint(pygame.mouse.get_pos())
+        pygame.draw.rect(screen, hover_color if is_hover else normal_color, rect, border_radius=8)
+        pygame.draw.rect(screen, border_color, rect, 3, border_radius=8)
+        text = font.render(label, True, (220, 230, 240))
+        screen.blit(text, (rect.centerx - text.get_width() // 2, rect.centery - text.get_height() // 2))
+        return is_hover
+
     def _draw_upkeep_event(self, screen, game):
         """Draw upkeep event popup with message and action buttons."""
         event = game.get_current_upkeep_event()
         if not event:
             return
 
-        # Semi-transparent overlay
-        overlay = pygame.Surface((display.SCREEN_WIDTH, display.SCREEN_HEIGHT))
-        overlay.set_alpha(180)
-        overlay.fill((0, 0, 0))
-        screen.blit(overlay, (0, 0))
+        self._draw_overlay(screen)
 
-        # Event popup box
-        box_w, box_h = 600, 360
-        box_x = display.SCREEN_WIDTH // 2 - box_w // 2
-        box_y = display.SCREEN_HEIGHT // 2 - box_h // 2
-
-        # Draw box
-        pygame.draw.rect(screen, (40, 45, 50), (box_x, box_y, box_w, box_h), border_radius=10)
-        pygame.draw.rect(screen, (100, 180, 220), (box_x, box_y, box_w, box_h), 4, border_radius=10)
+        box = self._centered_popup_rect(600, 360)
+        box_x, box_y, box_w, box_h = box.x, box.y, box.w, box.h
+        self._draw_popup_box(screen, box, border_color=(100, 180, 220), bg_color=(40, 45, 50))
 
         # Event title based on type
         title_text = "UPKEEP REPORT"
@@ -1824,19 +1849,12 @@ class UIManager:
 
     def _draw_commlink_request(self, screen, game):
         """Draw commlink request popup when AI wants to speak."""
-        # Semi-transparent overlay
-        overlay = pygame.Surface((display.SCREEN_WIDTH, display.SCREEN_HEIGHT))
-        overlay.set_alpha(180)
-        overlay.fill((0, 0, 0))
-        screen.blit(overlay, (0, 0))
+        self._draw_overlay(screen)
 
         # Dialog box
-        box_w, box_h = 600, 250
-        box_x = display.SCREEN_WIDTH // 2 - box_w // 2
-        box_y = display.SCREEN_HEIGHT // 2 - box_h // 2
-
-        pygame.draw.rect(screen, (30, 40, 50), (box_x, box_y, box_w, box_h), border_radius=12)
-        pygame.draw.rect(screen, (100, 140, 160), (box_x, box_y, box_w, box_h), 3, border_radius=12)
+        box = self._centered_popup_rect(600, 250)
+        box_x, box_y, box_w, box_h = box.x, box.y, box.w, box.h
+        self._draw_popup_box(screen, box)
 
         # Get faction info
         if self.commlink_request_other_faction_id < len(FACTION_DATA):
@@ -1930,19 +1948,12 @@ class UIManager:
 
     def _draw_new_designs_popup(self, screen, game):
         """Draw new unit designs available notification popup."""
-        # Semi-transparent overlay
-        overlay = pygame.Surface((display.SCREEN_WIDTH, display.SCREEN_HEIGHT))
-        overlay.set_alpha(180)
-        overlay.fill((0, 0, 0))
-        screen.blit(overlay, (0, 0))
+        self._draw_overlay(screen)
 
         # Dialog box
-        box_w, box_h = 600, 250
-        box_x = display.SCREEN_WIDTH // 2 - box_w // 2
-        box_y = display.SCREEN_HEIGHT // 2 - box_h // 2
-
-        pygame.draw.rect(screen, (30, 40, 50), (box_x, box_y, box_w, box_h), border_radius=12)
-        pygame.draw.rect(screen, (100, 180, 140), (box_x, box_y, box_w, box_h), 3, border_radius=12)
+        box = self._centered_popup_rect(600, 250)
+        box_x, box_y, box_w, box_h = box.x, box.y, box.w, box.h
+        self._draw_popup_box(screen, box, border_color=(100, 180, 140))
 
         # Title
         title_text = "NEW UNIT DESIGNS AVAILABLE"
@@ -1986,19 +1997,12 @@ class UIManager:
 
     def _draw_break_treaty_popup(self, screen, game):
         """Draw popup asking player if they want to break a treaty."""
-        # Semi-transparent overlay
-        overlay = pygame.Surface((display.SCREEN_WIDTH, display.SCREEN_HEIGHT))
-        overlay.set_alpha(180)
-        overlay.fill((0, 0, 0))
-        screen.blit(overlay, (0, 0))
+        self._draw_overlay(screen)
 
         # Dialog box
-        box_w, box_h = 600, 250
-        box_x = display.SCREEN_WIDTH // 2 - box_w // 2
-        box_y = display.SCREEN_HEIGHT // 2 - box_h // 2
-
-        pygame.draw.rect(screen, (40, 30, 30), (box_x, box_y, box_w, box_h), border_radius=12)
-        pygame.draw.rect(screen, (220, 100, 100), (box_x, box_y, box_w, box_h), 3, border_radius=12)
+        box = self._centered_popup_rect(600, 250)
+        box_x, box_y, box_w, box_h = box.x, box.y, box.w, box.h
+        self._draw_popup_box(screen, box, border_color=(220, 100, 100), bg_color=(40, 30, 30))
 
         # Title - check if it's treaty or truce
         relation = self.diplomacy.diplo_relations.get(self.break_treaty_target_faction, "Uncommitted")
@@ -2050,19 +2054,12 @@ class UIManager:
 
     def _draw_surprise_attack_popup(self, screen, game):
         """Draw popup notifying player that AI broke treaty."""
-        # Semi-transparent overlay
-        overlay = pygame.Surface((display.SCREEN_WIDTH, display.SCREEN_HEIGHT))
-        overlay.set_alpha(180)
-        overlay.fill((0, 0, 0))
-        screen.blit(overlay, (0, 0))
+        self._draw_overlay(screen)
 
         # Dialog box
-        box_w, box_h = 600, 220
-        box_x = display.SCREEN_WIDTH // 2 - box_w // 2
-        box_y = display.SCREEN_HEIGHT // 2 - box_h // 2
-
-        pygame.draw.rect(screen, (40, 30, 30), (box_x, box_y, box_w, box_h), border_radius=12)
-        pygame.draw.rect(screen, (220, 100, 100), (box_x, box_y, box_w, box_h), 3, border_radius=12)
+        box = self._centered_popup_rect(600, 220)
+        box_x, box_y, box_w, box_h = box.x, box.y, box.w, box.h
+        self._draw_popup_box(screen, box, border_color=(220, 100, 100), bg_color=(40, 30, 30))
 
         # Message
         faction_name = FACTION_DATA[self.surprise_attack_faction]['name']
@@ -2085,17 +2082,11 @@ class UIManager:
 
     def _draw_artifact_link_popup(self, screen, game):
         """Draw yes/no popup asking player to link an Alien Artifact to a Network Node."""
-        overlay = pygame.Surface((display.SCREEN_WIDTH, display.SCREEN_HEIGHT))
-        overlay.set_alpha(180)
-        overlay.fill((0, 0, 0))
-        screen.blit(overlay, (0, 0))
+        self._draw_overlay(screen)
 
-        box_w, box_h = 620, 240
-        box_x = display.SCREEN_WIDTH // 2 - box_w // 2
-        box_y = display.SCREEN_HEIGHT // 2 - box_h // 2
-
-        pygame.draw.rect(screen, (20, 35, 50), (box_x, box_y, box_w, box_h), border_radius=12)
-        pygame.draw.rect(screen, (80, 180, 220), (box_x, box_y, box_w, box_h), 3, border_radius=12)
+        box = self._centered_popup_rect(620, 240)
+        box_x, box_y, box_w, box_h = box.x, box.y, box.w, box.h
+        self._draw_popup_box(screen, box, border_color=(80, 180, 220), bg_color=(20, 35, 50))
 
         title_surf = self.font.render("ALIEN ARTIFACT", True, (120, 220, 255))
         screen.blit(title_surf, (box_x + box_w // 2 - title_surf.get_width() // 2, box_y + 30))
@@ -2132,17 +2123,11 @@ class UIManager:
 
     def _draw_busy_former_popup(self, screen, game):
         """Draw popup asking if the player wants to select a busy former."""
-        overlay = pygame.Surface((display.SCREEN_WIDTH, display.SCREEN_HEIGHT))
-        overlay.set_alpha(180)
-        overlay.fill((0, 0, 0))
-        screen.blit(overlay, (0, 0))
+        self._draw_overlay(screen)
 
-        box_w, box_h = 560, 230
-        box_x = display.SCREEN_WIDTH // 2 - box_w // 2
-        box_y = display.SCREEN_HEIGHT // 2 - box_h // 2
-
-        pygame.draw.rect(screen, (30, 30, 20), (box_x, box_y, box_w, box_h), border_radius=12)
-        pygame.draw.rect(screen, (180, 160, 80), (box_x, box_y, box_w, box_h), 3, border_radius=12)
+        box = self._centered_popup_rect(560, 230)
+        box_x, box_y, box_w, box_h = box.x, box.y, box.w, box.h
+        self._draw_popup_box(screen, box, border_color=(180, 160, 80), bg_color=(30, 30, 20))
 
         title_surf = self.font.render("FORMER AT WORK", True, (220, 200, 100))
         screen.blit(title_surf, (box_x + box_w // 2 - title_surf.get_width() // 2, box_y + 30))
@@ -2186,17 +2171,11 @@ class UIManager:
 
     def _draw_movement_overflow_popup(self, screen, game):
         """Draw warning popup when a unit exceeds 100 moves in one turn."""
-        overlay = pygame.Surface((display.SCREEN_WIDTH, display.SCREEN_HEIGHT))
-        overlay.set_alpha(180)
-        overlay.fill((0, 0, 0))
-        screen.blit(overlay, (0, 0))
+        self._draw_overlay(screen)
 
-        box_w, box_h = 520, 190
-        box_x = display.SCREEN_WIDTH // 2 - box_w // 2
-        box_y = display.SCREEN_HEIGHT // 2 - box_h // 2
-
-        pygame.draw.rect(screen, (45, 20, 20), (box_x, box_y, box_w, box_h), border_radius=12)
-        pygame.draw.rect(screen, (220, 80, 80), (box_x, box_y, box_w, box_h), 3, border_radius=12)
+        box = self._centered_popup_rect(520, 190)
+        box_x, box_y, box_w, box_h = box.x, box.y, box.w, box.h
+        self._draw_popup_box(screen, box, border_color=(220, 80, 80), bg_color=(45, 20, 20))
 
         title_surf = self.font.render("MOVEMENT LIMIT REACHED", True, (255, 120, 120))
         screen.blit(title_surf, (box_x + box_w // 2 - title_surf.get_width() // 2, box_y + 28))
@@ -2224,17 +2203,11 @@ class UIManager:
 
     def _draw_terraform_cost_popup(self, screen, game):
         """Draw cost confirmation popup for raise/lower land terrain operations."""
-        overlay = pygame.Surface((display.SCREEN_WIDTH, display.SCREEN_HEIGHT))
-        overlay.set_alpha(180)
-        overlay.fill((0, 0, 0))
-        screen.blit(overlay, (0, 0))
+        self._draw_overlay(screen)
 
-        box_w, box_h = 500, 210
-        box_x = display.SCREEN_WIDTH // 2 - box_w // 2
-        box_y = display.SCREEN_HEIGHT // 2 - box_h // 2
-
-        pygame.draw.rect(screen, (25, 35, 45), (box_x, box_y, box_w, box_h), border_radius=12)
-        pygame.draw.rect(screen, (100, 160, 220), (box_x, box_y, box_w, box_h), 3, border_radius=12)
+        box = self._centered_popup_rect(500, 210)
+        box_x, box_y, box_w, box_h = box.x, box.y, box.w, box.h
+        self._draw_popup_box(screen, box, border_color=(100, 160, 220), bg_color=(25, 35, 45))
 
         pending = game.pending_terraform_cost
         action_name = ""
@@ -2283,19 +2256,12 @@ class UIManager:
 
     def _draw_pact_evacuation_popup(self, screen, game):
         """Draw popup notifying player of unit evacuation after pact ended."""
-        # Semi-transparent overlay
-        overlay = pygame.Surface((display.SCREEN_WIDTH, display.SCREEN_HEIGHT))
-        overlay.set_alpha(180)
-        overlay.fill((0, 0, 0))
-        screen.blit(overlay, (0, 0))
+        self._draw_overlay(screen)
 
         # Dialog box
-        box_w, box_h = 700, 250
-        box_x = display.SCREEN_WIDTH // 2 - box_w // 2
-        box_y = display.SCREEN_HEIGHT // 2 - box_h // 2
-
-        pygame.draw.rect(screen, (30, 40, 50), (box_x, box_y, box_w, box_h), border_radius=12)
-        pygame.draw.rect(screen, (100, 140, 180), (box_x, box_y, box_w, box_h), 3, border_radius=12)
+        box = self._centered_popup_rect(700, 250)
+        box_x, box_y, box_w, box_h = box.x, box.y, box.w, box.h
+        self._draw_popup_box(screen, box, border_color=(100, 140, 180))
 
         # Title
         title_text = "PACT DISSOLVED"
@@ -2372,16 +2338,11 @@ class UIManager:
         if fid is None:
             return
 
-        overlay = pygame.Surface((display.SCREEN_WIDTH, display.SCREEN_HEIGHT))
-        overlay.set_alpha(180)
-        overlay.fill((0, 0, 0))
-        screen.blit(overlay, (0, 0))
+        self._draw_overlay(screen)
 
-        box_w, box_h = 640, 280
-        box_x = display.SCREEN_WIDTH // 2 - box_w // 2
-        box_y = display.SCREEN_HEIGHT // 2 - box_h // 2
-        pygame.draw.rect(screen, (30, 35, 45), (box_x, box_y, box_w, box_h), border_radius=12)
-        pygame.draw.rect(screen, (120, 140, 180), (box_x, box_y, box_w, box_h), 3, border_radius=12)
+        box = self._centered_popup_rect(640, 280)
+        box_x, box_y, box_w, box_h = box.x, box.y, box.w, box.h
+        self._draw_popup_box(screen, box, border_color=(120, 140, 180), bg_color=(30, 35, 45))
 
         faction_data = FACTION_DATA[fid]
         title = f"PACT RENOUNCED — {faction_data['name'].upper()}"
@@ -2434,16 +2395,11 @@ class UIManager:
         if not info:
             return
 
-        overlay = pygame.Surface((display.SCREEN_WIDTH, display.SCREEN_HEIGHT))
-        overlay.set_alpha(180)
-        overlay.fill((0, 0, 0))
-        screen.blit(overlay, (0, 0))
+        self._draw_overlay(screen)
 
-        box_w, box_h = 620, 230
-        box_x = display.SCREEN_WIDTH // 2 - box_w // 2
-        box_y = display.SCREEN_HEIGHT // 2 - box_h // 2
-        pygame.draw.rect(screen, (35, 30, 20), (box_x, box_y, box_w, box_h), border_radius=12)
-        pygame.draw.rect(screen, (200, 160, 80), (box_x, box_y, box_w, box_h), 3, border_radius=12)
+        box = self._centered_popup_rect(620, 230)
+        box_x, box_y, box_w, box_h = box.x, box.y, box.w, box.h
+        self._draw_popup_box(screen, box, border_color=(200, 160, 80), bg_color=(35, 30, 20))
 
         title_surf = self.font.render("PACT RESPONSE", True, (240, 200, 100))
         screen.blit(title_surf, (box_x + box_w // 2 - title_surf.get_width() // 2, box_y + 24))
@@ -2478,16 +2434,11 @@ class UIManager:
         if not base:
             return
 
-        overlay = pygame.Surface((display.SCREEN_WIDTH, display.SCREEN_HEIGHT))
-        overlay.set_alpha(170)
-        overlay.fill((0, 0, 0))
-        screen.blit(overlay, (0, 0))
+        self._draw_overlay(screen, alpha=170)
 
-        box_w, box_h = 560, 230
-        box_x = display.SCREEN_WIDTH // 2 - box_w // 2
-        box_y = display.SCREEN_HEIGHT // 2 - box_h // 2
-        pygame.draw.rect(screen, (45, 20, 10), (box_x, box_y, box_w, box_h), border_radius=12)
-        pygame.draw.rect(screen, (200, 100, 40), (box_x, box_y, box_w, box_h), 3, border_radius=12)
+        box = self._centered_popup_rect(560, 230)
+        box_x, box_y, box_w, box_h = box.x, box.y, box.w, box.h
+        self._draw_popup_box(screen, box, border_color=(200, 100, 40), bg_color=(45, 20, 10))
 
         title_surf = self.font.render("RAZE BASE", True, (240, 140, 60))
         screen.blit(title_surf, (box_x + box_w // 2 - title_surf.get_width() // 2, box_y + 20))
@@ -2569,16 +2520,11 @@ class UIManager:
 
     def _draw_major_atrocity_popup(self, screen, game):
         """Draw MAJOR ATROCITY popup: planet buster used — all factions declare vendetta."""
-        overlay = pygame.Surface((display.SCREEN_WIDTH, display.SCREEN_HEIGHT))
-        overlay.set_alpha(190)
-        overlay.fill((0, 0, 0))
-        screen.blit(overlay, (0, 0))
+        self._draw_overlay(screen, alpha=190)
 
-        box_w, box_h = 620, 280
-        box_x = display.SCREEN_WIDTH // 2 - box_w // 2
-        box_y = display.SCREEN_HEIGHT // 2 - box_h // 2
-        pygame.draw.rect(screen, (60, 10, 10), (box_x, box_y, box_w, box_h), border_radius=12)
-        pygame.draw.rect(screen, (200, 40, 40), (box_x, box_y, box_w, box_h), 3, border_radius=12)
+        box = self._centered_popup_rect(620, 280)
+        box_x, box_y, box_w, box_h = box.x, box.y, box.w, box.h
+        self._draw_popup_box(screen, box, border_color=(200, 40, 40), bg_color=(60, 10, 10))
 
         title_surf = self.font.render("MAJOR ATROCITY COMMITTED", True, (255, 60, 60))
         screen.blit(title_surf, (box_x + box_w // 2 - title_surf.get_width() // 2, box_y + 20))
@@ -2788,14 +2734,7 @@ class UIManager:
             icon_x = start_x + col * icon_spacing
             icon_y = start_y + row * row_spacing
 
-            #TODO: Examine this entire function. Code smell.
-            # Determine unit color
-            # if unit.owner == game.player_id:
-            #     unit_color = COLOR_UNIT_FRIENDLY
-            # else:
-            #     unit_color = COLOR_UNIT_ENEMY
-
-            unit_color = (255, 255, 255) #temp code
+            unit_color = FACTION_DATA[unit.owner]['color'] if unit.owner < len(FACTION_DATA) else (255, 255, 255)
 
             # Highlight selected unit
             if unit == game.selected_unit:

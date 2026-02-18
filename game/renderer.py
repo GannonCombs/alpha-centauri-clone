@@ -21,19 +21,7 @@ from game.data.display import (TILE_SIZE, COLOR_OCEAN, COLOR_LAND,
                                COLOR_BASE_BORDER,
                                COLOR_TILE_CURSOR)
 from game.data.data import FACTION_DATA
-
-
-class Camera:
-    """Camera system for potential future scrolling features."""
-
-    def __init__(self):
-        """Initialize camera at origin."""
-        self.x = 0
-        self.y = 0
-
-    def apply(self, x, y):
-        """Apply camera transform to coordinates (currently identity)."""
-        return x, y
+from game.data.terraforming_data import TERRAFORM_MAP_LETTERS
 
 
 class Renderer:
@@ -42,7 +30,6 @@ class Renderer:
     def __init__(self, screen):
         """Initialize renderer with pygame screen surface."""
         self.screen = screen
-        self.camera = Camera()
         self.camera_offset_x = 0  # Horizontal scroll in tiles (for wrapping)
         self.camera_offset_y = 0  # Vertical scroll in tiles (no wrapping, with bounds)
         self.base_offset_x = 0  # Centering offset in pixels
@@ -191,17 +178,6 @@ class Renderer:
         if tile.is_land() and getattr(tile, 'rockiness', 0) == 2:
             self._draw_rocks(screen_x, screen_y, tile.x, tile.y)
 
-    def draw_tile(self, tile):
-        """Draw a tile at its world position (with camera wrapping)."""
-        # Calculate screen position accounting for camera offset
-        world_x_offset = (tile.x - self.camera_offset_x) % self.screen.get_width() // TILE_SIZE
-        screen_x = (world_x_offset * TILE_SIZE) + self.base_offset_x
-        screen_y = tile.y * TILE_SIZE
-
-        rect = pygame.Rect(screen_x, screen_y, TILE_SIZE, TILE_SIZE)
-        pygame.draw.rect(self.screen, self._tile_color(tile), rect)
-        pygame.draw.rect(self.screen, COLOR_GRID, rect, 1)
-
     def draw_units(self, units, selected_unit, player_faction_id, game_map):
         """Draw all units on the map."""
         for unit in units:
@@ -279,17 +255,7 @@ class Renderer:
         # Draw terraforming work letter above former if actively working
         _terraform_action = getattr(unit, 'terraforming_action', None)
         if _terraform_action:
-            _TERRAFORM_LETTERS = {
-                'farm': 'f', 'forest': 'o', 'mine': 'm', 'solar': 's',
-                'road': 'r', 'mag_tube': 't', 'sensor_array': 'n',
-                'borehole': 'b', 'condenser': 'c', 'echelon_mirror': 'e',
-                'soil_enricher': 'l', 'remove_fungus': 'x',
-                'raise_land': '+', 'lower_land': '-', 'level_terrain': 'v',
-                'aquifer': 'q', 'bunker': 'k', 'airbase': 'a',
-                'kelp_farm': 'f', 'mining_platform': 'm', 'tidal_harness': 's',
-                'remove_sea_fungus': 'x',
-            }
-            work_char = _TERRAFORM_LETTERS.get(_terraform_action, _terraform_action[0])
+            work_char = TERRAFORM_MAP_LETTERS.get(_terraform_action, _terraform_action[0])
             work_font = pygame.font.Font(None, 20)
             work_surf = work_font.render(work_char, True, (255, 230, 80))
             work_rect = work_surf.get_rect()

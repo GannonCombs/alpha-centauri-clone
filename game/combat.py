@@ -120,23 +120,10 @@ class Combat:
                     'display': '+100%'
                 })
 
-            # Blink Displacer ignores base defenses (cancel base defense if attacker has it)
-            if vs_unit and vs_unit.has_blink_displacer and tile and tile.base:
-                # We'll handle this by reducing the base defense bonus, but that needs to be done
-                # on the attacker side. For now, we'll add a note that defender loses base bonus.
-                pass
+            # TODO: Blink Displacer ignores base defenses — cancel base defense bonus
+            #       when attacker has blink displacer. Attacker-side is already implemented.
 
-            # Sensor range bonus (+25%) - check if there's a friendly sensor array nearby.
-            # Implement once terraforming is added.
-            friendly_sensor_nearby = False
-            #TODO: Sensor check
-
-            if friendly_sensor_nearby:
-                modifiers.append({
-                    'name': 'Sensor Range',
-                    'multiplier': 1.25,
-                    'display': '+25%'
-                })
+            # TODO: Sensor range bonus (+25%) — wire once sensor arrays are terraformable
 
             # Artillery defending vs ship: +50%
             if unit.has_artillery and vs_unit and vs_unit.type == 'sea':

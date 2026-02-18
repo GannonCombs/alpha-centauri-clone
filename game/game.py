@@ -14,7 +14,6 @@ unit movement, combat, and AI behavior.
 """
 import random
 import pygame
-from game.data import display
 from game import facilities
 from game.map import GameMap
 from game.unit import Unit
@@ -107,8 +106,6 @@ class Game:
 
         # Battle system
         self.combat = Combat(self)
-        self.pending_battle = None  # Dict with attacker, defender, target_x, target_y
-        self.active_battle = None  # Dict tracking ongoing battle animation
         self.pending_treaty_break = None  # Dict for player attacks that might break treaties
         self.pending_ai_attack = None  # Dict for AI surprise attacks
 
@@ -568,7 +565,7 @@ class Game:
             bool: True if move succeeded or combat initiated, False if invalid move
 
         Side Effects:
-            - May set self.pending_battle for player combat
+            - May set combat.pending_battle for player combat
             - May call resolve_combat() for AI combat
             - Updates unit position and map state
             - Manages garrison entry/exit
@@ -607,12 +604,23 @@ class Game:
         target_tile = self.game_map.get_tile(target_x, target_y)
 
         # Check if unit can move there
+        from_tile = self.game_map.get_tile(unit.x, unit.y)
         if not unit.can_move_to(target_tile):
-            return False
+            # Exception: sea units can dock at a friendly land base they're adjacent to
+            # (the unit must be coming from an ocean tile — the "sea port" mechanic).
+            sea_port_entry = (
+                unit.type == 'sea'
+                and target_tile.is_land()
+                and target_tile.base is not None
+                and target_tile.base.owner == unit.owner
+                and unit.moves_remaining > 0
+                and from_tile is not None and from_tile.is_ocean()
+            )
+            if not sea_port_entry:
+                return False
 
         # Land unit on an ocean tile (e.g. garrisoned in a sea base) cannot walk
         # directly to a land tile — needs amphibious ability or a transport.
-        from_tile = self.game_map.get_tile(unit.x, unit.y)
         if (unit.type == 'land'
                 and from_tile is not None and from_tile.is_ocean()
                 and target_tile.is_land()
@@ -1029,124 +1037,6 @@ class Game:
             unit.monolith_upgrade = True
             if unit.owner == self.player_faction_id:
                 self.set_status_message(f"{unit.name} visited Monolith (already Elite)")
-
-    def _finish_battle(self):
-        """Clean up after battle completes."""
-        if not self.active_battle:
-            return
-
-        attacker = self.active_battle['attacker']
-        defender = self.active_battle['defender']
-        victor = self.active_battle['victor']
-
-        # Get final HP from last round
-        if self.active_battle['rounds']:
-            final_round = self.active_battle['rounds'][-1]
-            attacker.current_health = final_round['attacker_hp']
-            defender.current_health = final_round['defender_hp']
-
-        # Handle disengage
-        if victor == 'disengage':
-            disengaged_unit = attacker if self.active_battle.get('disengaged') == 'attacker' else defender
-
-            # Find safe retreat tile (away from enemy, back toward friendly territory)
-            retreat_tile = self._find_retreat_tile(disengaged_unit)
-
-            if retreat_tile:
-                # Move unit to retreat tile
-                old_tile = self.game_map.get_tile(disengaged_unit.x, disengaged_unit.y)
-                if old_tile:
-                    self.game_map.remove_unit_at(disengaged_unit.x, disengaged_unit.y, disengaged_unit)
-
-                disengaged_unit.x = retreat_tile[0]
-                disengaged_unit.y = retreat_tile[1]
-
-                new_tile = self.game_map.get_tile(retreat_tile[0], retreat_tile[1])
-                if new_tile:
-                    self.game_map.add_unit_at(retreat_tile[0], retreat_tile[1], disengaged_unit)
-
-                # Unit has no moves left after disengaging
-                disengaged_unit.moves_remaining = 0
-
-            # Show disengage message
-            if disengaged_unit.owner == self.player_faction_id:
-                self.set_status_message(f"{disengaged_unit.name} disengaged from combat!")
-
-            # Clear battle state
-            self.active_battle = None
-            return
-
-        # Remove destroyed unit and award experience
-        if victor == 'defender':
-            # Attacker destroyed
-            self._remove_unit(attacker)
-            # Defender records kill and gains experience
-            defender.record_kill()
-            # Attacker consumed their move/turn
-            # (already happened when they initiated attack)
-        else:
-            # Defender destroyed
-            self._remove_unit(defender)
-            # Attacker records kill and gains experience
-            attacker.record_kill()
-            # Attacker consumed their move/turn
-
-        # Clear battle state
-        self.active_battle = None
-
-    def _find_retreat_tile(self, unit):
-        """Find a safe tile for a unit to retreat to after disengaging.
-
-        Args:
-            unit (Unit): Unit that is retreating
-
-        Returns:
-            tuple: (x, y) coordinates of retreat tile, or None if no safe tile found
-        """
-        # Check all adjacent tiles
-        adjacent_tiles = []
-        for dx in [-1, 0, 1]:
-            for dy in [-1, 0, 1]:
-                if dx == 0 and dy == 0:
-                    continue
-
-                new_x = (unit.x + dx) % self.game_map.width
-                new_y = unit.y + dy
-
-                if not (0 <= new_y < self.game_map.height):
-                    continue
-
-                tile = self.game_map.get_tile(new_x, new_y)
-                if not tile or not unit.can_move_to(tile):
-                    continue
-
-                # Check if tile has enemy units
-                has_enemy = False
-                if tile.units:
-                    for other_unit in tile.units:
-                        if other_unit.owner != unit.owner:
-                            has_enemy = True
-                            break
-
-                if not has_enemy:
-                    # Calculate "safety score" - prefer tiles closer to friendly bases
-                    safety_score = 0
-                    for base in self.bases:
-                        if base.owner == unit.owner:
-                            dist = abs(new_x - base.x) + abs(new_y - base.y)
-                            safety_score -= dist  # Negative distance = closer is better
-
-                    adjacent_tiles.append(((new_x, new_y), safety_score))
-
-        # Sort by safety score (highest first)
-        adjacent_tiles.sort(key=lambda x: x[1], reverse=True)
-
-        # Return safest tile
-        if adjacent_tiles:
-            return adjacent_tiles[0][0]
-
-        # No safe tiles found - stay in place
-        return None
 
     def _remove_unit(self, unit, killer=None):
         """Remove a unit from the game completely.
@@ -3101,8 +2991,6 @@ class Game:
         self.supply_pod_message = None
         self.supply_pod_tech_event = None
         self.mid_turn_upkeep = False
-        self.pending_battle = None
-        self.active_battle = None
         self.game_over = False
         self.winner = None
         self.victory_type = None
@@ -3337,8 +3225,6 @@ class Game:
         game.pending_busy_former = None
         game.pending_terraform_cost = None
         game.pending_movement_overflow_unit = None
-        game.pending_battle = None
-        game.active_battle = None
         game.pending_treaty_break = None
         game.pending_ai_attack = None
         game.processing_ai = False

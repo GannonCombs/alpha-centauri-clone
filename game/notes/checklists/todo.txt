@@ -162,15 +162,14 @@ The End Turn button should then blink, not auto-end.
 should not be the case. Everything should pause until the conversation is over.
 11 Alien artifact in base with network node — no popup appeared. Now triggers on unit selection.
     Updated popup: "What would you like to do?" with "Link to Network Node" / "Keep for later".
-12 'l' key to board transport did nothing — K_l handler was missing. Now boards transport on same tile.
-13 Land unit in sea base could walk directly to adjacent land tile. Now blocked unless amphibious pods.
-14 The selecting and de-selecting of the tiles the base works in the mini-map is broken. De-selection should not automatically
+12 Land unit in sea base could walk directly to adjacent land tile. Now blocked unless amphibious pods.
+13 The selecting and de-selecting of the tiles the base works in the mini-map is broken. De-selection should not automatically
 re-select. The user will click once to de-select, and click a non-worked tile to select. The user can also de-select multiple
 tiles in a row before selecting new ones.
-15 I got the underground river supply pod. No river appeared. Make sure you not only generate this in the backend, but draw
+14 I got the underground river supply pod. No river appeared. Make sure you not only generate this in the backend, but draw
 it. It becomes a permanent part of the map. Also, where you have "Xenofungus" in pink in the terrain pane, could you do a
 similar thing for "River", drawing it the same light blue as the river?
-16 Found a base mini-map that isn't accurate. It's pretending there's a row of green land beneath it that isn't there.
+15 Found a base mini-map that isn't accurate. It's pretending there's a row of green land beneath it that isn't there.
 The base is founded on the bottom row, so that might be affecting it.
 
 
@@ -199,9 +198,11 @@ kiss my ass. Saying the latter auto-starts a vendetta with that faction and lose
 7 Hitting W is still ending turn right now, if there was no one else to move. This is a big bug.
 8 I had a transport foil in a non-base water tile. In an adjacent land tile was a land unit. I told it the arrow key
 to board the transport. It could not move into it. It should be able to do this. This should take 1 move.
-9 The sea transport was unable to get back into the land base. It should be able to, so long as the base has an adjacent
-water tile which the transport can access. It "swims into the base" so to speak.
-10 Cargo: x/y is showing now, but overflowing its pane. Make the unit pane larger.
+9 Holding l for a scout patrol to board a transport has a major bug. The cargo for the transport correctly says 1/4 after,
+but the scout patrol is still in the cycle. l should act similarly to h, in the sense that the player still has its moves,
+but is taken out of the cycle. Worse, hitting l again changes the transport's cargo to 2/4. And the scout patrol is STILL
+in the cycle! So we have an infinite character glitch.
+
 
 
 ***************************************************************************

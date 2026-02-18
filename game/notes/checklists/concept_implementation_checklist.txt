@@ -45,7 +45,7 @@ Landmarks, Volcanos, etc.
 Council Proposals ◐
 Nutrients ◐ (waiting on jungle, gene splicing)
 Minerals ◐
-Energy ◐
+Energy ◐ (waiting on river, Environmental Economics, special energy resources)
 Economy ✓
 Labs (what is the formula?)
 Energy Reserves ◐
