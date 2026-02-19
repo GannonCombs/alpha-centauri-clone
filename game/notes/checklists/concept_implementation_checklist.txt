@@ -72,7 +72,7 @@ Drones (Advanced)
 Bureaucracy ✓
 Ecology (Revised)
 Self Destruction
-Morale (Advanced) ◐
+Morale (Advanced) ◐ (just want to confirm formula for odds of upgrading morale)
 Hurry Cost
 Upgrade Cost
 Repair (Advanced) ◐ (waiting on Nano Factory, Xenoempathy, and more)

@@ -130,13 +130,12 @@ class DebugManager:
             print(f"DEBUG: Show all production {status}")
             return True
 
-        # Ctrl+X - Add experience/kills to selected unit
+        # Ctrl+X - Add kills to selected unit
         if ctrl and event.key == pygame.K_x:
             if game.selected_unit and game.selected_unit.owner == game.player_id:
                 game.selected_unit.kills += 5
-                game.selected_unit.experience += 100
-                game.set_status_message(f"DEBUG: {game.selected_unit.name} +5 kills, +100 XP")
-                print(f"DEBUG: Added experience to {game.selected_unit.name}")
+                game.set_status_message(f"DEBUG: {game.selected_unit.name} +5 kills")
+                print(f"DEBUG: Added kills to {game.selected_unit.name}")
             else:
                 game.set_status_message("DEBUG: Select your unit first")
             return True

@@ -168,6 +168,9 @@ it. It becomes a permanent part of the map.
 when you haven't met the faction yet. The warning popup appears, then no vendetta or even commlink is in drop-up. Is this
 what I want?
 13 Hitting W is still ending turn right now, if there was no one else to move. This is a big bug.
+14 Cleanup backCompat:  - map.py::set_fungus — docstring says "kept for backward compatibility" (Edit: fungus is both a terraformer improvement
+  and a tile state that exists without terraforming. It kinda needs both, as long as it works.)
+15 Cleanup backCompat: - base.py::self.garrison — comment says "legacy". Seems redundant with get_garrison_units
 
 
 
@@ -206,35 +209,6 @@ I'm not going to say which popup this was - ANY popup should keep the turn from 
 16 Also skipped turn on my starting monolith with my land unit. No upgrade was performed.
 17 Now that my file structure is massively improved, it's obvious what I suspected for a while: secret project screen is
 not following convention. It is spread out across game.py. Fix once I have more usage.
-
-
-
-***************************************************************************
-
-** Possible Backward compatibility that can be removed: **
-
-***************************************************************************
-
-
-  ---
-  hasattr() backwards compat guards in unit.py runtime methods (not even in from_dict):
-  - get_morale_name, gain_experience, record_kill all have if not hasattr(self, 'experience'): blocks
-
-  ---
-  .get() with defaults throughout all from_dict methods (~50 instances):
-  - base.py::from_dict — 24 .get() calls under an explicit # backward compatibility comment
-  - game.py::from_dict — 12+ .get() calls
-  - unit.py::from_dict — 16 .get() calls
-  - map.py::from_dict — 3 .get() + a fungus format migration block
-  - unit_design.py::from_dict — 1 .get()
-
-  ---
-  Legacy method/attribute stubs:
-  - map.py::set_fungus — docstring says "kept for backward compatibility" (Edit: fungus is both a terraformer improvement
-  and a tile state that exists without terraforming. It kinda needs both, as long as it works.)
-  - base.py::self.garrison — comment says "legacy"
-
-  ---
 
 
 

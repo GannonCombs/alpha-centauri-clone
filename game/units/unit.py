@@ -6,6 +6,8 @@ including military units, colony pods, and transports. Units can move across
 the map, garrison in bases, and respect terrain restrictions.
 """
 
+import random
+
 
 class Unit:
     """Represents a game unit (military, colony pod, former, transport, etc.).
@@ -81,8 +83,7 @@ class Unit:
         self.max_health = 10 * self.reactor_level
         self.current_health = self.max_health
 
-        # Morale/Experience
-        self.experience = 0
+        # Morale
         self.morale_level = 2  # Start at Green
         self.kills = 0
         self.monolith_upgrade = False
@@ -537,62 +538,30 @@ class Unit:
             return morale_names[self.morale_level]
         return "Unknown"
 
-    def gain_experience(self, amount):
-        """Gain experience and check for promotion.
-
-        Args:
-            amount (int): Amount of XP to gain
-        """
-        # Backward compatibility
-        if not hasattr(self, 'experience'):
-            self.morale_level = 2
-            self.experience = 0
-            self.kills = 0
-
-        self.experience += amount
-        self._check_promotion()
-
     def record_kill(self):
-        """Record a kill and gain experience.
-
-        Special rule: Units below Disciplined (morale < 3) automatically
-        promote on their first kill.
-        """
-        # Backward compatibility
-        if not hasattr(self, 'kills'):
-            self.morale_level = 2
-            self.experience = 0
-            self.kills = 0
-
+        """Record a kill and attempt a morale upgrade (SMAC probability table)."""
         self.kills += 1
+        self._try_morale_upgrade()
 
-        # Special rule: below Disciplined, first kill = auto-promote
-        if self.morale_level < 3:  # Very Very Green, Very Green, or Green
+    def _try_morale_upgrade(self):
+        """Attempt to promote unit morale after winning a battle.
+
+        Probabilities per SMAC datalinks:
+          Very Very Green / Very Green / Green: 100%
+          Disciplined: 50%
+          Hardened: 33%
+          Veteran: 25%
+          Commando: 20%
+          Elite: no further promotion
+        """
+        if self.morale_level >= 7:
+            return
+
+        chances = [1.0, 1.0, 1.0, 0.5, 1/3, 0.25, 0.20, 0.0]
+        if random.random() < chances[self.morale_level]:
+            old_name = self.get_morale_name()
             self.morale_level += 1
-            print(f"{self.name} promoted to {self.get_morale_name()} (first kill)")
-        else:
-            # Normal XP gain
-            self.gain_experience(10)  # Arbitrary XP amount for kill
-
-    def _check_promotion(self):
-        """Check if unit has enough XP to promote."""
-        # XP thresholds for each level (after Disciplined)
-        # These are somewhat arbitrary - adjust as needed
-        thresholds = {
-            3: 0,    # Disciplined (starting point after auto-promotions)
-            4: 20,   # Hardened
-            5: 50,   # Veteran
-            6: 100,  # Commando
-            7: 200   # Elite
-        }
-
-        # Check if we've reached next threshold
-        if self.morale_level < 7:  # Not yet Elite
-            next_level = self.morale_level + 1
-            if next_level in thresholds and self.experience >= thresholds[next_level]:
-                old_morale = self.get_morale_name()
-                self.morale_level = next_level
-                print(f"{self.name} promoted from {old_morale} to {self.get_morale_name()}!")
+            print(f"{self.name} promoted from {old_name} to {self.get_morale_name()}!")
 
     def to_dict(self):
         """Serialize unit to dictionary.
@@ -615,7 +584,6 @@ class Unit:
             'current_health': self.current_health,
             'max_health': self.max_health,
             'morale_level': self.morale_level,
-            'experience': self.experience,
             'kills': self.kills,
             'monolith_upgrade': self.monolith_upgrade,
             'has_artillery': self.has_artillery,
@@ -665,7 +633,6 @@ class Unit:
         unit.current_health = data['current_health']
         unit.max_health = data['max_health']
         unit.morale_level = data['morale_level']
-        unit.experience = data['experience']
         unit.kills = data['kills']
         unit.monolith_upgrade = data.get('monolith_upgrade', False)
         unit.has_artillery = data.get('has_artillery', False)
@@ -680,7 +647,7 @@ class Unit:
         unit.transport_capacity = data.get('transport_capacity', 0)
         unit.loaded_units = []  # Reconstructed in game.py
         unit.is_probe = data.get('is_probe', unit.weapon == 'probe')
-        unit.is_former = data.get('is_former', unit.weapon == 'terraforming')
+        unit.is_former = unit.weapon == 'terraforming'
         unit.is_cloaked = data.get('is_cloaked', False)
         unit.terraforming_action = data.get('terraforming_action', None)
         unit.terraforming_turns_left = data.get('terraforming_turns_left', 0)

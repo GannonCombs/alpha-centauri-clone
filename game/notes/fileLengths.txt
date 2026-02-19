@@ -34,7 +34,7 @@
     217 ./game/ui/dialogs/combat_dialog.py
     269 ./game/commerce.py
     283 ./game/tech.py
-    342 ./game/debug.py
+    339 ./game/debug.py
     364 ./game/ui/screens/council_screen.py
     388 ./game/terraforming.py
     398 ./game/ui/screens/diplomacy_screen.py
@@ -47,8 +47,8 @@
     598 ./game/ui/dialogs/save_load_dialog.py
     599 ./game/turn_manager.py
     647 ./game/data/facility_data.py
+    655 ./game/units/unit.py
     667 ./game/ui/screens/social_engineering_screen.py
-    694 ./game/units/unit.py
     704 ./game/units/combat.py
     716 ./main.py
     796 ./game/ui/screens/tech_tree_screen.py
@@ -58,7 +58,7 @@
    1018 ./game/base.py
    1238 ./game/ui/screens/design_workshop_screen.py
    1977 ./game/data/commlink_text_data.py
-   2253 ./game/game.py
+   2251 ./game/game.py
    2290 ./game/ui/screens/base_screen.py
    3307 ./game/ui/ui_manager.py
-  27842 total
+  27798 total
