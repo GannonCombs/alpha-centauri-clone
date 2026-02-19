@@ -9,7 +9,7 @@ from game.data.faction_data import FACTION_DATA
 from game.commlink_text import DialogSubstitution, select_greeting_dialog
 
 
-class DiplomacyManager:
+class DiplomacyScreen:
     """Manages the faction diplomacy interface."""
 
     def __init__(self, font, small_font, mono_font):

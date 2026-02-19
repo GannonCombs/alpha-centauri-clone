@@ -6,7 +6,7 @@ from game import save_load
 from game.data import display_data as display
 
 
-class SaveLoadDialogManager:
+class SaveLoadDialog:
     """Manages the save and load dialog UI."""
 
     def __init__(self, font, small_font):

@@ -42,18 +42,16 @@ class Combat:
 
         # Morale modifier: +12.5% per level above Green (level 2)
         # Green (level 2) is baseline 1.0
-        if hasattr(unit, 'morale_level'):
-            # Calculate multiplier: 1.0 + (level - 2) * 0.125
-            multiplier = 1.0 + (unit.morale_level - 2) * 0.125
-            if multiplier != 1.0:
-                morale_name = unit.get_morale_name()
-                percent = int((multiplier - 1.0) * 100)
-                sign = '+' if percent > 0 else ''
-                modifiers.append({
-                    'name': f'Morale ({morale_name})',
-                    'multiplier': multiplier,
-                    'display': f'{sign}{percent}%'
-                })
+        multiplier = 1.0 + (unit.morale_level - 2) * 0.125
+        if multiplier != 1.0:
+            morale_name = unit.get_morale_name()
+            percent = int((multiplier - 1.0) * 100)
+            sign = '+' if percent > 0 else ''
+            modifiers.append({
+                'name': f'Morale ({morale_name})',
+                'multiplier': multiplier,
+                'display': f'{sign}{percent}%'
+            })
 
         # Defender bonuses
         if is_defender:
@@ -301,7 +299,7 @@ class Combat:
         # Calculate disengage chance based on morale and speed advantage
         # Base 50% chance, +10% per morale level, +5% per extra move point
         base_chance = 0.5
-        morale_bonus = 0.1 * unit.morale_level if hasattr(unit, 'morale_level') else 0
+        morale_bonus = 0.1 * unit.morale_level
         speed_bonus = 0.05 * (unit_moves - opponent_moves - 2)
 
         disengage_chance = min(0.9, base_chance + morale_bonus + speed_bonus)

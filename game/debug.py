@@ -238,9 +238,7 @@ class DebugManager:
         """Upgrade unit morale by one level."""
         if unit.morale_level < 7:
             unit.morale_level += 1
-            morale_names = ["Very Very Green", "Very Green", "Green", "Disciplined",
-                          "Hardened", "Veteran", "Commando", "Elite"]
-            morale_name = morale_names[unit.morale_level] if unit.morale_level < len(morale_names) else "Elite"
+            morale_name = unit.get_morale_name()
             game.set_status_message(f"DEBUG: {unit.name} -> {morale_name}")
             print(f"DEBUG: Upgraded {unit.name} to {morale_name}")
         else:

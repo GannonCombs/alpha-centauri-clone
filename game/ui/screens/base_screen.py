@@ -267,7 +267,7 @@ def _get_available_specialists(tech_tree, population):
     return available
 
 
-class BaseScreenManager:
+class BaseScreen:
     """Manages base naming and base management screens."""
 
     def __init__(self, font, small_font):

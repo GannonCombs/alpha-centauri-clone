@@ -1,5 +1,7 @@
    Last updated: 2/19/2026
 
+   Note: Claude is not allowed to update this file. Only I can.
+
     Command to get this:
      find . \( -path "*/my-env" -o -path "*/venv" -o -path "*/.venv" \) -prune -o -name "*.py" -type f -print0 | xargs -0 wc -l | sort -n
 
@@ -25,8 +27,7 @@
     159 ./game/social_engineering.py
     163 ./game/save_load.py
     169 ./game/faction.py
-    187 ./game/units/design_data.py
-    189 ./game/ui/screens/social_screens.py
+    187 ./game/units/unit_design.py
     193 ./game/territory.py
     197 ./game/data/unit_data.py
     214 ./game/units/unit_components.py
@@ -48,16 +49,16 @@
     647 ./game/data/facility_data.py
     667 ./game/ui/screens/social_engineering_screen.py
     694 ./game/units/unit.py
-    706 ./game/units/combat.py
+    704 ./game/units/combat.py
     716 ./main.py
     796 ./game/ui/screens/tech_tree_screen.py
     856 ./game/map.py
-    865 ./game/renderer.py
+    863 ./game/renderer.py
    1004 ./game/ui/screens/intro_screen.py
    1018 ./game/base.py
    1238 ./game/ui/screens/design_workshop_screen.py
    1977 ./game/data/commlink_text_data.py
    2253 ./game/game.py
-   2290 ./game/ui/screens/base_screens.py
-   3303 ./game/ui/ui_manager.py
-  28031 total
+   2290 ./game/ui/screens/base_screen.py
+   3307 ./game/ui/ui_manager.py
+  27842 total

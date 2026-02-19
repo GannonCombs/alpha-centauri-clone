@@ -320,38 +320,36 @@ class Renderer:
         pygame.draw.polygon(self.screen, COLOR_BLACK, points, 1)
 
         # Morale indicator - vertical bar with segments to the right of selection indicator
-        # Only draw if unit has morale system (backward compatibility)
-        if hasattr(unit, 'morale_level'):
-            morale_x = x + size + 2
-            morale_y = tile_y + 2
-            morale_width = 3
-            morale_height = 10  # Match selection indicator height
-            segment_height = morale_height / 7  # 7 morale levels (0-7)
+        morale_x = x + size + 2
+        morale_y = tile_y + 2
+        morale_width = 3
+        morale_height = 10  # Match selection indicator height
+        segment_height = morale_height / 7  # 7 morale levels (0-7)
 
-            # Draw background for morale bar
-            morale_bg_rect = pygame.Rect(morale_x, morale_y, morale_width, morale_height)
-            pygame.draw.rect(self.screen, (40, 40, 40), morale_bg_rect)
-            pygame.draw.rect(self.screen, COLOR_BLACK, morale_bg_rect, 1)
+        # Draw background for morale bar
+        morale_bg_rect = pygame.Rect(morale_x, morale_y, morale_width, morale_height)
+        pygame.draw.rect(self.screen, (40, 40, 40), morale_bg_rect)
+        pygame.draw.rect(self.screen, COLOR_BLACK, morale_bg_rect, 1)
 
-            # Fill segments from top to bottom based on morale level
-            # Morale levels: 0-7 (Very Very Green to Elite)
-            # Fill (morale_level + 1) segments (so Green=2 fills 3 segments)
-            filled_segments = unit.morale_level + 1
-            for i in range(filled_segments):
-                seg_y = morale_y + (i * segment_height)
-                seg_rect = pygame.Rect(morale_x, int(seg_y), morale_width, int(segment_height) + 1)
+        # Fill segments from top to bottom based on morale level
+        # Morale levels: 0-7 (Very Very Green to Elite)
+        # Fill (morale_level + 1) segments (so Green=2 fills 3 segments)
+        filled_segments = unit.morale_level + 1
+        for i in range(filled_segments):
+            seg_y = morale_y + (i * segment_height)
+            seg_rect = pygame.Rect(morale_x, int(seg_y), morale_width, int(segment_height) + 1)
 
-                # Color based on morale tier
-                if unit.morale_level >= 7:  # Elite
-                    seg_color = (255, 215, 0)  # Gold
-                elif unit.morale_level >= 5:  # Veteran+
-                    seg_color = (100, 200, 255)  # Light blue
-                elif unit.morale_level >= 3:  # Disciplined+
-                    seg_color = (150, 255, 150)  # Light green
-                else:  # Below Disciplined
-                    seg_color = (180, 180, 180)  # Gray
+            # Color based on morale tier
+            if unit.morale_level >= 7:  # Elite
+                seg_color = (255, 215, 0)  # Gold
+            elif unit.morale_level >= 5:  # Veteran+
+                seg_color = (100, 200, 255)  # Light blue
+            elif unit.morale_level >= 3:  # Disciplined+
+                seg_color = (150, 255, 150)  # Light green
+            else:  # Below Disciplined
+                seg_color = (180, 180, 180)  # Gray
 
-                pygame.draw.rect(self.screen, seg_color, seg_rect)
+            pygame.draw.rect(self.screen, seg_color, seg_rect)
 
     def draw_bases(self, bases, player_faction_id, game_map, game):
         """Draw all bases on the map."""

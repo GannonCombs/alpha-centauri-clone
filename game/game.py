@@ -123,9 +123,9 @@ class Game:
             self.factions[faction_id].tech_tree.auto_select_research()
 
         # Initialize unit designs for all factions
-        from game.units.design_data import DesignData
+        from game.units.unit_design import UnitDesign
         for faction_id in range(7):
-            self.factions[faction_id].designs = DesignData(faction_id)
+            self.factions[faction_id].designs = UnitDesign(faction_id)
 
         # Facilities and Projects
         self.built_projects = set()  # Global set of secret projects built (one per game)
@@ -600,9 +600,7 @@ class Game:
             unit.morale_level += 1
             unit.monolith_upgrade = True
 
-            morale_names = ["Very Very Green", "Very Green", "Green", "Disciplined",
-                          "Hardened", "Veteran", "Commando", "Elite"]
-            morale_name = morale_names[unit.morale_level] if unit.morale_level < len(morale_names) else "Elite"
+            morale_name = unit.get_morale_name()
 
             # Upgrading at monolith ends the unit's turn
             unit.moves_remaining = 0
@@ -1875,7 +1873,7 @@ class Game:
         """
         # Check if this tech unlocks anything first
         if hasattr(self, 'ui_manager') and self.ui_manager is not None:
-            workshop = self.ui_manager.social_screens.design_workshop_screen
+            workshop = self.ui_manager.design_workshop_screen
             player_tech_tree = self.factions[self.player_faction_id].tech_tree
 
             # Check what the tech unlocks
@@ -2018,7 +2016,7 @@ class Game:
 
         # Recreate factions with new tech trees and designs
         from game.faction import Faction
-        from game.units.design_data import DesignData
+        from game.units.unit_design import UnitDesign
         self.factions = {}
         for faction_id in range(7):
             is_player = (faction_id == self.player_faction_id)
@@ -2026,7 +2024,7 @@ class Game:
             self.factions[faction_id].tech_tree = TechTree()
             self._grant_starting_tech(faction_id)
             self.factions[faction_id].tech_tree.auto_select_research()
-            self.factions[faction_id].designs = DesignData(faction_id)
+            self.factions[faction_id].designs = UnitDesign(faction_id)
         self.territory = TerritoryManager(self.game_map)
         self.built_projects = set()
         self.se_selections = {
@@ -2170,7 +2168,7 @@ class Game:
 
         # Restore factions
         from game.faction import Faction
-        from game.units.design_data import DesignData
+        from game.units.unit_design import UnitDesign
         game.factions = {}
         for faction_id_str, faction_data in data['factions'].items():
             faction_id = int(faction_id_str)
@@ -2181,9 +2179,9 @@ class Game:
             if faction_data['tech_tree']:
                 faction.tech_tree = TechTree.from_dict(faction_data['tech_tree'])
             if faction_data['designs']:
-                faction.designs = DesignData.from_dict(faction_data['designs'])
+                faction.designs = UnitDesign.from_dict(faction_data['designs'])
             else:
-                faction.designs = DesignData(faction_id)
+                faction.designs = UnitDesign(faction_id)
             game.factions[faction_id] = faction
 
         # Restore AI players

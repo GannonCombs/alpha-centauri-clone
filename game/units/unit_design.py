@@ -1,13 +1,13 @@
-# design_data.py
+# unit_design.py
 """Per-faction unit design storage.
 
-This module defines the DesignData class that contains all unit designs
+This module defines the UnitDesign class that contains all unit designs
 for a single faction. Each faction maintains their own design slots based
 on their discovered technologies.
 """
 
 
-class DesignData:
+class UnitDesign:
     """Represents all unit designs for a single faction.
 
     Each faction maintains up to 64 design slots where they can store
@@ -173,7 +173,7 @@ class DesignData:
             data (dict): Serialized design data
 
         Returns:
-            DesignData: Reconstructed design data
+            UnitDesign: Reconstructed design data
         """
         designs = cls.__new__(cls)
         designs.design_slots = data.get('design_slots', [None] * 64)

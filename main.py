@@ -17,9 +17,9 @@ from game.data import display_data as display
 from game.game import Game
 from game.renderer import Renderer
 from game.ui import UIManager
-from game.ui.screens.intro_screen import IntroScreenManager
-from game.ui.dialogs.save_load_dialog import SaveLoadDialogManager
-from game.ui.dialogs.exit_dialog import ExitDialogManager
+from game.ui.screens.intro_screen import IntroScreen
+from game.ui.dialogs.save_load_dialog import SaveLoadDialog
+from game.ui.dialogs.exit_dialog import ExitDialog
 
 def has_blocking_popup(game, ui_panel):
     """Return True if any popup or modal is waiting for player input during AI processing."""
@@ -74,10 +74,10 @@ def main():
     clock = pygame.time.Clock()
 
     # Initialize intro screen
-    intro_screen = IntroScreenManager(pygame.font.Font(None, 24), pygame.font.Font(None, 18))
-    intro_load_dialog = SaveLoadDialogManager(pygame.font.Font(None, 24), pygame.font.Font(None, 18))
-    exit_dialog = ExitDialogManager(pygame.font.Font(None, 24), "Are you sure you want to exit?")
-    menu_dialog = ExitDialogManager(pygame.font.Font(None, 24), "Return to main menu?")
+    intro_screen = IntroScreen(pygame.font.Font(None, 24), pygame.font.Font(None, 18))
+    intro_load_dialog = SaveLoadDialog(pygame.font.Font(None, 24), pygame.font.Font(None, 18))
+    exit_dialog = ExitDialog(pygame.font.Font(None, 24), "Are you sure you want to exit?")
+    menu_dialog = ExitDialog(pygame.font.Font(None, 24), "Return to main menu?")
 
     # Game will be None until player starts a game
     game = None
@@ -167,29 +167,29 @@ def main():
 
                 # Check if design workshop rename popup is open
                 if ui_panel.active_screen == "DESIGN_WORKSHOP":
-                    if ui_panel.social_screens.design_workshop_screen.rename_popup_open:
-                        if ui_panel.social_screens.design_workshop_screen.handle_design_workshop_keypress(event):
+                    if ui_panel.design_workshop_screen.rename_popup_open:
+                        if ui_panel.design_workshop_screen.handle_design_workshop_keypress(event):
                             continue
 
                 # Check for Escape - close overlays first, then show exit dialog
                 if event.key == pygame.K_ESCAPE:
                     # Check if base view has any popups open
                     if ui_panel.active_screen == "BASE_VIEW":
-                        if (ui_panel.base_screens.hurry_production_open or
-                            ui_panel.base_screens.production_selection_open or
-                            ui_panel.base_screens.queue_management_open or
-                            ui_panel.base_screens.nerve_staple_popup_open):
+                        if (ui_panel.base_screen.hurry_production_open or
+                            ui_panel.base_screen.production_selection_open or
+                            ui_panel.base_screen.queue_management_open or
+                            ui_panel.base_screen.nerve_staple_popup_open):
                             # Let the base view handler close the popup
                             ui_panel.handle_event(event, game)
                             continue
 
                     # Check if design workshop has a popup/panel open
                     if ui_panel.active_screen == "DESIGN_WORKSHOP":
-                        if ui_panel.social_screens.design_workshop_screen.rename_popup_open:
+                        if ui_panel.design_workshop_screen.rename_popup_open:
                             # Close rename popup
-                            ui_panel.social_screens.design_workshop_screen.rename_popup_open = False
+                            ui_panel.design_workshop_screen.rename_popup_open = False
                             continue
-                        if ui_panel.social_screens.design_workshop_screen.dw_editing_panel is not None:
+                        if ui_panel.design_workshop_screen.dw_editing_panel is not None:
                             # Let the ui_panel handler close the component panel
                             ui_panel.handle_event(event, game)
                             continue

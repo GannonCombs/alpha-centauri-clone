@@ -16,7 +16,7 @@ class Faction:
         id (int): Faction ID (0-6, matches FACTION_DATA index)
         is_player (bool): True if this is the human player
         tech_tree: TechTree instance for this faction
-        designs: DesignData instance for this faction's unit designs
+        designs: UnitDesign instance for this faction's unit designs
         energy_credits (int): Current energy credits
         bases (list): References to bases owned by this faction
         units (list): References to units owned by this faction

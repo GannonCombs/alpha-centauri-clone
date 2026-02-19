@@ -4,7 +4,7 @@ import pygame
 from game.data.faction_data import FACTION_DATA
 
 
-class IntroScreenManager:
+class IntroScreen:
     """Manages the intro screen, faction selection, and name input."""
 
     def __init__(self, font, small_font):

@@ -7,11 +7,13 @@ from game.data.display_data import (COLOR_UI_BACKGROUND, COLOR_UI_BORDER, COLOR_
 from .components import Button
 from .dialogs.supply_pod_dialog import SupplyPodDialog
 from .dialogs.combat_dialog import CombatDialog
-from .dialogs.save_load_dialog import SaveLoadDialogManager
-from .screens.diplomacy_screen import DiplomacyManager
-from .screens.council_screen import CouncilManager
-from .screens.social_screens import SocialScreensManager
-from .screens.base_screens import BaseScreenManager
+from .dialogs.save_load_dialog import SaveLoadDialog
+from .screens.diplomacy_screen import DiplomacyScreen
+from .screens.council_screen import CouncilScreen
+from .screens.social_engineering_screen import SocialEngineeringScreen
+from .screens.tech_tree_screen import TechTreeScreen
+from .screens.design_workshop_screen import DesignWorkshopScreen
+from .screens.base_screen import BaseScreen
 from .context_menu import ContextMenu
 from game.data.faction_data import FACTION_DATA
 from game.map import tile_base_nutrients, tile_base_energy, tile_base_minerals
@@ -35,11 +37,13 @@ class UIManager:
         # Initialize all screen managers
         self.supply_pod_dialog = SupplyPodDialog(self.font, self.small_font)
         self.combat_dialog = CombatDialog(self.font, self.small_font)
-        self.diplomacy = DiplomacyManager(self.font, self.small_font, self.mono_font)
-        self.council = CouncilManager(self.font, self.small_font)
-        self.social_screens = SocialScreensManager(self.font, self.small_font)
-        self.base_screens = BaseScreenManager(self.font, self.small_font)
-        self.save_load_dialog = SaveLoadDialogManager(self.font, self.small_font)
+        self.diplomacy = DiplomacyScreen(self.font, self.small_font, self.mono_font)
+        self.council = CouncilScreen(self.font, self.small_font)
+        self.social_engineering_screen = SocialEngineeringScreen(self.font, self.small_font)
+        self.tech_tree_screen = TechTreeScreen(self.font, self.small_font)
+        self.design_workshop_screen = DesignWorkshopScreen(self.font, self.small_font)
+        self.base_screen = BaseScreen(self.font, self.small_font)
+        self.save_load_dialog = SaveLoadDialog(self.font, self.small_font)
         self.context_menu = ContextMenu(self.font)
 
         # Layout - will be initialized properly after screen size is known
@@ -306,9 +310,9 @@ class UIManager:
 
             # Handle text input for base naming
             if self.active_screen == "BASE_NAMING":
-                result = self.base_screens.handle_base_naming_event(event, game)
+                result = self.base_screen.handle_base_naming_event(event, game)
                 if result == 'close':
-                    if self.base_screens.viewing_base:
+                    if self.base_screen.viewing_base:
                         self.active_screen = "BASE_VIEW"
                     else:
                         self.active_screen = "GAME"
@@ -316,59 +320,59 @@ class UIManager:
 
             # Handle text input for base view (hurry production popup)
             if self.active_screen == "BASE_VIEW":
-                _viewing = self.base_screens.viewing_base
+                _viewing = self.base_screen.viewing_base
                 _enemy_base = _viewing and _viewing.owner != game.player_faction_id
                 # Check for C (Change production) hotkey
-                if not _enemy_base and event.key == pygame.K_c and not self.base_screens.hurry_production_open and not self.base_screens.queue_management_open:
-                    self.base_screens.production_selection_mode = "change"
-                    self.base_screens.production_selection_open = True
-                    if self.base_screens.viewing_base:
-                        self.base_screens.selected_production_item = self.base_screens.viewing_base.current_production
+                if not _enemy_base and event.key == pygame.K_c and not self.base_screen.hurry_production_open and not self.base_screen.queue_management_open:
+                    self.base_screen.production_selection_mode = "change"
+                    self.base_screen.production_selection_open = True
+                    if self.base_screen.viewing_base:
+                        self.base_screen.selected_production_item = self.base_screen.viewing_base.current_production
                     return True
                 # Check for H (Hurry production) hotkey
-                elif not _enemy_base and event.key == pygame.K_h and not self.base_screens.production_selection_open and not self.base_screens.queue_management_open:
-                    self.base_screens.hurry_production_open = True
-                    self.base_screens.hurry_input = ""
+                elif not _enemy_base and event.key == pygame.K_h and not self.base_screen.production_selection_open and not self.base_screen.queue_management_open:
+                    self.base_screen.hurry_production_open = True
+                    self.base_screen.hurry_input = ""
                     return True
 
-                if self.base_screens.handle_base_view_event(event, game):
+                if self.base_screen.handle_base_view_event(event, game):
                     return True
 
             if event.key == pygame.K_e:
                 # Toggle Social Engineering screen
                 if self.active_screen == "SOCIAL_ENGINEERING":
                     self.active_screen = "GAME"
-                    self.social_screens.social_engineering_open = False
+                    self.social_engineering_screen.social_engineering_open = False
                     # Reset selections to revert unsaved changes
-                    self.social_screens.social_engineering_screen.se_selections = None
+                    self.social_engineering_screen.se_selections = None
                     return True
                 elif self.active_screen == "GAME" and not self.commlink_open and not self.main_menu_open:
                     self.active_screen = "SOCIAL_ENGINEERING"
-                    self.social_screens.social_engineering_open = True
+                    self.social_engineering_screen.social_engineering_open = True
                     # Reset selections to load current game state
-                    self.social_screens.social_engineering_screen.se_selections = None
+                    self.social_engineering_screen.se_selections = None
                     return True
 
             if event.key == pygame.K_u:
                 # Toggle Design Workshop screen
                 if self.active_screen == "DESIGN_WORKSHOP":
                     self.active_screen = "GAME"
-                    self.social_screens.design_workshop_open = False
+                    self.design_workshop_screen.design_workshop_open = False
                     return True
                 elif self.active_screen == "GAME" and not self.commlink_open and not self.main_menu_open:
                     self.active_screen = "DESIGN_WORKSHOP"
-                    self.social_screens.design_workshop_open = True
+                    self.design_workshop_screen.design_workshop_open = True
                     # Reset editing panel state when opening
-                    self.social_screens.design_workshop_screen.dw_editing_panel = None
+                    self.design_workshop_screen.dw_editing_panel = None
                     # Load first empty slot when opening
-                    workshop = self.social_screens.design_workshop_screen
+                    workshop = self.design_workshop_screen
                     faction_designs = game.factions[game.player_faction_id].designs
                     first_empty = faction_designs.find_first_empty_slot()
                     workshop._load_slot_into_editor(first_empty, game)
                     # Rebuild designs if new tech was discovered (manual call, no specific tech)
                     if game.designs_need_rebuild:
                         player_tech_tree = game.factions[game.player_faction_id].tech_tree
-                        self.social_screens.design_workshop_screen.rebuild_available_designs(player_tech_tree, game, None)
+                        self.design_workshop_screen.rebuild_available_designs(player_tech_tree, game, None)
                         game.designs_need_rebuild = False
                     return True
 
@@ -376,11 +380,11 @@ class UIManager:
                 # Toggle Tech Tree screen
                 if self.active_screen == "TECH_TREE":
                     self.active_screen = "GAME"
-                    self.social_screens.tech_tree_open = False
+                    self.tech_tree_screen.tech_tree_open = False
                     return True
                 elif self.active_screen == "GAME" and not self.commlink_open and not self.main_menu_open:
                     self.active_screen = "TECH_TREE"
-                    self.social_screens.tech_tree_open = True
+                    self.tech_tree_screen.tech_tree_open = True
                     return True
 
             if event.key == pygame.K_F5:
@@ -409,32 +413,32 @@ class UIManager:
                     return True
                 elif self.active_screen == "TECH_TREE":
                     self.active_screen = "GAME"
-                    self.social_screens.tech_tree_open = False
+                    self.tech_tree_screen.tech_tree_open = False
                     return True
                 elif self.active_screen == "SOCIAL_ENGINEERING":
                     self.active_screen = "GAME"
-                    self.social_screens.social_engineering_open = False
+                    self.social_engineering_screen.social_engineering_open = False
                     # Reset selections to revert unsaved changes
-                    self.social_screens.social_engineering_screen.se_selections = None
-                    self.social_screens.social_engineering_screen.se_confirm_dialog_open = False
+                    self.social_engineering_screen.se_selections = None
+                    self.social_engineering_screen.se_confirm_dialog_open = False
                     return True
                 elif self.active_screen == "SECRET_PROJECTS":
                     self.active_screen = "GAME"
                     return True
                 elif self.active_screen == "DESIGN_WORKSHOP":
                     # Check if a component selection panel is open
-                    if self.social_screens.design_workshop_screen.dw_editing_panel is not None:
+                    if self.design_workshop_screen.dw_editing_panel is not None:
                         # Close the component panel, stay in design workshop
-                        self.social_screens.design_workshop_screen.dw_editing_panel = None
+                        self.design_workshop_screen.dw_editing_panel = None
                         return True
                     else:
                         # No panel open, exit design workshop
                         self.active_screen = "GAME"
-                        self.social_screens.design_workshop_open = False
+                        self.design_workshop_screen.design_workshop_open = False
                         return True
                 elif self.active_screen == "BASE_VIEW":
                     self.active_screen = "GAME"
-                    self.base_screens.viewing_base = None
+                    self.base_screen.viewing_base = None
                     return True
                 elif self.active_screen != "GAME" or self.commlink_open or self.main_menu_open:
                     self.active_screen = "GAME"
@@ -524,9 +528,9 @@ class UIManager:
 
             # Handle garrison context menu in base view (read-only for enemy bases)
             if self.active_screen == "BASE_VIEW":
-                _vb = self.base_screens.viewing_base
+                _vb = self.base_screen.viewing_base
                 _is_enemy = _vb and _vb.owner != game.player_faction_id
-                if not _is_enemy and self.base_screens.handle_base_view_right_click(event.pos, game):
+                if not _is_enemy and self.base_screen.handle_base_view_right_click(event.pos, game):
                     return True
 
         if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
@@ -606,7 +610,7 @@ class UIManager:
                     self.new_designs_popup_active = False
                     game.new_designs_available = False
                     self.active_screen = "DESIGN_WORKSHOP"
-                    self.social_screens.design_workshop_screen.dw_editing_panel = None
+                    self.design_workshop_screen.dw_editing_panel = None
                     return True
                 elif self.new_designs_ignore_rect and self.new_designs_ignore_rect.collidepoint(pos):
                     # Ignore - just close the popup
@@ -974,34 +978,34 @@ class UIManager:
                     self.active_screen = "GAME"
                 return True
             elif self.active_screen == "TECH_TREE":
-                result = self.social_screens.handle_tech_tree_click(event.pos, game)
+                result = self.tech_tree_screen.handle_tech_tree_click(event.pos, game)
                 if result == 'close':
                     self.active_screen = "GAME"
                 return True
             elif self.active_screen == "SOCIAL_ENGINEERING":
-                result = self.social_screens.handle_social_engineering_click(event.pos, game)
+                result = self.social_engineering_screen.handle_social_engineering_click(event.pos, game)
                 if result == 'close':
                     self.active_screen = "GAME"
                 return True
             elif self.active_screen == "DESIGN_WORKSHOP":
-                result = self.social_screens.handle_design_workshop_click(event.pos, game)
+                result = self.design_workshop_screen.handle_design_workshop_click(event.pos, game)
                 if result == 'close':
                     self.active_screen = "GAME"
                 return True
             elif self.active_screen == "BASE_VIEW":
-                _vb = self.base_screens.viewing_base
+                _vb = self.base_screen.viewing_base
                 _is_enemy = bool(_vb and _vb.owner != game.player_faction_id)
-                result = self.base_screens.handle_base_view_click(event.pos, game, is_enemy=_is_enemy)
+                result = self.base_screen.handle_base_view_click(event.pos, game, is_enemy=_is_enemy)
                 if result == 'close':
                     self.active_screen = "GAME"
                 elif result == 'rename':
                     self.active_screen = "BASE_NAMING"
                 return True
             elif self.active_screen == "BASE_NAMING":
-                result = self.base_screens.handle_base_naming_click(event.pos, game)
+                result = self.base_screen.handle_base_naming_click(event.pos, game)
                 if result == 'close':
                     # Return to base view if we were renaming, otherwise back to game
-                    if self.base_screens.viewing_base:
+                    if self.base_screen.viewing_base:
                         self.active_screen = "BASE_VIEW"
                     else:
                         self.active_screen = "GAME"
@@ -1134,21 +1138,21 @@ class UIManager:
             # Always end any scrollbar drag on mouse up, regardless of screen
             # This prevents the drag state from getting stuck
             if self.active_screen == "TECH_TREE":
-                self.social_screens.handle_tech_tree_drag_end()
+                self.tech_tree_screen.handle_scrollbar_drag_end()
                 # Don't return True here - let other handlers process the mouse up
 
         # 4. Mouse Wheel Scrolling
         if event.type == pygame.MOUSEWHEEL:
             # Handle scrolling in tech tree screen
             if self.active_screen == "TECH_TREE":
-                self.social_screens.handle_tech_tree_scroll(event.y, game)
+                self.tech_tree_screen.handle_tech_tree_scroll(event.y, game)
                 return True
 
         # 5. Motion (Hover and Drag)
         if event.type == pygame.MOUSEMOTION:
             # Handle scrollbar drag in tech tree
             if self.active_screen == "TECH_TREE":
-                if self.social_screens.handle_tech_tree_drag_motion(event.pos, game):
+                if self.tech_tree_screen.handle_scrollbar_drag_motion(event.pos, game):
                     return True
 
             self.main_menu_button.handle_event(event)
@@ -1540,17 +1544,17 @@ class UIManager:
         if self.active_screen == "SECRET_PROJECTS":
             self._draw_secret_projects_view(screen, game)
         elif self.active_screen == "TECH_TREE":
-            self.social_screens.draw_tech_tree(screen, game)
+            self.tech_tree_screen.draw_tech_tree(screen, game)
         elif self.active_screen == "SOCIAL_ENGINEERING":
-            self.social_screens.draw_social_engineering(screen, game)
+            self.social_engineering_screen.draw_social_engineering(screen, game)
         elif self.active_screen == "DESIGN_WORKSHOP":
-            self.social_screens.draw_design_workshop(screen, game)
+            self.design_workshop_screen.draw_design_workshop(screen, game)
         elif self.active_screen == "BASE_VIEW":
-            self.base_screens.draw_base_view(screen, game)
+            self.base_screen.draw_base_view(screen, game)
         elif self.active_screen == "BASE_NAMING":
-            if self.base_screens.rename_base_target:
-                self.base_screens.draw_base_view(screen, game)
-            self.base_screens.draw_base_naming(screen)
+            if self.base_screen.rename_base_target:
+                self.base_screen.draw_base_view(screen, game)
+            self.base_screen.draw_base_naming(screen)
         elif self.active_screen == "DIPLOMACY":
             self.diplomacy.draw(screen)
         elif self.active_screen == "COUNCIL_VOTE":
@@ -2999,8 +3003,8 @@ class UIManager:
             game.bases.remove(base)
 
         # Close base view if it was open
-        if self.base_screens.viewing_base is base:
-            self.base_screens.viewing_base = None
+        if self.base_screen.viewing_base is base:
+            self.base_screen.viewing_base = None
 
         game.territory.update_territory(game.bases)
         game.check_faction_elimination()
@@ -3294,10 +3298,10 @@ class UIManager:
 
     def show_base_naming_dialog(self, unit, game):
         """Show the base naming dialog for a colony pod."""
-        self.base_screens.show_base_naming(unit, game)
+        self.base_screen.show_base_naming(unit, game)
         self.active_screen = "BASE_NAMING"
 
     def show_base_view(self, base):
         """Show the base management screen."""
-        self.base_screens.show_base_view(base)
+        self.base_screen.show_base_view(base)
         self.active_screen = "BASE_VIEW"

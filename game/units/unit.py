@@ -523,12 +523,6 @@ class Unit:
         Returns:
             str: Morale level name
         """
-        # Backward compatibility - initialize if missing
-        if not hasattr(self, 'morale_level'):
-            self.morale_level = 2  # Green
-            self.experience = 0
-            self.kills = 0
-
         morale_names = [
             "Very Very Green",  # 0
             "Very Green",       # 1

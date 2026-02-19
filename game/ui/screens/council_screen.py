@@ -9,7 +9,7 @@ from game.data.faction_data import FACTION_DATA
 from game.data.council_proposal_data import PROPOSALS
 
 
-class CouncilManager:
+class CouncilScreen:
     """Manages the Planetary Council voting system."""
 
     def __init__(self, font, small_font):

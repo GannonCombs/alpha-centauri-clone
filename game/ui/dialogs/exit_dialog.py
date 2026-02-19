@@ -3,7 +3,7 @@
 import pygame
 
 
-class ExitDialogManager:
+class ExitDialog:
     """Manages the exit confirmation dialog."""
 
     def __init__(self, font, message=None):
