@@ -208,7 +208,7 @@ I'm not going to say which popup this was - ANY popup should keep the turn from 
 15 Starting tile should be a tile on which a base can be built. I just started on a monolith.
 16 Also skipped turn on my starting monolith with my land unit. No upgrade was performed.
 17 Now that my file structure is massively improved, it's obvious what I suspected for a while: secret project screen is
-not following convention. It is spread out across game.py. Fix once I have more usage.
+not following convention. It is spread out across game.py.
 
 
 

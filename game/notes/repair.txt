@@ -3,7 +3,6 @@ Note: Claude may NOT edit this file.
 
 In repair.py:
 - calculate_repair()
-- _calculate_repair_percentage()
 - _is_bombarded()
 
 
@@ -26,10 +25,13 @@ Returns repair_amount.
 3: Unit.repair:
 - This is the functional that ACTUALLY heals the unit.
 
+TODO: figure out how this is handled in the upkeep phase specifically.
+
+
 
 Secret projects still need global tracking. My current lookups are stopgaps.
 I was going to create a dict completed_secret_projects, mapping project names to factions, and then maintain at the base
 level, and synchronize the two data structures. But there is already a built_projects set.
 TODO: I need to figure out how it works first. Edit: it's used all over the place. Gonna be a heavy lift, if I need to.
 
-TODO: Figure out bombardment checks.
+TODO: Figure out bombardment checks. Probably want to solve elsewhere, pass in, and get rid of is_bombarded.
