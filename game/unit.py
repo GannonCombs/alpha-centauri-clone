@@ -422,37 +422,6 @@ class Unit:
         unit.moves_remaining = 0  # Unloading consumes all moves
         return True
 
-    def can_repair(self, in_friendly_base=False, base=None, under_bombardment=False):
-        """DEPRECATED: Use game.repair.calculate_repair() instead.
-
-        This method is kept for backwards compatibility but redirects to the
-        comprehensive repair system in repair.py.
-
-        Args:
-            in_friendly_base (bool): Whether unit is in a friendly base (ignored)
-            base (Base): Base unit is in (ignored)
-            under_bombardment (bool): Whether base is under artillery bombardment (ignored)
-
-        Returns:
-            tuple: (can_repair, repair_amount, reason) - reason is string explaining why/why not
-
-        Note:
-            This is a simplified version. For full SMAC repair formula with all
-            bonuses and facilities, use game.repair.calculate_repair(unit, game).
-        """
-        # Can't repair if at full health
-        if self.current_health >= self.max_health:
-            return (False, 0, "Already at full health")
-
-        # Can't repair if unit moved this turn
-        if self.has_moved:
-            return (False, 0, "Unit has moved this turn")
-
-        # Simplified repair for backwards compatibility
-        # Real repair is handled by repair.py module
-        repair_amount = max(1, int(self.max_health * 0.10))
-        return (True, repair_amount, f"Repaired {repair_amount} HP")
-
     def repair(self, amount):
         """Repair unit by specified amount (capped at max_health).
 

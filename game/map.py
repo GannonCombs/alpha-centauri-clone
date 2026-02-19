@@ -75,15 +75,10 @@ class Tile:
         self.x = x
         self.y = y
         self.terrain_type = terrain_type  # 'land' or 'ocean' for now
-        # Future expansion: resources, improvements, etc.
-        self.resource = None
-        self.improvement = None
         self.units = []  # Changed from single unit to list for stacking
         self.base = None
         self.supply_pod = False  # Unity supply pods
-        self.monolith = False  # Alien monolith — yields 2/2/2; no base founding allowed
-        # Terraforming restriction (when implemented): only roads/mag tubes, fungus, or rivers
-        # may be added to a monolith square.
+        self.monolith = False  # Alien monolith
         self.displayed_unit_index = 0  # Which unit in stack to display
         self.altitude = 0  # Exact altitude in meters: -3000 to 3500
         self.rainfall = 1  # 0=arid, 1=moderate, 2=rainy (land only; ocean is always 1)

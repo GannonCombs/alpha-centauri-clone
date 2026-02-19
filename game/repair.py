@@ -17,46 +17,44 @@ def calculate_repair(unit, game):
         game (Game): Game instance (for checking map, bases, facilities)
 
     Returns:
-        tuple: (can_repair, repair_amount, reason, is_full_repair)
-            - can_repair (bool): Whether unit can repair
-            - repair_amount (int): Amount of HP to repair
-            - reason (str): Explanation of repair calculation
-            - is_full_repair (bool): Whether this is a full instant repair
+        - repair_amount (int): Amount of HP to repair
     """
     # Can't repair if at full health
     if unit.current_health >= unit.max_health:
-        return (False, 0, "Already at full health", False)
+        return 0
 
     # Can't repair unless the unit skipped its entire previous turn
     if not getattr(unit, 'repair_eligible', True):
-        return (False, 0, "Unit moved or acted this turn", False)
+        return 0
+
+    if _is_bombarded(unit, game):
+        return 0
 
     # Get tile info
     tile = game.game_map.get_tile(unit.x, unit.y)
     if not tile:
-        return (False, 0, "Invalid position", False)
+        return 0
 
     # Check for instant full repair from Monolith
     if tile.monolith:
         repair_amount = unit.max_health - unit.current_health
-        return (True, repair_amount, "Monolith: Instant full repair", True)
+        return repair_amount
 
     # Check if unit is in a friendly base
     at_base = tile.base and tile.base.owner == unit.owner
     base = tile.base if at_base else None
 
     # Check for Nano Factory (full repair anywhere)
-    has_nano_factory = _faction_has_nano_factory(unit.owner, game)
-    if has_nano_factory:
+    if _faction_has_nano_factory(unit.owner, game):
         repair_amount = unit.max_health - unit.current_health
-        return (True, repair_amount, "Nano Factory: Full repair anywhere", True)
+        return repair_amount
 
     # Check for full repair facilities in base
-    if at_base and not _is_base_under_bombardment(base, game):
+    if at_base:
         full_repair_facility = _check_full_repair_facility(unit, base)
         if full_repair_facility:
             repair_amount = unit.max_health - unit.current_health
-            return (True, repair_amount, f"{full_repair_facility}: Full repair in one turn", True)
+            return repair_amount
 
     # Calculate percentage-based repair
     repair_percent = _calculate_repair_percentage(unit, tile, base, game)
@@ -71,12 +69,9 @@ def calculate_repair(unit, game):
         if unit.current_health + repair_amount > max_allowed_health:
             repair_amount = max(0, max_allowed_health - unit.current_health)
             if repair_amount == 0:
-                return (False, 0, "Can only repair to 80% in field", False)
+                return 0
 
-    # Build explanation
-    reason = f"Repaired {repair_amount} HP ({int(repair_percent * 100)}% rate)"
-
-    return (True, repair_amount, reason, False)
+    return repair_amount
 
 
 def _calculate_repair_percentage(unit, tile, base, game):
@@ -103,7 +98,7 @@ def _calculate_repair_percentage(unit, tile, base, game):
     bonuses = ["Base 10%"]
 
     # +10% if in friendly territory
-    if _is_in_friendly_territory(unit, tile, game):
+    if game.territory.get_tile_owner(tile.x, tile.y) == unit.owner:
         repair_percent += 0.10
         bonuses.append("Friendly territory +10%")
 
@@ -119,12 +114,12 @@ def _calculate_repair_percentage(unit, tile, base, game):
         bonuses.append("Airbase +10%")
 
     # +10% if land unit in Bunker
-    if unit.type == 'land' and _has_bunker(tile):
+    if unit.type == 'land' and 'bunker' in tile.improvements:
         repair_percent += 0.10
         bonuses.append("Bunker +10%")
 
     # +10% if in fungus (natives only, or with Xenoempathy Dome)
-    if _is_in_fungus(tile):
+    if tile.fungus:
         is_native = unit.weapon == 'native'  # Placeholder for native units
         has_xenoempathy = _faction_has_xenoempathy_dome(unit.owner, game)
 
@@ -169,55 +164,6 @@ def _check_full_repair_facility(unit, base):
     return None
 
 
-def _is_in_friendly_territory(unit, tile, game):
-    """Check if tile is in friendly territory.
-
-    Args:
-        unit (Unit): Unit to check
-        tile (Tile): Tile to check
-        game (Game): Game instance
-
-    Returns:
-        bool: True if in friendly territory
-    """
-    # TODO: Implement proper territory system
-    # For now, check if there's a friendly base within 2 tiles
-    for base in game.bases:
-        if base.owner == unit.owner:
-            distance = abs(tile.x - base.x) + abs(tile.y - base.y)
-            if distance <= 2:
-                return True
-    return False
-
-
-def _has_bunker(tile):
-    """Check if tile has a bunker improvement.
-
-    Args:
-        tile (Tile): Tile to check
-
-    Returns:
-        bool: True if tile has bunker
-    """
-    # TODO: Implement bunker improvements
-    # For now, return False
-    return False
-
-
-def _is_in_fungus(tile):
-    """Check if tile has fungus.
-
-    Args:
-        tile (Tile): Tile to check
-
-    Returns:
-        bool: True if tile has fungus
-    """
-    # TODO: Implement fungus terrain
-    # For now, return False
-    return False
-
-
 def _faction_has_nano_factory(faction_id, game):
     """Check if faction owns the Nano Factory secret project.
 
@@ -254,15 +200,15 @@ def _faction_has_xenoempathy_dome(faction_id, game):
     return False
 
 
-def _is_base_under_bombardment(base, game):
-    """Check if base is under artillery bombardment.
+def _is_bombarded(unit, game):
+    """Check if unit is subject to artillery bombardment.
 
     Args:
-        base (Base): Base to check
+        unit (Unit): Unit to check
         game (Game): Game instance
 
     Returns:
-        bool: True if base is under bombardment
+        bool: True if unit is under bombardment
     """
     # TODO: Implement bombardment tracking
     # For now, return False

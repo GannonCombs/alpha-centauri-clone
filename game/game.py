@@ -1350,16 +1350,15 @@ class Game:
                 continue
 
             # Calculate repair using the repair module
-            can_repair, repair_amount, reason, is_full_repair = calculate_repair(unit, self)
+            repair_amount = calculate_repair(unit, self)
 
-            if can_repair and repair_amount > 0:
+            if repair_amount > 0:
                 # Apply repair
                 actual_repaired = unit.repair(repair_amount)
 
                 # Show message for player units
                 if actual_repaired > 0 and player_id == self.player_faction_id:
-                    repair_type = "Full repair" if is_full_repair else "Repaired"
-                    print(f"{unit.name}: {repair_type} {actual_repaired} HP ({reason})")
+                    print(f"{unit.name}: Repaired {actual_repaired} HP")
 
     def calculate_probe_success(self, probe_unit, target_base):
         """Calculate probability of probe action success.

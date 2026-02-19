@@ -164,13 +164,12 @@ The End Turn button should then blink, not auto-end.
 re-select. The user will click once to de-select, and click a non-worked tile to select. The user can also de-select multiple
 tiles in a row before selecting new ones.
 12 I got the underground river supply pod. No river appeared. Make sure you not only generate this in the backend, but draw
-it. It becomes a permanent part of the map. Also, where you have "Xenofungus" in pink in the terrain pane, could you do a
-similar thing for "River", drawing it the same light blue as the river?
+it. It becomes a permanent part of the map.
 13 Found a base mini-map that isn't accurate. It's pretending there's a row of green land beneath it that isn't there.
 The base is founded on the bottom row, so that might be affecting it.
-14 Building a base on enemy land is equivalent to starting an attack. A dialog popup should appear from that faction,
-saying "This is my land, <name> and I will not have you building bases on it." Two buttons, basically saying ok fine, and
-kiss my ass. Saying the latter auto-starts a vendetta with that faction and loses you 1 integrity.
+14 Building a base on enemy land is equivalent to starting an attack. Edit: looks like it's working, but corner case is
+when you haven't met the faction yet. The warning popup appears, then no vendetta or even commlink is in drop-up. Is this
+what I want?
 15 Hitting W is still ending turn right now, if there was no one else to move. This is a big bug.
 
 
@@ -207,6 +206,8 @@ held unit without the H disappearing. This should never happen! This was all sol
 I'm not going to say which popup this was - ANY popup should keep the turn from auto-ending!
 13 W is now cycling to held players again...
 14 Supposed to allow a general Governor when clicking the center button, but right now only the 4x are possible.
+15 Starting tile should be a tile on which a base can be built. I just started on a monolith.
+16 Also skipped turn on my starting monolith with my land unit. No upgrade was performed.
 
 
 

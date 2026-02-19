@@ -1,12 +1,41 @@
-This is a note to outline how repair works in the codebase, since it keeps breaking.
+This is a note to outline how repair works in the codebase, since Claude keeps breaking it.
+Note: Claude may NOT edit this file.
 
 In repair.py:
 - calculate_repair()
 - _calculate_repair_percentage()
 - _check_full_repair_facility()
-- _is_in_friendly_territory()
-- _has_bunker()
-- _is_in_fungus()
 - _faction_has_nano_factory()
 - _faction_has_xenoempathy_dome()
-- _is_base_under_bombardment()
+- _is_bombarded()
+
+
+Flow:
+
+0 Start_new_turn calls _process_unit_repair. (It's also called during AI turns.)
+
+1 _process_unit_repair:
+- This calls calculate_repair.
+- This incorrectly says we heal at end of turn in the notes.
+
+2 calculate_repair:
+Returns repair_amount.
+- Checks a string 'repair_eligible'. This feels a little goofy but maybe it's the only way.
+- Checks for monolith repair here too. Worried about this, as this is instant, unlike other healing.
+
+3 calculate_repair_percentage:
+- This is just redundant with calculate_repair. There is no logical grouping going on here.
+
+
+Errata:
+unit class in unit.py has repair function. Is it used? Delete if not.
+
+
+TODO: Several individual checks for scenarios, which aren't grouped consistently with other scenarios.
+(Though I think the inconsistency is over what we have implemented or not).
+Secret projects still need global tracking before I remove the last two dumb functions.
+I was going to create a dict completed_secret_projects, mapping project names to factions, and then maintain at the base
+level, and synchronize the two data structures. But there is already a built_projects set.
+TODO: I need to figure out how it works first.
+
+Let's create base_health_mods or something instead of the stupid function we have now.

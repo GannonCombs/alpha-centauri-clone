@@ -1,0 +1,2 @@
+This is a note to outline how upkeep works in the codebase, since Claude keeps breaking it.
+Note: Claude may NOT edit this file.
