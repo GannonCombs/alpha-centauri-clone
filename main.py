@@ -239,7 +239,7 @@ def main():
                 elif not ui_handled:
                     # UI didn't handle it - process game keys
                     if event.key == pygame.K_w:
-                        game.cycle_units(allow_auto_end=False)
+                        game.turns.cycle_units(allow_auto_end=False)
                     elif event.key == pygame.K_b:
                         unit = game.selected_unit
                         if unit and unit.owner == game.player_faction_id:
@@ -290,7 +290,7 @@ def main():
                                     start_terraforming(unit, action, game)
                                     game.set_status_message(f"{unit.name}: {IMPROVEMENTS[action]['name']} ({unit.terraforming_turns_left} turns)")
                                     game.last_unit_action = 'action'
-                                    game.cycle_units()
+                                    game.turns.cycle_units()
                                 else:
                                     game.set_status_message(f"Cannot build {IMPROVEMENTS[action]['name']} here.")
                             else:
@@ -307,7 +307,7 @@ def main():
                                 start_terraforming(unit, 'solar', game)
                                 game.set_status_message(f"{unit.name}: Solar Collector ({unit.terraforming_turns_left} turns)")
                                 game.last_unit_action = 'action'
-                                game.cycle_units()
+                                game.turns.cycle_units()
                             else:
                                 game.set_status_message("Cannot build Solar Collector here.")
                     elif event.key == pygame.K_m:
@@ -321,7 +321,7 @@ def main():
                                 start_terraforming(unit, 'mine', game)
                                 game.set_status_message(f"{unit.name}: Mine ({unit.terraforming_turns_left} turns)")
                                 game.last_unit_action = 'action'
-                                game.cycle_units()
+                                game.turns.cycle_units()
                             else:
                                 game.set_status_message("Cannot build Mine here.")
                     elif event.key == pygame.K_r:
@@ -337,7 +337,7 @@ def main():
                                 start_terraforming(unit, action, game)
                                 game.set_status_message(f"{unit.name}: {IMPROVEMENTS[action]['name']} ({unit.terraforming_turns_left} turns)")
                                 game.last_unit_action = 'action'
-                                game.cycle_units()
+                                game.turns.cycle_units()
                             else:
                                 game.set_status_message("Cannot build Road or Mag Tube here.")
                     elif event.key == pygame.K_o:
@@ -351,7 +351,7 @@ def main():
                                 start_terraforming(unit, 'sensor_array', game)
                                 game.set_status_message(f"{unit.name}: Sensor Array ({unit.terraforming_turns_left} turns)")
                                 game.last_unit_action = 'action'
-                                game.cycle_units()
+                                game.turns.cycle_units()
                             else:
                                 game.set_status_message("Cannot build Sensor Array here.")
                     elif event.key == pygame.K_l:
@@ -368,10 +368,10 @@ def main():
                                 None
                             ) if tile else None
                             if transport:
-                                game.load_unit_onto_transport(unit, transport)
+                                game.movement.load_unit_onto_transport(unit, transport)
                                 unit.held = True  # Remove from cycle without zeroing moves
                                 game.selected_unit = None
-                                game.cycle_units()
+                                game.turns.cycle_units()
                             else:
                                 game.set_status_message("No transport here to board")
                     elif event.key == pygame.K_h:
@@ -388,7 +388,7 @@ def main():
                                 game.last_unit_action = 'hold'
 
                                 # Auto-cycle to next unit
-                                game.cycle_units()
+                                game.turns.cycle_units()
 
                                 # If we're still on the held unit (no other units with moves), deselect
                                 if game.selected_unit == held_unit:
@@ -410,13 +410,13 @@ def main():
                             game.last_unit_action = 'action'
 
                             # Auto-cycle to next unit
-                            game.cycle_units()
+                            game.turns.cycle_units()
                     elif event.key == pygame.K_v:
                         # Toggle tile cursor mode
                         if game.tile_cursor_mode:
                             game.tile_cursor_mode = False
                             if not game.selected_unit:
-                                game.cycle_units()
+                                game.turns.cycle_units()
                             if game.selected_unit:
                                 game.center_camera_on_selected = True
                         else:
@@ -509,14 +509,14 @@ def main():
                                         ui_panel.debark_unit_rects = []
                                     else:
                                         was_held = getattr(unit, 'held', False)
-                                        game.try_move_unit(unit, target_x, target_y)
+                                        game.movement.try_move_unit(unit, target_x, target_y)
                                         if not was_held and getattr(unit, 'held', False):
-                                            game.cycle_units()
+                                            game.turns.cycle_units()
                                 else:
                                     was_held = getattr(unit, 'held', False)
-                                    game.try_move_unit(unit, target_x, target_y)
+                                    game.movement.try_move_unit(unit, target_x, target_y)
                                     if not was_held and getattr(unit, 'held', False):
-                                        game.cycle_units()
+                                        game.turns.cycle_units()
 
             elif event.type == pygame.MOUSEBUTTONDOWN:
                 # Block all input during AI processing unless a popup needs attention
@@ -621,7 +621,7 @@ def main():
         game.handle_input(renderer)
 
         # Check for auto-cycle to next unit after delay
-        game.check_auto_cycle()
+        game.turns.check_auto_cycle()
 
         # Process AI turns with delay (but not if popup is blocking)
         if game.processing_ai:
@@ -631,7 +631,7 @@ def main():
             if not popups_blocking:
                 current_time = pygame.time.get_ticks()
                 if current_time - last_ai_action >= display.AI_TURN_DELAY:
-                    game.process_ai_turns()
+                    game.turns.process_ai_turns()
                     last_ai_action = current_time
 
         # Handle map scrolling when mouse is at edges (only in map area)

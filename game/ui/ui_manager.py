@@ -254,7 +254,7 @@ class UIManager:
             # Enter/Return advances upkeep popups and dismisses new-designs popup
             if event.key in (pygame.K_RETURN, pygame.K_KP_ENTER):
                 if game.upkeep_phase_active:
-                    game.advance_upkeep_event()
+                    game.turns.advance_upkeep_event()
                     return True
                 if self.new_designs_popup_active:
                     self.new_designs_popup_active = False
@@ -536,19 +536,19 @@ class UIManager:
 
                 # Zoom to view button
                 if self.upkeep_zoom_rect and self.upkeep_zoom_rect.collidepoint(pos):
-                    event_data = game.get_current_upkeep_event()
+                    event_data = game.turns.get_current_upkeep_event()
                     if event_data and 'base' in event_data:
                         # Center camera on the base and open base view
                         base = event_data['base']
                         game.center_camera_on_tile = (base.x, base.y)
                         self.show_base_view(base)
                     # Advance to next event
-                    game.advance_upkeep_event()
+                    game.turns.advance_upkeep_event()
                     return True
 
                 # Ignore/Continue button
                 if self.upkeep_ignore_rect and self.upkeep_ignore_rect.collidepoint(pos):
-                    game.advance_upkeep_event()
+                    game.turns.advance_upkeep_event()
                     return True
 
                 # Don't allow clicks through upkeep popup
@@ -736,7 +736,7 @@ class UIManager:
                 # OK — unload selected unit
                 if self.debark_ok_rect and self.debark_ok_rect.collidepoint(pos):
                     if self.debark_selected_unit is not None:
-                        game.unload_unit_from_transport(
+                        game.movement.unload_unit_from_transport(
                             self.debark_transport,
                             self.debark_selected_unit,
                             self.debark_target_x,
@@ -1126,7 +1126,7 @@ class UIManager:
 
             if self.end_turn_button.handle_event(event):
                 if not game.combat.active_battle:
-                    game.end_turn()
+                    game.turns.end_turn()
                 return True
 
         # 3. Mouse Button Up (for drag end)
@@ -1873,7 +1873,7 @@ class UIManager:
 
     def _draw_upkeep_event(self, screen, game):
         """Draw upkeep event popup with message and action buttons."""
-        event = game.get_current_upkeep_event()
+        event = game.turns.get_current_upkeep_event()
         if not event:
             return
 

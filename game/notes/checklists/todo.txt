@@ -156,21 +156,20 @@ be when they've skipped their turn entirely. If a unit has even partially moved 
 naturally (movement onto a monolith is the exception.)
 7 Turn auto-ended when the last unit moved into contact with a new faction. End turn needs to wait for diplomacy to finish.
 The End Turn button should then blink, not auto-end.
-8 Still a bug where 3 or 4 factions get eliminated on turn 1. Nothing attacked them. Just a bug.
-9 Alien artifact in base with network node — no popup appeared. Now triggers on unit selection.
+8 Alien artifact in base with network node — no popup appeared. Now triggers on unit selection.
     Updated popup: "What would you like to do?" with "Link to Network Node" / "Keep for later".
-10 Land unit in sea base could walk directly to adjacent land tile. Should be blocked unless amphibious or there's a transport.
-11 The selecting and de-selecting of the tiles the base works in the mini-map is broken. De-selection should not automatically
+9 Land unit in sea base could walk directly to adjacent land tile. Should be blocked unless amphibious or there's a transport.
+10 The selecting and de-selecting of the tiles the base works in the mini-map is broken. De-selection should not automatically
 re-select. The user will click once to de-select, and click a non-worked tile to select. The user can also de-select multiple
 tiles in a row before selecting new ones.
-12 I got the underground river supply pod. No river appeared. Make sure you not only generate this in the backend, but draw
+11 I got the underground river supply pod. No river appeared. Make sure you not only generate this in the backend, but draw
 it. It becomes a permanent part of the map.
-13 Found a base mini-map that isn't accurate. It's pretending there's a row of green land beneath it that isn't there.
+12 Found a base mini-map that isn't accurate. It's pretending there's a row of green land beneath it that isn't there.
 The base is founded on the bottom row, so that might be affecting it.
-14 Building a base on enemy land is equivalent to starting an attack. Edit: looks like it's working, but corner case is
+13 Building a base on enemy land is equivalent to starting an attack. Edit: looks like it's working, but corner case is
 when you haven't met the faction yet. The warning popup appears, then no vendetta or even commlink is in drop-up. Is this
 what I want?
-15 Hitting W is still ending turn right now, if there was no one else to move. This is a big bug.
+14 Hitting W is still ending turn right now, if there was no one else to move. This is a big bug.
 
 
 

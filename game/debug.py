@@ -117,7 +117,7 @@ class DebugManager:
 
         # Ctrl+N - Skip to next turn
         if ctrl and event.key == pygame.K_n:
-            game.end_turn()
+            game.turns.end_turn()
             game.set_status_message("DEBUG: Turn skipped")
             print("DEBUG: Skipped to next turn")
             return True

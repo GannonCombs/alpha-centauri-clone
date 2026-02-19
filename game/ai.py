@@ -84,7 +84,7 @@ class AIPlayer:
                             # Attack by moving onto their tile
                             target_x = check_x
                             target_y = check_y
-                            game.try_move_unit(unit, target_x, target_y)
+                            game.movement.try_move_unit(unit, target_x, target_y)
                             return
 
         # Check for ungarrisoned bases that need defending
@@ -205,7 +205,7 @@ class AIPlayer:
         target_x = unit.x + dx
         target_y = unit.y + dy
 
-        if game.try_move_unit(unit, target_x, target_y):
+        if game.movement.try_move_unit(unit, target_x, target_y):
             return True
         return False
 

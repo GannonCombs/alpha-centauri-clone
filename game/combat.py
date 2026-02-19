@@ -595,7 +595,7 @@ class Combat:
             # Cycle to next unit — disengaged unit has no moves left
             sel = self.game.selected_unit
             if sel is None or sel not in self.game.units or sel.moves_remaining <= 0:
-                self.game.cycle_units()
+                self.game.turns.cycle_units()
             return
 
         # Remove destroyed unit and award experience
@@ -621,7 +621,7 @@ class Combat:
         # Cycle to next unit if the selected unit can no longer act
         sel = self.game.selected_unit
         if sel is None or sel not in self.game.units or sel.moves_remaining <= 0:
-            self.game.cycle_units()
+            self.game.turns.cycle_units()
 
     def _find_retreat_tile(self, unit):
         """Find a safe tile for a unit to retreat to after disengaging.
