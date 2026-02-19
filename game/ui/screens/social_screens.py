@@ -1,8 +1,8 @@
 """Coordinator for Social Engineering, Tech Tree, and Design Workshop screens."""
 
-from game.ui.social_engineering_screen import SocialEngineeringScreen
-from game.ui.tech_tree_screen import TechTreeScreen
-from game.ui.design_workshop_screen import DesignWorkshopScreen
+from .social_engineering_screen import SocialEngineeringScreen
+from .tech_tree_screen import TechTreeScreen
+from .design_workshop_screen import DesignWorkshopScreen
 
 
 class SocialScreensManager:

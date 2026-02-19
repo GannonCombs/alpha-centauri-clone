@@ -19,14 +19,11 @@ Flow:
 2 calculate_repair:
 Returns repair_amount.
 - Checks a string 'repair_eligible'. This feels a little goofy but maybe it's the only way.
-- Checks for monolith repair here too. Worried about this, as this is instant, unlike other healing.
+- Checks for monolith repair here too. Worried about this, as this is instant, unlike other healing. And I've seen
+- other monolith healing code in game.py.
 - Returns to _process_unit_repair.
 
-3 calculate_repair_percentage:
-- This is just redundant with calculate_repair. There is no logical grouping going on here. #TODO: regroup.
-- Returns to calculate_repair.
-
-4: Unit.repair:
+3: Unit.repair:
 - This is the functional that ACTUALLY heals the unit.
 
 
@@ -34,3 +31,5 @@ Secret projects still need global tracking. My current lookups are stopgaps.
 I was going to create a dict completed_secret_projects, mapping project names to factions, and then maintain at the base
 level, and synchronize the two data structures. But there is already a built_projects set.
 TODO: I need to figure out how it works first. Edit: it's used all over the place. Gonna be a heavy lift, if I need to.
+
+TODO: Figure out bombardment checks.

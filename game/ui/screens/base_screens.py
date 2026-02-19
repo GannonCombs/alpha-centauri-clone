@@ -1476,7 +1476,7 @@ class BaseScreenManager:
         production_items = []
 
         # Units from faction designs (use base owner's faction)
-        from game.unit_components import generate_unit_name, get_chassis_by_id
+        from game.units.unit_components import generate_unit_name, get_chassis_by_id
         faction_designs = game.factions[base.owner].designs
         for design in faction_designs.get_designs():
             # Skip artifacts - they can't be built, only found
@@ -1648,7 +1648,7 @@ class BaseScreenManager:
 
             # Draw unit stats (weapon-armor-speed) for units
             if item["type"] == "unit" and "design" in item:
-                from game.unit_components import get_weapon_by_id, get_armor_by_id, get_chassis_by_id
+                from game.units.unit_components import get_weapon_by_id, get_armor_by_id, get_chassis_by_id
                 design = item["design"]
                 # Look up stats from component IDs
                 weapon_data = get_weapon_by_id(design['weapon'])

@@ -1,4 +1,4 @@
-"""Simple modal dialogs."""
+"""Supply pod discovery popup."""
 
 import pygame
 from game.data import display
@@ -6,8 +6,8 @@ from game.data.display import (COLOR_TEXT, COLOR_BUTTON, COLOR_BUTTON_HOVER,
                                  COLOR_BUTTON_BORDER)
 
 
-class DialogManager:
-    """Manages simple modal dialogs like supply pod messages."""
+class SupplyPodDialog:
+    """Draws and handles the supply pod discovery popup."""
 
     def __init__(self, font, small_font):
         """Initialize dialog manager with fonts."""

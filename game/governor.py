@@ -239,7 +239,7 @@ def get_default_unit_name(faction):
     Returns:
         str: Generated unit name (e.g. 'Scout Patrol'), or 'Scout Patrol' as fallback
     """
-    from game.unit_components import generate_unit_name
+    from game.units.unit_components import generate_unit_name
     design = faction.designs.get_design(0)
     if design:
         return generate_unit_name(
@@ -252,7 +252,7 @@ def get_default_unit_name(faction):
 
 def _get_design_name(faction, weapon_type):
     """Get the name of a design with the given weapon type."""
-    from game.unit_components import generate_unit_name
+    from game.units.unit_components import generate_unit_name
 
     designs = faction.designs.get_designs()
     for design in designs:
@@ -300,7 +300,7 @@ def _select_defensive_unit(base, faction, game):
         return get_default_unit_name(faction)
 
     # Pick one with decent armor
-    from game.unit_components import generate_unit_name
+    from game.units.unit_components import generate_unit_name
     design = random.choice(combat_designs)
     return generate_unit_name(
         design['weapon'],
@@ -328,7 +328,7 @@ def _select_offensive_unit(base, faction, game):
     if not combat_designs:
         return get_default_unit_name(faction)
 
-    from game.unit_components import generate_unit_name
+    from game.units.unit_components import generate_unit_name
     design = random.choice(combat_designs)
     return generate_unit_name(
         design['weapon'],
@@ -342,7 +342,7 @@ def _select_offensive_unit(base, faction, game):
 
 def _select_scout_unit(base, faction, game):
     """Select a scout/fast unit."""
-    from game.unit_components import generate_unit_name
+    from game.units.unit_components import generate_unit_name
 
     # Look for a basic scout design (hand weapons on fast chassis)
     designs = faction.designs.get_designs()

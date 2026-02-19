@@ -5,13 +5,13 @@ from game.data import display
 from game.data.display import (COLOR_UI_BACKGROUND, COLOR_UI_BORDER, COLOR_TEXT,
                                  COLOR_BLACK, COLOR_BUTTON_BORDER)
 from .components import Button
-from .dialogs import DialogManager
-from .battle_ui import BattleUIManager
-from .diplomacy import DiplomacyManager
-from .council import CouncilManager
-from .social_screens import SocialScreensManager
-from .base_screens import BaseScreenManager
-from .save_load_dialog import SaveLoadDialogManager
+from .popups.supply_pod_dialog import SupplyPodDialog
+from .popups.battle_ui import BattleUIManager
+from .popups.save_load_dialog import SaveLoadDialogManager
+from .screens.diplomacy import DiplomacyManager
+from .screens.council import CouncilManager
+from .screens.social_screens import SocialScreensManager
+from .screens.base_screens import BaseScreenManager
 from .context_menu import ContextMenu
 from game.data.data import FACTION_DATA
 from game.map import tile_base_nutrients, tile_base_energy, tile_base_minerals
@@ -33,7 +33,7 @@ class UIManager:
         self.game_submenu_open = False
 
         # Initialize all screen managers
-        self.dialogs = DialogManager(self.font, self.small_font)
+        self.supply_pod_dialog = SupplyPodDialog(self.font, self.small_font)
         self.battle_ui = BattleUIManager(self.font, self.small_font)
         self.diplomacy = DiplomacyManager(self.font, self.small_font, self.mono_font)
         self.council = CouncilManager(self.font, self.small_font)
@@ -956,7 +956,7 @@ class UIManager:
 
             # Supply pod message takes priority (but only if not in diplomacy/commlink)
             if game.supply_pod_message and not self.commlink_request_active and self.active_screen != "DIPLOMACY":
-                if self.dialogs.handle_supply_pod_click(event.pos):
+                if self.supply_pod_dialog.handle_supply_pod_click(event.pos):
                     game.supply_pod_message = None
                     # If a tech was gained, immediately show the tech breakthrough popup
                     if game.supply_pod_tech_event:
@@ -1564,7 +1564,7 @@ class UIManager:
         # Supply pod message overlay (top priority, but not during diplomacy/commlink)
         # Don't show supply pod if we're in diplomacy or have a commlink request active
         if game.supply_pod_message and not self.commlink_request_active and self.active_screen != "DIPLOMACY":
-            self.dialogs.draw_supply_pod_message(screen, game.supply_pod_message)
+            self.supply_pod_dialog.draw_supply_pod_message(screen, game.supply_pod_message)
 
         # Check for treaty-breaking attacks (before battle prediction)
         if hasattr(game, 'pending_treaty_break') and game.pending_treaty_break and not self.break_treaty_popup_active:

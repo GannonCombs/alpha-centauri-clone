@@ -8,7 +8,7 @@ Usage: Press Ctrl+Shift+D to toggle debug mode, then use hotkeys.
 """
 
 import pygame
-from game.unit import Unit
+from game.units.unit import Unit
 from game.base import Base
 
 

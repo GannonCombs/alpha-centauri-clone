@@ -410,7 +410,7 @@ class Base:
 
         # Try to calculate from unit components dynamically
         try:
-            import game.unit_components
+            import game.units.unit_components
 
             # Try to find unit design in current designs (for custom units)
             # For now, use hardcoded base unit costs

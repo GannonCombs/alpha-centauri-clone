@@ -4,7 +4,7 @@ import pygame
 from game.data import display
 from game.data.display import (COLOR_TEXT, COLOR_BUTTON, COLOR_BUTTON_HOVER,
                                  COLOR_BUTTON_BORDER, COLOR_BUTTON_HIGHLIGHT)
-from game import unit_components
+from game.units import unit_components
 
 
 class DesignWorkshopScreen:
@@ -117,7 +117,7 @@ class DesignWorkshopScreen:
         Returns:
             tuple: (bool, list of component types unlocked) - e.g. (True, ['weapon', 'armor'])
         """
-        from game.unit_components import CHASSIS, WEAPONS, ARMOR, REACTORS, SPECIAL_ABILITIES
+        from game.units.unit_components import CHASSIS, WEAPONS, ARMOR, REACTORS, SPECIAL_ABILITIES
 
         unlocked = []
 
@@ -163,7 +163,7 @@ class DesignWorkshopScreen:
             game: Game instance to access faction designs
             completed_tech_id: Optional - the tech that was just completed (for targeted generation)
         """
-        from game.unit_components import CHASSIS, WEAPONS, ARMOR, REACTORS, generate_unit_name
+        from game.units.unit_components import CHASSIS, WEAPONS, ARMOR, REACTORS, generate_unit_name
 
         # Get player's faction designs
         faction_designs = game.factions[game.player_faction_id].designs
@@ -540,7 +540,7 @@ class DesignWorkshopScreen:
                     pygame.draw.rect(screen, border_color, design_rect, border_width, border_radius=6)
 
                     # Generate design name from components
-                    from game.unit_components import generate_unit_name
+                    from game.units.unit_components import generate_unit_name
                     design_name = generate_unit_name(
                         design['weapon'], design['chassis'], design['armor'], design['reactor'],
                         design.get('ability1', 'none'), design.get('ability2', 'none')
@@ -1029,7 +1029,7 @@ class DesignWorkshopScreen:
             current_design = faction_designs.get_design(self.selected_slot)
             if current_design is not None:
                 # Names are auto-generated, but we can show the current name
-                from game.unit_components import generate_unit_name
+                from game.units.unit_components import generate_unit_name
                 self.rename_text_input = generate_unit_name(
                     current_design['weapon'],
                     current_design['chassis'],
@@ -1074,7 +1074,7 @@ class DesignWorkshopScreen:
 
         # Check Apply button - save current design to selected slot
         if hasattr(self, 'dw_apply_rect') and self.dw_apply_rect.collidepoint(pos):
-            from game.unit_components import CHASSIS, WEAPONS, ARMOR, REACTORS, generate_unit_name
+            from game.units.unit_components import CHASSIS, WEAPONS, ARMOR, REACTORS, generate_unit_name
 
             # Find the components for selected IDs
             chassis_obj = None

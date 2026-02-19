@@ -129,25 +129,25 @@ class Unit:
     @property
     def chassis_data(self):
         """Get full chassis data dictionary."""
-        from game.unit_components import get_chassis_by_id
+        from game.units.unit_components import get_chassis_by_id
         return get_chassis_by_id(self.chassis)
 
     @property
     def weapon_data(self):
         """Get full weapon data dictionary."""
-        from game.unit_components import get_weapon_by_id
+        from game.units.unit_components import get_weapon_by_id
         return get_weapon_by_id(self.weapon)
 
     @property
     def armor_data(self):
         """Get full armor data dictionary."""
-        from game.unit_components import get_armor_by_id
+        from game.units.unit_components import get_armor_by_id
         return get_armor_by_id(self.armor)
 
     @property
     def reactor_data(self):
         """Get full reactor data dictionary."""
-        from game.unit_components import get_reactor_by_id
+        from game.units.unit_components import get_reactor_by_id
         return get_reactor_by_id(self.reactor)
 
     @property

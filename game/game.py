@@ -16,14 +16,14 @@ import random
 import pygame
 from game import facilities
 from game.map import GameMap
-from game.unit import Unit
+from game.units.unit import Unit
 from game.base import Base
 from game.ai import AIPlayer
 from game.tech import TechTree
 from game.territory import TerritoryManager
-from game.combat import Combat
+from game.units.combat import Combat
 from game.commerce import CommerceCalculator
-from game.movement import MovementManager
+from game.units.movement import MovementManager
 from game.turn_manager import TurnManager
 from game.debug import DebugManager  # DEBUG: Remove for release
 
@@ -123,7 +123,7 @@ class Game:
             self.factions[faction_id].tech_tree.auto_select_research()
 
         # Initialize unit designs for all factions
-        from game.design_data import DesignData
+        from game.units.design_data import DesignData
         for faction_id in range(7):
             self.factions[faction_id].designs = DesignData(faction_id)
 
@@ -277,7 +277,7 @@ class Game:
                 tile_idx += 1  # Move to next tile for next faction
 
                 # Starting military unit - only Santiago actually starts with special unit
-                from game.unit_components import generate_unit_name
+                from game.units.unit_components import generate_unit_name
                 # Santiago starts with Scout Rover, all others get Scout Patrol
                 if faction_id == 4:  # Santiago only
                     military_design = self.factions[faction_id].designs.get_design(2)
@@ -484,7 +484,7 @@ class Game:
 
         elif roll < 0.55:
             # --- Alien Artifact ---
-            from game.unit import Unit
+            from game.units.unit import Unit
             artifact = Unit(
                 x=tile.x, y=tile.y,
                 chassis='infantry',
@@ -832,7 +832,7 @@ class Game:
         Args:
             player_id (int): Player ID whose units to repair
         """
-        from game.repair import calculate_repair
+        from game.units.repair import calculate_repair
 
         for unit in self.units:
             if unit.owner != player_id:
@@ -1632,8 +1632,8 @@ class Game:
             return
 
         # Find design for this unit
-        from game.unit_components import generate_unit_name
-        from game.unit import Unit
+        from game.units.unit_components import generate_unit_name
+        from game.units.unit import Unit
         design = None
 
         # Get designs from base owner's faction
@@ -2018,7 +2018,7 @@ class Game:
 
         # Recreate factions with new tech trees and designs
         from game.faction import Faction
-        from game.design_data import DesignData
+        from game.units.design_data import DesignData
         self.factions = {}
         for faction_id in range(7):
             is_player = (faction_id == self.player_faction_id)
@@ -2170,7 +2170,7 @@ class Game:
 
         # Restore factions
         from game.faction import Faction
-        from game.design_data import DesignData
+        from game.units.design_data import DesignData
         game.factions = {}
         for faction_id_str, faction_data in data['factions'].items():
             faction_id = int(faction_id_str)
