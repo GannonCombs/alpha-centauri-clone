@@ -5,11 +5,11 @@ from game.data import display_data as display
 from game.data.display_data import (COLOR_UI_BACKGROUND, COLOR_UI_BORDER, COLOR_TEXT,
                                  COLOR_BLACK, COLOR_BUTTON_BORDER)
 from .components import Button
-from .popups.supply_pod_dialog import SupplyPodDialog
-from .popups.battle_ui import BattleUIManager
-from .popups.save_load_dialog import SaveLoadDialogManager
-from .screens.diplomacy import DiplomacyManager
-from .screens.council import CouncilManager
+from .dialogs.supply_pod_dialog import SupplyPodDialog
+from .dialogs.combat_dialog import CombatDialog
+from .dialogs.save_load_dialog import SaveLoadDialogManager
+from .screens.diplomacy_screen import DiplomacyManager
+from .screens.council_screen import CouncilManager
 from .screens.social_screens import SocialScreensManager
 from .screens.base_screens import BaseScreenManager
 from .context_menu import ContextMenu
@@ -34,7 +34,7 @@ class UIManager:
 
         # Initialize all screen managers
         self.supply_pod_dialog = SupplyPodDialog(self.font, self.small_font)
-        self.battle_ui = BattleUIManager(self.font, self.small_font)
+        self.combat_dialog = CombatDialog(self.font, self.small_font)
         self.diplomacy = DiplomacyManager(self.font, self.small_font, self.mono_font)
         self.council = CouncilManager(self.font, self.small_font)
         self.social_screens = SocialScreensManager(self.font, self.small_font)
@@ -928,7 +928,7 @@ class UIManager:
 
             # Battle prediction takes highest priority
             if game.combat.pending_battle:
-                result = self.battle_ui.handle_battle_prediction_click(event.pos)
+                result = self.combat_dialog.handle_battle_prediction_click(event.pos)
                 if result == 'ok':
                     # OK clicked - initiate combat
                     attacker = game.combat.pending_battle['attacker']
@@ -1558,7 +1558,7 @@ class UIManager:
 
         # Battle/info panel (always visible in game UI area)
         if self.active_screen == "GAME":
-            self.battle_ui.draw_battle_animation(screen, game)
+            self.combat_dialog.draw_battle_animation(screen, game)
             self._draw_unit_stack_panel(screen, game)
 
         # Supply pod message overlay (top priority, but not during diplomacy/commlink)
@@ -1611,7 +1611,7 @@ class UIManager:
 
         # Battle prediction overlay (highest priority)
         if game.combat.pending_battle:
-            self.battle_ui.draw_battle_prediction(screen, game)
+            self.combat_dialog.draw_battle_prediction(screen, game)
 
         # Upkeep phase popup (high priority)
         if game.upkeep_phase_active:

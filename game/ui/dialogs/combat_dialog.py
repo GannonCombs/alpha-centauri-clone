@@ -6,7 +6,7 @@ from game.data.display_data import (COLOR_TEXT, COLOR_BUTTON, COLOR_BUTTON_HOVER
                                  COLOR_BUTTON_BORDER)
 
 
-class BattleUIManager:
+class CombatDialog:
     """Manages combat UI - battle prediction modal and battle animation."""
 
     def __init__(self, font, small_font):

@@ -18,8 +18,8 @@ from game.game import Game
 from game.renderer import Renderer
 from game.ui import UIManager
 from game.ui.screens.intro_screen import IntroScreenManager
-from game.ui.popups.save_load_dialog import SaveLoadDialogManager
-from game.ui.popups.exit_dialog import ExitDialogManager
+from game.ui.dialogs.save_load_dialog import SaveLoadDialogManager
+from game.ui.dialogs.exit_dialog import ExitDialogManager
 
 def has_blocking_popup(game, ui_panel):
     """Return True if any popup or modal is waiting for player input during AI processing."""
