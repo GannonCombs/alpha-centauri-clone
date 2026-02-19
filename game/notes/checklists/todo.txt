@@ -226,3 +226,17 @@ not following convention. It is spread out across game.py.
 4 Advanced unit movement (G command, J command, drag path)
 5 Isometric
 6 Diplomacy trees (it is half-built, but may need a redesign)
+
+
+Dialogs that might need their own file:
+
+ - _draw_raze_base_popup
+  - _draw_encroachment_popup
+  - _draw_upkeep_event
+  - _draw_commlink_request_popup
+  - _draw_elimination_popup
+  - _draw_new_designs_popup
+  - _draw_break_treaty_popup / _draw_surprise_attack_popup
+  - _draw_artifact_link_popup
+  - _draw_movement_overflow_popup
+  - _draw_game_over

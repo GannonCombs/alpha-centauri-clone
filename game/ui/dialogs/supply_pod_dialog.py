@@ -4,24 +4,19 @@ import pygame
 from game.data import display_data as display
 from game.data.display_data import (COLOR_TEXT, COLOR_BUTTON, COLOR_BUTTON_HOVER,
                                  COLOR_BUTTON_BORDER)
+from game.ui.components import Dialog
 
 
-class SupplyPodDialog:
+class SupplyPodDialog(Dialog):
     """Draws and handles the supply pod discovery popup."""
 
     def __init__(self, font, small_font):
-        """Initialize dialog manager with fonts."""
-        self.font = font
-        self.small_font = small_font
+        super().__init__(font, small_font)
         self.supply_pod_ok_rect = None
 
     def draw_supply_pod_message(self, screen, message):
         """Draw supply pod discovery message."""
-        # Semi-transparent overlay
-        overlay = pygame.Surface((display.SCREEN_WIDTH, display.SCREEN_HEIGHT))
-        overlay.set_alpha(180)
-        overlay.fill((0, 0, 0))
-        screen.blit(overlay, (0, 0))
+        self.draw_overlay(screen)
 
         # Message box
         box_w, box_h = 500, 250

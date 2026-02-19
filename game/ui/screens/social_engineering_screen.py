@@ -6,6 +6,7 @@ from game.data.display_data import (COLOR_TEXT, COLOR_BUTTON, COLOR_BUTTON_HOVER
                                  COLOR_BUTTON_BORDER, COLOR_BUTTON_HIGHLIGHT)
 from game import social_engineering
 from game.data.social_engineering_data import SE_DATA
+from game.ui.components import draw_overlay
 
 
 class SocialEngineeringScreen:
@@ -447,11 +448,7 @@ class SocialEngineeringScreen:
             screen: Pygame screen surface
             game: Game instance for checking credits
         """
-        # Semi-transparent overlay
-        overlay = pygame.Surface((display.SCREEN_WIDTH, display.SCREEN_HEIGHT))
-        overlay.set_alpha(150)
-        overlay.fill((0, 0, 0))
-        screen.blit(overlay, (0, 0))
+        draw_overlay(screen, alpha=150)
 
         # Dialog dimensions
         dialog_w, dialog_h = 500, 250

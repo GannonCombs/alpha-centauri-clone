@@ -5,6 +5,7 @@ from game.data import display_data as display
 from game.data.display_data import (COLOR_TEXT, COLOR_BUTTON, COLOR_BUTTON_HOVER,
                                  COLOR_BUTTON_BORDER, COLOR_BUTTON_HIGHLIGHT)
 from game.units import unit_components
+from game.ui.components import draw_overlay
 
 
 class DesignWorkshopScreen:
@@ -699,11 +700,7 @@ class DesignWorkshopScreen:
             screen: Pygame screen surface to draw on
             game: Game instance for accessing tech tree
         """
-        # Semi-transparent overlay
-        overlay = pygame.Surface((display.SCREEN_WIDTH, display.SCREEN_HEIGHT))
-        overlay.set_alpha(180)
-        overlay.fill((0, 0, 0))
-        screen.blit(overlay, (0, 0))
+        draw_overlay(screen)
 
         # Selection box
         box_w = 700
@@ -866,11 +863,7 @@ class DesignWorkshopScreen:
         Args:
             screen: Pygame screen surface to draw on
         """
-        # Semi-transparent overlay
-        overlay = pygame.Surface((display.SCREEN_WIDTH, display.SCREEN_HEIGHT))
-        overlay.set_alpha(180)
-        overlay.fill((0, 0, 0))
-        screen.blit(overlay, (0, 0))
+        draw_overlay(screen)
 
         # Popup box
         box_w = 500

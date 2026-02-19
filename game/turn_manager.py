@@ -17,6 +17,8 @@ class TurnManager:
             game (Game): Reference to main game instance
         """
         self.game = game
+        self.known_ai_secret_projects = set()        # (faction_id, project_name) already notified
+        self.known_ai_secret_project_warnings = set()  # (faction_id, project_name) 1-turn warnings fired
 
     # -----------------------------------------------------------------------
     # Unit cycling
@@ -393,8 +395,8 @@ class TurnManager:
                     prod = base.current_production
                     if prod in _secret_project_names:
                         start_key = (ai_player.player_id, prod)
-                        if start_key not in game.known_ai_secret_projects:
-                            game.known_ai_secret_projects.add(start_key)
+                        if start_key not in self.known_ai_secret_projects:
+                            self.known_ai_secret_projects.add(start_key)
                             game.secret_project_notifications.append({
                                 'type': 'started',
                                 'project_name': prod,
@@ -402,8 +404,8 @@ class TurnManager:
                             })
                         warn_key = (ai_player.player_id, prod)
                         if (base.production_turns_remaining <= 1
-                                and warn_key not in game.known_ai_secret_project_warnings):
-                            game.known_ai_secret_project_warnings.add(warn_key)
+                                and warn_key not in self.known_ai_secret_project_warnings):
+                            self.known_ai_secret_project_warnings.add(warn_key)
                             player_also = any(
                                 b.current_production == prod
                                 for b in game.bases

@@ -4,10 +4,11 @@ import pygame
 from game.data import display_data as display
 from game.data.display_data import (COLOR_UI_BACKGROUND, COLOR_UI_BORDER, COLOR_TEXT,
                                  COLOR_BLACK, COLOR_BUTTON_BORDER)
-from .components import Button
+from .components import Button, draw_overlay, centered_rect, draw_box, draw_button
 from .dialogs.supply_pod_dialog import SupplyPodDialog
 from .dialogs.combat_dialog import CombatDialog
 from .dialogs.save_load_dialog import SaveLoadDialog
+from .dialogs.secret_project_dialog import SecretProjectDialog
 from .screens.diplomacy_screen import DiplomacyScreen
 from .screens.council_screen import CouncilScreen
 from .screens.social_engineering_screen import SocialEngineeringScreen
@@ -45,6 +46,7 @@ class UIManager:
         self.design_workshop_screen = DesignWorkshopScreen(self.font, self.small_font)
         self.base_screen = BaseScreen(self.font, self.small_font)
         self.secret_project_screen = SecretProjectScreen(self.font, self.small_font)
+        self.secret_project_dialog = SecretProjectDialog(self.font, self.small_font)
         self.save_load_dialog = SaveLoadDialog(self.font, self.small_font)
         self.context_menu = ContextMenu(self.font)
 
@@ -720,7 +722,7 @@ class UIManager:
 
             # Secret project started notification popup
             if getattr(game, 'secret_project_notifications', []):
-                self.secret_project_screen.handle_notification_click(pygame.mouse.get_pos(), game)
+                self.secret_project_dialog.handle_click(pygame.mouse.get_pos(), game)
                 return True
 
             # Debark popup — unload a unit from a transport onto an adjacent land tile
@@ -1706,7 +1708,7 @@ class UIManager:
             self._draw_encroachment_popup(screen, game)
 
         if getattr(game, 'secret_project_notifications', []):
-            self.secret_project_screen.draw_notification(screen, game)
+            self.secret_project_dialog.draw(screen, game)
 
         # Game over screen (highest priority)
         if game.game_over:
@@ -1836,38 +1838,22 @@ class UIManager:
                     screen.blit(viewport_surface, (viewport_x, viewport_y))
                     pygame.draw.rect(screen, (255, 255, 255), viewport_rect, 2)
 
-    # --- Popup drawing helpers ---
+    # --- Popup drawing helpers (delegate to module-level functions in components.py) ---
 
     def _draw_overlay(self, screen, alpha=180):
-        """Draw a semi-transparent dark overlay over the entire screen."""
-        overlay = pygame.Surface((display.SCREEN_WIDTH, display.SCREEN_HEIGHT))
-        overlay.set_alpha(alpha)
-        overlay.fill((0, 0, 0))
-        screen.blit(overlay, (0, 0))
+        draw_overlay(screen, alpha)
 
     def _centered_popup_rect(self, width, height):
-        """Return a centered pygame.Rect for a popup dialog."""
-        x = display.SCREEN_WIDTH // 2 - width // 2
-        y = display.SCREEN_HEIGHT // 2 - height // 2
-        return pygame.Rect(x, y, width, height)
+        return centered_rect(width, height)
 
     def _draw_popup_box(self, screen, rect, border_color=(100, 140, 160), bg_color=(30, 40, 50)):
-        """Draw a rounded popup box with border."""
-        pygame.draw.rect(screen, bg_color, rect, border_radius=12)
-        pygame.draw.rect(screen, border_color, rect, 3, border_radius=12)
+        draw_box(screen, rect, border_color, bg_color)
 
     def _draw_popup_button(self, screen, rect, label, font=None,
                            normal_color=(45, 55, 65), hover_color=(65, 85, 100),
                            border_color=(100, 140, 160)):
-        """Draw a hover-aware button centered in rect. Returns True if hovered."""
-        if font is None:
-            font = self.font
-        is_hover = rect.collidepoint(pygame.mouse.get_pos())
-        pygame.draw.rect(screen, hover_color if is_hover else normal_color, rect, border_radius=8)
-        pygame.draw.rect(screen, border_color, rect, 3, border_radius=8)
-        text = font.render(label, True, (220, 230, 240))
-        screen.blit(text, (rect.centerx - text.get_width() // 2, rect.centery - text.get_height() // 2))
-        return is_hover
+        return draw_button(screen, rect, label, font or self.font,
+                           normal_color, hover_color, border_color)
 
     def _draw_upkeep_event(self, screen, game):
         """Draw upkeep event popup with message and action buttons."""
@@ -2066,11 +2052,7 @@ class UIManager:
 
     def _draw_faction_elimination(self, screen, game):
         """Draw faction elimination notification popup."""
-        # Semi-transparent overlay
-        overlay = pygame.Surface((display.SCREEN_WIDTH, display.SCREEN_HEIGHT))
-        overlay.set_alpha(180)
-        overlay.fill((0, 0, 0))
-        screen.blit(overlay, (0, 0))
+        self._draw_overlay(screen)
 
         # Dialog box
         box_w, box_h = 600, 250
@@ -2866,11 +2848,7 @@ class UIManager:
         from game.data.display_data import COLOR_BUTTON, COLOR_BUTTON_HOVER, COLOR_BUTTON_BORDER, COLOR_BUTTON_HIGHLIGHT
         from game.score import calculate_score
 
-        # Semi-transparent overlay
-        overlay = pygame.Surface((display.SCREEN_WIDTH, display.SCREEN_HEIGHT))
-        overlay.set_alpha(200)
-        overlay.fill((10, 15, 20))
-        screen.blit(overlay, (0, 0))
+        self._draw_overlay(screen, alpha=200)
 
         # Dialog box — taller to fit score breakdown
         dialog_w, dialog_h = 620, 560

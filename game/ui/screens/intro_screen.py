@@ -2,6 +2,7 @@
 
 import pygame
 from game.data.faction_data import FACTION_DATA
+from game.ui.components import draw_overlay
 
 
 class IntroScreen:
@@ -671,11 +672,7 @@ class IntroScreen:
 
     def _draw_exit_confirm(self, screen, screen_width, screen_height):
         """Draw exit confirmation dialog."""
-        # Semi-transparent overlay
-        overlay = pygame.Surface((screen_width, screen_height))
-        overlay.set_alpha(150)
-        overlay.fill((0, 0, 0))
-        screen.blit(overlay, (0, 0))
+        draw_overlay(screen, alpha=150)
 
         # Small dialog box
         dialog_w = 400

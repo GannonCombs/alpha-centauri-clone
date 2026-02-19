@@ -130,8 +130,6 @@ class Game:
         # Facilities and Projects
         self.built_projects = set()  # Global set of secret projects built (one per game)
         self.secret_project_notifications = []  # Queue of {type, project_name, faction_id, ...} popups
-        self.known_ai_secret_projects = set()  # (faction_id, project_name) already notified
-        self.known_ai_secret_project_warnings = set()  # (faction_id, project_name) 1-turn warnings fired
 
         # Social Engineering (player selections)
         self.se_selections = {
@@ -2125,8 +2123,6 @@ class Game:
         game.player_name = gs['player_name']
         game.built_projects = set(gs['built_projects'])
         game.secret_project_notifications = []
-        game.known_ai_secret_projects = set()
-        game.known_ai_secret_project_warnings = set()
         game.se_selections = gs['se_selections']
         game.game_over = gs['game_over']
         game.winner = gs['winner']

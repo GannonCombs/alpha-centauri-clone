@@ -1,19 +1,14 @@
 """Exit confirmation dialog."""
 
 import pygame
+from game.ui.components import Dialog
 
 
-class ExitDialog:
+class ExitDialog(Dialog):
     """Manages the exit confirmation dialog."""
 
     def __init__(self, font, message=None):
-        """Initialize the exit dialog manager.
-
-        Args:
-            font: Pygame font for rendering text
-            message: Optional custom message to display (default: "Are you sure you want to exit?")
-        """
-        self.font = font
+        super().__init__(font)
         self.show_dialog = False
         self.ok_button_rect = None
         self.cancel_button_rect = None
@@ -28,21 +23,11 @@ class ExitDialog:
         self.show_dialog = False
 
     def draw(self, screen, screen_width, screen_height):
-        """Draw the exit confirmation dialog.
-
-        Args:
-            screen: Pygame screen surface
-            screen_width: Screen width
-            screen_height: Screen height
-        """
+        """Draw the exit confirmation dialog."""
         if not self.show_dialog:
             return
 
-        # Semi-transparent overlay
-        overlay = pygame.Surface((screen_width, screen_height))
-        overlay.set_alpha(150)
-        overlay.fill((0, 0, 0))
-        screen.blit(overlay, (0, 0))
+        self.draw_overlay(screen, alpha=150)
 
         # Small dialog box
         dialog_w = 400
@@ -92,9 +77,6 @@ class ExitDialog:
 
     def handle_event(self, event):
         """Handle events for the exit dialog.
-
-        Args:
-            event: Pygame event
 
         Returns:
             str: 'exit' if OK clicked, 'cancel' if Cancel clicked, None otherwise

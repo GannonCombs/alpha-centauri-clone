@@ -4,20 +4,14 @@ import os
 import pygame
 from game import save_load
 from game.data import display_data as display
+from game.ui.components import Dialog
 
 
-class SaveLoadDialog:
+class SaveLoadDialog(Dialog):
     """Manages the save and load dialog UI."""
 
     def __init__(self, font, small_font):
-        """Initialize the dialog manager.
-
-        Args:
-            font: Regular pygame font
-            small_font: Small pygame font
-        """
-        self.font = font
-        self.small_font = small_font
+        super().__init__(font, small_font)
 
         # Dialog state
         self.mode = None  # 'save' or 'load' or None
@@ -84,11 +78,7 @@ class SaveLoadDialog:
         if self.mode is None:
             return
 
-        # Semi-transparent overlay
-        overlay = pygame.Surface((display.SCREEN_WIDTH, display.SCREEN_HEIGHT))
-        overlay.set_alpha(180)
-        overlay.fill((10, 15, 20))
-        screen.blit(overlay, (0, 0))
+        self.draw_overlay(screen, color=(10, 15, 20))
 
         # Dialog box dimensions
         if self.mode == 'save':
@@ -311,11 +301,7 @@ class SaveLoadDialog:
 
     def _draw_confirmation_popup(self, screen):
         """Draw overwrite confirmation popup."""
-        # Semi-transparent overlay
-        overlay = pygame.Surface((display.SCREEN_WIDTH, display.SCREEN_HEIGHT))
-        overlay.set_alpha(220)
-        overlay.fill((0, 0, 0))
-        screen.blit(overlay, (0, 0))
+        self.draw_overlay(screen, alpha=220)
 
         # Confirmation dialog
         confirm_w, confirm_h = 500, 200

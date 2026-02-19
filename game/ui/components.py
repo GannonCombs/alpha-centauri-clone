@@ -1,9 +1,90 @@
 """Reusable UI components."""
 
 import pygame
+from game.data import display_data as display
 from game.data.display_data import (COLOR_TEXT, COLOR_BUTTON, COLOR_BUTTON_HOVER,
                                  COLOR_BUTTON_BORDER, COLOR_BUTTON_HIGHLIGHT)
 
+
+# ---------------------------------------------------------------------------
+# Module-level drawing helpers
+# Usable by any screen or dialog without inheritance.
+# ---------------------------------------------------------------------------
+
+def draw_overlay(screen, alpha=180, color=(0, 0, 0)):
+    """Draw a semi-transparent full-screen overlay."""
+    overlay = pygame.Surface((display.SCREEN_WIDTH, display.SCREEN_HEIGHT))
+    overlay.set_alpha(alpha)
+    overlay.fill(color)
+    screen.blit(overlay, (0, 0))
+
+
+def centered_rect(width, height):
+    """Return a pygame.Rect centered on the screen."""
+    x = display.SCREEN_WIDTH // 2 - width // 2
+    y = display.SCREEN_HEIGHT // 2 - height // 2
+    return pygame.Rect(x, y, width, height)
+
+
+def draw_box(screen, rect, border_color=(100, 140, 160), bg_color=(30, 40, 50)):
+    """Draw a rounded popup box with a border."""
+    pygame.draw.rect(screen, bg_color, rect, border_radius=12)
+    pygame.draw.rect(screen, border_color, rect, 3, border_radius=12)
+
+
+def draw_button(screen, rect, label, font, normal_color=None, hover_color=None,
+                border_color=None, text_color=None):
+    """Draw a hover-aware button centered in rect. Returns True if hovered."""
+    is_hover = rect.collidepoint(pygame.mouse.get_pos())
+    bg = (hover_color or COLOR_BUTTON_HOVER) if is_hover else (normal_color or COLOR_BUTTON)
+    pygame.draw.rect(screen, bg, rect, border_radius=6)
+    pygame.draw.rect(screen, border_color or COLOR_BUTTON_BORDER, rect, 2, border_radius=6)
+    text = font.render(label, True, text_color or COLOR_TEXT)
+    screen.blit(text, (rect.centerx - text.get_width() // 2,
+                       rect.centery - text.get_height() // 2))
+    return is_hover
+
+
+# ---------------------------------------------------------------------------
+# Dialog base class
+# ---------------------------------------------------------------------------
+
+class Dialog:
+    """Base class for modal dialogs that appear over the map view.
+
+    Subclasses implement draw(screen, game) and handle_click(pos, game).
+    All drawing helpers are available as self.* methods, delegating to the
+    module-level functions above so non-Dialog code can also import them.
+    """
+
+    def __init__(self, font, small_font=None):
+        self.font = font
+        self.small_font = small_font
+
+    def draw_overlay(self, screen, alpha=180, color=(0, 0, 0)):
+        draw_overlay(screen, alpha, color)
+
+    def centered_rect(self, width, height):
+        return centered_rect(width, height)
+
+    def draw_box(self, screen, rect, border_color=(100, 140, 160), bg_color=(30, 40, 50)):
+        draw_box(screen, rect, border_color, bg_color)
+
+    def draw_button(self, screen, rect, label, font=None, normal_color=None,
+                    hover_color=None, border_color=None, text_color=None):
+        return draw_button(screen, rect, label, font or self.font,
+                           normal_color, hover_color, border_color, text_color)
+
+    def draw(self, screen, game):
+        raise NotImplementedError
+
+    def handle_click(self, pos, game):
+        raise NotImplementedError
+
+
+# ---------------------------------------------------------------------------
+# Button component
+# ---------------------------------------------------------------------------
 
 class Button:
     """Clickable UI button with hover effects and gradient shading."""

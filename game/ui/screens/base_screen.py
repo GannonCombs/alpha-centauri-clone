@@ -4,6 +4,7 @@ import math
 import pygame
 from game.data import display_data as display
 from game import facilities
+from game.ui.components import draw_overlay
 from game.data.display_data import (COLOR_TEXT, COLOR_BUTTON, COLOR_BUTTON_HOVER,
                                  COLOR_BUTTON_BORDER, COLOR_BUTTON_HIGHLIGHT,
                                  COLOR_UI_BORDER, COLOR_BLACK)
@@ -361,11 +362,7 @@ class BaseScreen:
 
     def draw_base_naming(self, screen):
         """Draw the base naming dialog."""
-        # Semi-transparent overlay
-        overlay = pygame.Surface((display.SCREEN_WIDTH, display.SCREEN_HEIGHT))
-        overlay.set_alpha(180)
-        overlay.fill((10, 15, 20))
-        screen.blit(overlay, (0, 0))
+        draw_overlay(screen, color=(10, 15, 20))
 
         # Dialog box
         dialog_w, dialog_h = 600, 400
@@ -1356,11 +1353,7 @@ class BaseScreen:
 
     def _draw_hurry_production_popup(self, screen, base, game):
         """Draw the hurry production popup dialog."""
-        # Semi-transparent overlay
-        overlay = pygame.Surface((display.SCREEN_WIDTH, display.SCREEN_HEIGHT))
-        overlay.set_alpha(150)
-        overlay.fill((0, 0, 0))
-        screen.blit(overlay, (0, 0))
+        draw_overlay(screen, alpha=150)
 
         # Dialog box
         dialog_w, dialog_h = 450, 280
@@ -1454,11 +1447,7 @@ class BaseScreen:
 
     def _draw_production_selection_popup(self, screen, base, game):
         """Draw the production selection popup dialog."""
-        # Semi-transparent overlay
-        overlay = pygame.Surface((display.SCREEN_WIDTH, display.SCREEN_HEIGHT))
-        overlay.set_alpha(150)
-        overlay.fill((0, 0, 0))
-        screen.blit(overlay, (0, 0))
+        draw_overlay(screen, alpha=150)
 
         # Get all production options (units from design workshop + facilities)
         # Calculate turns for each item based on cost and base population
@@ -1689,11 +1678,7 @@ class BaseScreen:
 
     def _draw_queue_management_popup(self, screen, base, game):
         """Draw the production queue management popup dialog."""
-        # Semi-transparent overlay
-        overlay = pygame.Surface((display.SCREEN_WIDTH, display.SCREEN_HEIGHT))
-        overlay.set_alpha(150)
-        overlay.fill((0, 0, 0))
-        screen.blit(overlay, (0, 0))
+        draw_overlay(screen, alpha=150)
 
         # Dialog box
         dialog_w, dialog_h = 500, 450
@@ -1862,10 +1847,7 @@ class BaseScreen:
         box_x = _display.SCREEN_WIDTH // 2 - box_w // 2
         box_y = _display.SCREEN_HEIGHT // 2 - box_h // 2
 
-        overlay = pygame.Surface((_display.SCREEN_WIDTH, _display.SCREEN_HEIGHT))
-        overlay.set_alpha(170)
-        overlay.fill((0, 0, 0))
-        screen.blit(overlay, (0, 0))
+        draw_overlay(screen, alpha=170)
 
         pygame.draw.rect(screen, (50, 20, 20), (box_x, box_y, box_w, box_h), border_radius=12)
         pygame.draw.rect(screen, (180, 60, 60), (box_x, box_y, box_w, box_h), 3, border_radius=12)

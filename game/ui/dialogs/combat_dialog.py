@@ -4,15 +4,14 @@ import pygame
 from game.data import display_data as display
 from game.data.display_data import (COLOR_TEXT, COLOR_BUTTON, COLOR_BUTTON_HOVER,
                                  COLOR_BUTTON_BORDER)
+from game.ui.components import Dialog
 
 
-class CombatDialog:
+class CombatDialog(Dialog):
     """Manages combat UI - battle prediction modal and battle animation."""
 
     def __init__(self, font, small_font):
-        """Initialize battle UI manager with fonts."""
-        self.font = font
-        self.small_font = small_font
+        super().__init__(font, small_font)
         self.battle_prediction_ok_rect = None
         self.battle_prediction_cancel_rect = None
 
@@ -24,11 +23,7 @@ class CombatDialog:
         attacker = game.combat.pending_battle['attacker']
         defender = game.combat.pending_battle['defender']
 
-        # Semi-transparent overlay
-        overlay = pygame.Surface((display.SCREEN_WIDTH, display.SCREEN_HEIGHT))
-        overlay.set_alpha(180)
-        overlay.fill((0, 0, 0))
-        screen.blit(overlay, (0, 0))
+        self.draw_overlay(screen)
 
         # Prediction box (taller to fit modifiers)
         box_w, box_h = 500, 400
