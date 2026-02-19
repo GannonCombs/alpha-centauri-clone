@@ -15,7 +15,7 @@ etc.
 
 | 1. Press H → unit shows 'H' indicator, leaves cycle                                                     │
 │ 2. Clicking on the unit selects it, thus unholding it. Unit re-enters cycle
-| 2b (Therefore, pressing H again is not possible.)                                                      │
+| 3. (Therefore, pressing H again is not possible.)                                                      │
 │ 4. Press L to board transport → no 'H' shown on unit; unit removed from cycle                           │
 │ 5. Transport adjacent to land → boarded unit appears in cycle, selectable                               │
 │ 6. Transport far from land → boarded unit not in cycle                                                  │
