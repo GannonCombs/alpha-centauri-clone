@@ -3174,12 +3174,12 @@ class Game:
         # Restore simple state
         gs = data['game_state']
         game.turn = gs['turn']
-        game.difficulty = gs.get('difficulty') or 1
+        game.difficulty = gs['difficulty']
         game.mission_year = gs['mission_year']
         game.energy_credits = gs['energy_credits']
         game.player_id = gs['player_id']
-        game.player_faction_id = gs.get('player_faction_id', 0)  # Default to 0 for old saves
-        game.player_name = gs.get('player_name', None)
+        game.player_faction_id = gs['player_faction_id']
+        game.player_name = gs['player_name']
         game.built_projects = set(gs['built_projects'])
         game.secret_project_notifications = []
         game.known_ai_secret_projects = set()
@@ -3189,22 +3189,20 @@ class Game:
         game.winner = gs['winner']
         game.player_ever_had_base = gs['player_ever_had_base']
         game.enemy_ever_had_base = gs['enemy_ever_had_base']
-        game.ai_faction_ids = gs.get('ai_faction_ids', [fid for fid in range(7) if fid != game.player_faction_id])
-        game.faction_contacts = set(gs.get('faction_contacts', []))
-        game.eliminated_factions = set(gs.get('eliminated_factions', []))
-        game.factions_that_had_bases = set(gs.get('factions_that_had_bases', []))
-        game.infiltrated_datalinks = set(gs.get('infiltrated_datalinks', []))
-        game.atrocity_count = gs.get('atrocity_count', 0)
-        game.sanctions_turns_remaining = gs.get('sanctions_turns_remaining', 0)
-        game.permanent_vendetta_factions = set(gs.get('permanent_vendetta_factions', []))
-        game.major_atrocity_committed = gs.get('major_atrocity_committed', False)
-        game.integrity_level = gs.get('integrity_level', 0)
-        game.truce_expiry_turns = {int(k): v for k, v in gs.get('truce_expiry_turns', {}).items()}
-        game.global_energy_allocation = gs.get(
-            'global_energy_allocation', {'economy': 50, 'labs': 50, 'psych': 0}
-        )
+        game.ai_faction_ids = gs['ai_faction_ids']
+        game.faction_contacts = set(gs['faction_contacts'])
+        game.eliminated_factions = set(gs['eliminated_factions'])
+        game.factions_that_had_bases = set(gs['factions_that_had_bases'])
+        game.infiltrated_datalinks = set(gs['infiltrated_datalinks'])
+        game.atrocity_count = gs['atrocity_count']
+        game.sanctions_turns_remaining = gs['sanctions_turns_remaining']
+        game.permanent_vendetta_factions = set(gs['permanent_vendetta_factions'])
+        game.major_atrocity_committed = gs['major_atrocity_committed']
+        game.integrity_level = gs['integrity_level']
+        game.truce_expiry_turns = {int(k): v for k, v in gs['truce_expiry_turns'].items()}
+        game.global_energy_allocation = gs['global_energy_allocation']
         # Store diplo_relations for later restoration (after ui_manager is created)
-        saved_diplo_relations = gs.get('diplo_relations', {})
+        saved_diplo_relations = gs['diplo_relations']
 
         # Rebuild complex objects
         game.game_map = GameMap.from_dict(data['map'])
@@ -3229,53 +3227,25 @@ class Game:
         from game.faction import Faction
         from game.design_data import DesignData
         game.factions = {}
-        if 'factions' in data:
-            # New save format with faction objects
-            for faction_id_str, faction_data in data['factions'].items():
-                faction_id = int(faction_id_str)
-                faction = Faction(faction_id, is_player=faction_data['is_player'])
-                faction.energy_credits = faction_data.get('energy_credits', 0)
-                faction.relations = faction_data.get('relations', {})
-                faction.contacts = set(faction_data.get('contacts', []))
-                if faction_data.get('tech_tree'):
-                    faction.tech_tree = TechTree.from_dict(faction_data['tech_tree'])
-                if faction_data.get('designs'):
-                    faction.designs = DesignData.from_dict(faction_data['designs'])
-                else:
-                    # Initialize default designs if not in save
-                    faction.designs = DesignData(faction_id)
-                game.factions[faction_id] = faction
-        else:
-            # Old save format - migrate from tech_tree and ai_tech_trees
-            for faction_id in range(7):
-                is_player = (faction_id == game.player_faction_id)
-                faction = Faction(faction_id, is_player=is_player)
-                if is_player:
-                    faction.tech_tree = TechTree.from_dict(data['tech_tree'])
-                else:
-                    # Find this faction in ai_players if available
-                    if 'ai_players' in data:
-                        for ai_data in data['ai_players']:
-                            if ai_data['player_id'] == faction_id:
-                                faction.tech_tree = TechTree.from_dict(ai_data['tech_tree'])
-                                break
-                    else:
-                        # Very old save - initialize new tech tree
-                        faction.tech_tree = TechTree()
-                # Initialize default designs for old saves
+        for faction_id_str, faction_data in data['factions'].items():
+            faction_id = int(faction_id_str)
+            faction = Faction(faction_id, is_player=faction_data['is_player'])
+            faction.energy_credits = faction_data['energy_credits']
+            faction.relations = faction_data['relations']
+            faction.contacts = set(faction_data['contacts'])
+            if faction_data['tech_tree']:
+                faction.tech_tree = TechTree.from_dict(faction_data['tech_tree'])
+            if faction_data['designs']:
+                faction.designs = DesignData.from_dict(faction_data['designs'])
+            else:
                 faction.designs = DesignData(faction_id)
-                game.factions[faction_id] = faction
+            game.factions[faction_id] = faction
 
         # Restore AI players
-        if 'ai_players' in data:
-            # Old save format - restore from ai_players list
-            game.ai_players = [AIPlayer(ai_data['player_id']) for ai_data in data['ai_players']]
-        else:
-            # New save format - reconstruct from factions
-            game.ai_players = [AIPlayer(fid) for fid in game.ai_faction_ids]
+        game.ai_players = [AIPlayer(fid) for fid in game.ai_faction_ids]
 
         # Restore selected unit
-        sel_idx = data.get('selected_unit_index')
+        sel_idx = data['selected_unit_index']
         game.selected_unit = game.units[sel_idx] if sel_idx is not None else None
 
         # Restore territory
