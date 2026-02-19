@@ -1,8 +1,8 @@
 """Main UI coordinator - replaces UIPanel."""
 
 import pygame
-from game.data import display
-from game.data.display import (COLOR_UI_BACKGROUND, COLOR_UI_BORDER, COLOR_TEXT,
+from game.data import display_data as display
+from game.data.display_data import (COLOR_UI_BACKGROUND, COLOR_UI_BORDER, COLOR_TEXT,
                                  COLOR_BLACK, COLOR_BUTTON_BORDER)
 from .components import Button
 from .popups.supply_pod_dialog import SupplyPodDialog
@@ -13,7 +13,7 @@ from .screens.council import CouncilManager
 from .screens.social_screens import SocialScreensManager
 from .screens.base_screens import BaseScreenManager
 from .context_menu import ContextMenu
-from game.data.data import FACTION_DATA
+from game.data.faction_data import FACTION_DATA
 from game.map import tile_base_nutrients, tile_base_energy, tile_base_minerals
 
 
@@ -2599,7 +2599,7 @@ class UIManager:
 
     def _draw_debark_popup(self, screen, game):
         """Popup for selecting which loaded unit to debark onto an adjacent land tile."""
-        from game.data.display import COLOR_BUTTON, COLOR_BUTTON_HOVER, COLOR_BUTTON_BORDER, COLOR_BUTTON_HIGHLIGHT
+        from game.data.display_data import COLOR_BUTTON, COLOR_BUTTON_HOVER, COLOR_BUTTON_BORDER, COLOR_BUTTON_HIGHLIGHT
 
         transport = self.debark_transport
         if not transport:
@@ -2679,8 +2679,8 @@ class UIManager:
 
     def _draw_encroachment_popup(self, screen, game):
         """Popup when player tries to found a base on another faction's territory."""
-        from game.data.display import COLOR_BUTTON, COLOR_BUTTON_HOVER, COLOR_BUTTON_BORDER, COLOR_BUTTON_HIGHLIGHT
-        from game.data.data import FACTION_DATA
+        from game.data.display_data import COLOR_BUTTON, COLOR_BUTTON_HOVER, COLOR_BUTTON_BORDER, COLOR_BUTTON_HIGHLIGHT
+        from game.data.faction_data import FACTION_DATA
 
         faction_id = self.encroachment_faction_id
         faction = FACTION_DATA[faction_id] if faction_id is not None and faction_id < len(FACTION_DATA) else {}
@@ -2739,8 +2739,8 @@ class UIManager:
 
     def _draw_secret_project_notification(self, screen, game):
         """Modal popup for secret project started or 1-turn-away warning."""
-        from game.data.data import FACTION_DATA
-        from game.data.display import COLOR_TEXT, COLOR_BUTTON, COLOR_BUTTON_HOVER, COLOR_BUTTON_BORDER
+        from game.data.faction_data import FACTION_DATA
+        from game.data.display_data import COLOR_TEXT, COLOR_BUTTON, COLOR_BUTTON_HOVER, COLOR_BUTTON_BORDER
 
         notifications = getattr(game, 'secret_project_notifications', [])
         if not notifications:
@@ -2807,9 +2807,9 @@ class UIManager:
     def _draw_secret_projects_view(self, screen, game):
         """Full-screen view showing in-progress and completed secret projects."""
         from game.data.facility_data import SECRET_PROJECTS
-        from game.data.data import FACTION_DATA
-        from game.data.display import COLOR_TEXT, COLOR_BUTTON, COLOR_BUTTON_HOVER, COLOR_BUTTON_BORDER
-        from game.data import display as disp
+        from game.data.faction_data import FACTION_DATA
+        from game.data.display_data import COLOR_TEXT, COLOR_BUTTON, COLOR_BUTTON_HOVER, COLOR_BUTTON_BORDER
+        from game.data import display_data as disp
 
         # Fill full screen
         screen.fill((12, 18, 28))
@@ -3054,7 +3054,7 @@ class UIManager:
 
     def _draw_game_over(self, screen, game):
         """Draw the game over screen with victory/defeat message, score, and buttons."""
-        from game.data.display import COLOR_BUTTON, COLOR_BUTTON_HOVER, COLOR_BUTTON_BORDER, COLOR_BUTTON_HIGHLIGHT
+        from game.data.display_data import COLOR_BUTTON, COLOR_BUTTON_HOVER, COLOR_BUTTON_BORDER, COLOR_BUTTON_HIGHLIGHT
         from game.score import calculate_score
 
         # Semi-transparent overlay

@@ -138,7 +138,7 @@ def generate_save_filename(game) -> str:
     Returns:
         str: Suggested filename (sanitized for filesystem)
     """
-    from game.data.data import FACTION_DATA
+    from game.data.faction_data import FACTION_DATA
 
     # Get player's chosen faction
     player_faction_id = getattr(game, 'player_faction_id', 0)

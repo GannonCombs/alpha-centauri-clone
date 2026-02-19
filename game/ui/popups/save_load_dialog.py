@@ -3,7 +3,7 @@
 import os
 import pygame
 from game import save_load
-from game.data import display
+from game.data import display_data as display
 
 
 class SaveLoadDialogManager:

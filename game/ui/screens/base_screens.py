@@ -2,9 +2,9 @@
 
 import math
 import pygame
-from game.data import display
+from game.data import display_data as display
 from game import facilities
-from game.data.display import (COLOR_TEXT, COLOR_BUTTON, COLOR_BUTTON_HOVER,
+from game.data.display_data import (COLOR_TEXT, COLOR_BUTTON, COLOR_BUTTON_HOVER,
                                  COLOR_BUTTON_BORDER, COLOR_BUTTON_HIGHLIGHT,
                                  COLOR_UI_BORDER, COLOR_BLACK)
 
@@ -255,7 +255,7 @@ def _draw_nerve_staple_icon(screen, cx, cy, size, already_stapled=False):
 
 def _get_available_specialists(tech_tree, population):
     """Return list of specialist dicts the player can currently assign."""
-    from game.data.unit_data import SPECIALISTS
+    from game.data.citizen_data import SPECIALISTS
     available = []
     for spec in SPECIALISTS:
         prereq = spec['prereq']
@@ -649,7 +649,7 @@ class BaseScreenManager:
         base_title_font = pygame.font.Font(None, 32)
         is_enemy_base = base.owner != game.player_faction_id
         if is_enemy_base:
-            from game.data.data import FACTION_DATA
+            from game.data.faction_data import FACTION_DATA
             faction_name = FACTION_DATA[base.owner]['name'] if base.owner < len(FACTION_DATA) else "Unknown"
             title_str = f"{base.name} ({faction_name})"
         else:
@@ -682,7 +682,7 @@ class BaseScreenManager:
 
         from game.map import tile_base_nutrients, tile_base_minerals, tile_base_energy
         from game.terraforming import get_tile_yields
-        from game.data.data import FACTION_DATA
+        from game.data.faction_data import FACTION_DATA
 
         tile_size = 44  # 5 × 44 = 220
         start_tile_x = map_view_x
@@ -1505,7 +1505,7 @@ class BaseScreenManager:
         available_facilities = facilities.get_available_facilities(player_tech_tree)
 
         # Get free facility for this base's faction
-        from game.data.data import FACTION_DATA
+        from game.data.faction_data import FACTION_DATA
         free_facility_name = None
         faction_index = base.owner  # owner IS faction_id
         if faction_index < len(FACTION_DATA):
@@ -1857,7 +1857,7 @@ class BaseScreenManager:
 
     def _draw_nerve_staple_popup(self, screen, base, game):
         """Draw nerve staple confirmation dialog."""
-        from game.data import display as _display
+        from game.data import display_data as _display
         box_w, box_h = 560, 260
         box_x = _display.SCREEN_WIDTH // 2 - box_w // 2
         box_y = _display.SCREEN_HEIGHT // 2 - box_h // 2
@@ -1882,7 +1882,7 @@ class BaseScreenManager:
         ]
         if (base.turns_since_capture is not None and base.turns_since_capture < 50
                 and base.original_owner != game.player_faction_id):
-            from game.data.data import FACTION_DATA
+            from game.data.faction_data import FACTION_DATA
             orig = FACTION_DATA[base.original_owner]
             lines.append(f"{orig.get('$FACTION', orig['name'])} will never parley with us.")
         for i, line in enumerate(lines):
@@ -2002,7 +2002,7 @@ class BaseScreenManager:
                         base.calculate_population_happiness()
                         base.calculate_resource_output(game.game_map)
                         base.growth_turns_remaining = base._calculate_growth_turns()
-                        from game.data.unit_data import SPECIALISTS
+                        from game.data.citizen_data import SPECIALISTS
                         name = next((s['name'] for s in SPECIALISTS if s['id'] == action), action)
                         game.set_status_message(f"Citizen assigned as {name}")
                     self.citizen_context_open = False

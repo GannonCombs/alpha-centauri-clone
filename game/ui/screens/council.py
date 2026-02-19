@@ -2,10 +2,11 @@
 
 import pygame
 import random
-from game.data import display
-from game.data.display import (COLOR_TEXT, COLOR_COUNCIL_BG, COLOR_COUNCIL_ACCENT,
+from game.data import display_data as display
+from game.data.display_data import (COLOR_TEXT, COLOR_COUNCIL_BG, COLOR_COUNCIL_ACCENT,
                                  COLOR_COUNCIL_BORDER, COLOR_COUNCIL_BOX)
-from game.data.data import FACTION_DATA, PROPOSALS
+from game.data.faction_data import FACTION_DATA
+from game.data.council_proposal_data import PROPOSALS
 
 
 class CouncilManager:

@@ -1,4 +1,4 @@
-"""UI data structures and display."""
+"""Faction static data."""
 
 # SMAC Faction Static Data
 # Each faction starts with one specific technology
@@ -596,45 +596,3 @@ FACTION_DATA = [
     }
 ]
 
-# Council Proposals
-PROPOSALS = [
-    {"id": "GOVERNOR", "name": "Elect Planetary Governor", "type": "candidate", "cooldown": 0, "required_tech": None},  # Always available
-    {"id": "SUPREME_LEADER", "name": "Unite Behind Me As Supreme Leader", "desc": "(Diplomatic Victory; Game Ends)", "type": "yesno", "cooldown": 0, "required_tech": "MindMac"},
-    {"id": "UNITY_CORE", "name": "Salvage Unity Fusion Core", "desc": "(+500 energy credits to all factions)", "type": "yesno", "cooldown": 0, "required_tech": "Orbital"},
-    {"id": "GLOBAL_TRADE", "name": "Global Trade Pact", "desc": "(Commerce rates doubled)", "type": "yesno", "cooldown": 20, "required_tech": "PlaEcon"},
-    {"id": "REPEAL_TRADE", "name": "Repeal Global Trade Pact", "desc": "(Commerce rates halved)", "type": "yesno", "cooldown": 20, "required_tech": "PlaEcon"},
-    {"id": "SOLAR_SHADE", "name": "Launch Solar Shade", "desc": "(Global cooling; Sea levels drop)", "type": "yesno", "cooldown": 30, "required_tech": "Space"},
-    {"id": "INCREASE_SHADE", "name": "Increase Solar Shade", "desc": "(Global cooling; Sea levels drop)", "type": "yesno", "cooldown": 30, "required_tech": "Space"},
-    {"id": "MELT_CAPS", "name": "Melt Polar Caps", "desc": "(Global warming; Sea levels rise)", "type": "yesno", "cooldown": 30, "required_tech": "EcoEng2"},
-    {"id": "REPEAL_CHARTER", "name": "Repeal U.N. Charter", "desc": "(Atrocity prohibitions lifted)", "type": "yesno", "cooldown": 20, "required_tech": "MilAlg"},
-    {"id": "REINSTATE_CHARTER", "name": "Reinstate U.N. Charter", "desc": "(Atrocity prohibitions return)", "type": "yesno", "cooldown": 20, "required_tech": "MilAlg"}
-]
-
-# Social Engineering Effects
-# Format: [("STAT_NAME", value), ...] where value can be 1-5 for positive, -1 to -5 for negative
-SE_EFFECTS = {
-    "Politics": {
-        "Frontier": [],  # No effects
-        "Police State": [("POLICE", 2), ("SUPPORT", 2), ("EFFIC", -2)],
-        "Democratic": [("EFFIC", 2), ("GROWTH", 2), ("SUPPORT", -2)],
-        "Fundamentalist": [("MORALE", 1), ("PROBE", 2), ("RESEARCH", -2)]
-    },
-    "Economics": {
-        "Simple": [],  # No effects
-        "Free Market": [("ECONOMY", 2), ("PLANET", -3), ("POLICE", -5)],
-        "Planned": [("GROWTH", 2), ("INDUSTRY", 1), ("EFFIC", -2)],
-        "Green": [("PLANET", 2), ("EFFIC", 2), ("GROWTH", -2)]
-    },
-    "Values": {
-        "Survival": [],  # No effects
-        "Power": [("MORALE", 2), ("SUPPORT", 2), ("INDUSTRY", -2)],
-        "Knowledge": [("RESEARCH", 2), ("EFFIC", 1), ("PROBE", -2)],
-        "Wealth": [("INDUSTRY", 1), ("ECONOMY", 1), ("MORALE", -2)]
-    },
-    "Future Society": {
-        "None": [],  # No effects
-        "Cybernetic": [("EFFIC", 2), ("PLANET", 2), ("RESEARCH", 2), ("POLICE", -3)],
-        "Eudaimonic": [("GROWTH", 2), ("ECONOMY", 2), ("INDUSTRY", 2), ("MORALE", -2)],
-        "Thought Control": [("POLICE", 2), ("MORALE", 2), ("PROBE", 2), ("SUPPORT", -3)]
-    }
-}

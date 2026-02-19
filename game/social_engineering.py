@@ -4,7 +4,9 @@
 This module calculates bonuses and penalties from social engineering choices
 and applies them to various game systems (economy, growth, morale, etc.).
 """
-from game.data.social_engineering_data import POLITICS_CHOICES, ECONOMICS_CHOICES, VALUES_CHOICES, FUTURE_CHOICES
+from game.data.social_engineering_data import SE_DATA
+
+
 def get_available_choices(category, tech_tree):
     """Get all SE choices available in a category based on techs.
 
@@ -15,21 +17,8 @@ def get_available_choices(category, tech_tree):
     Returns:
         list: List of available choice dicts
     """
-    category_map = {
-        'Politics': POLITICS_CHOICES,
-        'Economics': ECONOMICS_CHOICES,
-        'Values': VALUES_CHOICES,
-        'Future Society': FUTURE_CHOICES
-    }
-
-    choices = category_map.get(category, [])
-    available = []
-
-    for choice in choices:
-        if choice['prereq'] is None or tech_tree.has_tech(choice['prereq']):
-            available.append(choice)
-
-    return available
+    choices = SE_DATA.get(category, [])
+    return [c for c in choices if c['prereq'] is None or tech_tree.has_tech(c['prereq'])]
 
 
 def calculate_se_effects(se_selections):
@@ -42,32 +31,15 @@ def calculate_se_effects(se_selections):
         dict: Total bonuses/penalties for each stat
     """
     effects = {
-        'ECONOMY': 0,
-        'EFFIC': 0,
-        'SUPPORT': 0,
-        'TALENT': 0,
-        'MORALE': 0,
-        'POLICE': 0,
-        'GROWTH': 0,
-        'PLANET': 0,
-        'PROBE': 0,
-        'INDUSTRY': 0,
-        'RESEARCH': 0
+        'ECONOMY': 0, 'EFFIC': 0, 'SUPPORT': 0, 'TALENT': 0,
+        'MORALE': 0, 'POLICE': 0, 'GROWTH': 0, 'PLANET': 0,
+        'PROBE': 0, 'INDUSTRY': 0, 'RESEARCH': 0
     }
 
-    # Get choice for each category
-    categories = {
-        'Politics': POLITICS_CHOICES,
-        'Economics': ECONOMICS_CHOICES,
-        'Values': VALUES_CHOICES,
-        'Future Society': FUTURE_CHOICES
-    }
-
-    for category, choices in categories.items():
+    for category, choices in SE_DATA.items():
         selected_index = se_selections.get(category, 0)
         if 0 <= selected_index < len(choices):
-            choice = choices[selected_index]
-            for stat, value in choice['effects'].items():
+            for stat, value in choices[selected_index]['effects'].items():
                 effects[stat] += value
 
     return effects

@@ -3,9 +3,9 @@
 import random
 
 import pygame
-from game.data import display
-from game.data.display import COLOR_TEXT, COLOR_BUTTON_BORDER
-from game.data.data import FACTION_DATA
+from game.data import display_data as display
+from game.data.display_data import COLOR_TEXT, COLOR_BUTTON_BORDER
+from game.data.faction_data import FACTION_DATA
 from game.commlink_text import DialogSubstitution, select_greeting_dialog
 
 

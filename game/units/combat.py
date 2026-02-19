@@ -186,7 +186,7 @@ class Combat:
                 })
 
             # Faction attack bonus (e.g. Miriam: +25% when attacking)
-            from game.data.data import FACTION_DATA
+            from game.data.faction_data import FACTION_DATA
             faction_bonuses = FACTION_DATA[unit.owner].get('bonuses', {}) if unit.owner < len(FACTION_DATA) else {}
             attack_bonus_pct = faction_bonuses.get('attack_bonus', 0)
             if attack_bonus_pct:

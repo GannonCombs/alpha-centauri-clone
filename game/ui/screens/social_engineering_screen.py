@@ -1,11 +1,11 @@
 """Social Engineering screen for managing faction policies."""
 
 import pygame
-from game.data import display
-from game.data.display import (COLOR_TEXT, COLOR_BUTTON, COLOR_BUTTON_HOVER,
+from game.data import display_data as display
+from game.data.display_data import (COLOR_TEXT, COLOR_BUTTON, COLOR_BUTTON_HOVER,
                                  COLOR_BUTTON_BORDER, COLOR_BUTTON_HIGHLIGHT)
 from game import social_engineering
-from game.data.data import SE_EFFECTS
+from game.data.social_engineering_data import SE_DATA
 
 
 class SocialEngineeringScreen:
@@ -103,7 +103,7 @@ class SocialEngineeringScreen:
         screen.blit(effects_title, (effects_x + effects_w // 2 - effects_title.get_width() // 2, effects_y + 10))
 
         # Calculate cumulative effects from current selections + faction bonuses
-        from game.data.data import FACTION_DATA
+        from game.data.faction_data import FACTION_DATA
         cumulative_effects = {}
         faction_bonuses = {}
 
@@ -133,7 +133,8 @@ class SocialEngineeringScreen:
         for category, choices in choice_categories:
             selected_idx = self.se_selections.get(category, 0)
             choice_name = choices[selected_idx]
-            effects_list = SE_EFFECTS.get(category, {}).get(choice_name, [])
+            choice_data = next((c for c in SE_DATA.get(category, []) if c['name'] == choice_name), {})
+            effects_list = list(choice_data.get('effects', {}).items())
 
             for stat_name, value in effects_list:
                 # Normalize stat names to match display (e.g., "EFFIC" -> "Efficiency")
@@ -266,7 +267,8 @@ class SocialEngineeringScreen:
 
                     # Show effect icons from real SE data
                     if col_idx > 0:
-                        effects = SE_EFFECTS.get(category, {}).get(choice_name, [])
+                        choice_data = next((c for c in SE_DATA.get(category, []) if c['name'] == choice_name), {})
+                        effects = list(choice_data.get('effects', {}).items())
 
                         if effects:
                             icon_y = choice_rect.y + 30

@@ -1,10 +1,10 @@
 """Tech Tree screen for viewing and selecting research."""
 
 import pygame
-from game.data import display
-from game.data.display import (COLOR_TEXT, COLOR_BUTTON, COLOR_BUTTON_HOVER,
+from game.data import display_data as display
+from game.data.display_data import (COLOR_TEXT, COLOR_BUTTON, COLOR_BUTTON_HOVER,
                                  COLOR_BUTTON_BORDER, COLOR_BUTTON_HIGHLIGHT)
-from game.data.data import FACTION_DATA
+from game.data.faction_data import FACTION_DATA
 
 
 class TechTreeScreen:

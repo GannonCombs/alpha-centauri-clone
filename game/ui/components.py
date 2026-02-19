@@ -1,7 +1,7 @@
 """Reusable UI components."""
 
 import pygame
-from game.data.display import (COLOR_TEXT, COLOR_BUTTON, COLOR_BUTTON_HOVER,
+from game.data.display_data import (COLOR_TEXT, COLOR_BUTTON, COLOR_BUTTON_HOVER,
                                  COLOR_BUTTON_BORDER, COLOR_BUTTON_HIGHLIGHT)
 
 

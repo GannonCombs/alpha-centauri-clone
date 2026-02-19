@@ -1,7 +1,7 @@
 """Intro screen and faction selection UI."""
 
 import pygame
-from game.data.data import FACTION_DATA
+from game.data.faction_data import FACTION_DATA
 
 
 class IntroScreenManager:

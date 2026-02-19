@@ -13,7 +13,7 @@ and renders the screen each frame.
 """
 import pygame
 import sys
-from game.data import display
+from game.data import display_data as display
 from game.game import Game
 from game.renderer import Renderer
 from game.ui import UIManager

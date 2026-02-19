@@ -66,7 +66,7 @@ class Game:
         # Legacy: Keep energy_credits as direct attribute for now
         # TODO: Migrate to self.factions[player_faction_id].energy_credits
         # Apply starting_credits bonus from faction data
-        from game.data.data import FACTION_DATA
+        from game.data.faction_data import FACTION_DATA
         player_faction_data = FACTION_DATA[player_faction_id]
         self.energy_credits = player_faction_data.get('bonuses', {}).get('starting_credits', 0)
 
@@ -226,7 +226,7 @@ class Game:
         Args:
             faction_id (int): The faction ID (0-6)
         """
-        from game.data.data import FACTION_DATA
+        from game.data.faction_data import FACTION_DATA
 
         if faction_id < len(FACTION_DATA):
             tech_tree = self.factions[faction_id].tech_tree
@@ -267,7 +267,7 @@ class Game:
 
         for faction_id in all_faction_ids:
             # Get faction data for naming
-            from game.data.data import FACTION_DATA
+            from game.data.faction_data import FACTION_DATA
             faction_name = FACTION_DATA[faction_id]['name'] if faction_id < len(FACTION_DATA) else f"Faction{faction_id}"
             faction_prefix = "Player" if faction_id == self.player_faction_id else faction_name
 
@@ -508,7 +508,7 @@ class Game:
         elif roll < 0.70:
             # --- Commlink to an uncontacted faction ---
             if unit.owner == self.player_faction_id:
-                from game.data.data import FACTION_DATA
+                from game.data.faction_data import FACTION_DATA
                 uncontacted = [
                     fid for fid in range(7)
                     if fid != self.player_faction_id
@@ -1135,7 +1135,7 @@ class Game:
         Returns:
             str: The generated base name
         """
-        from game.data.data import FACTION_DATA
+        from game.data.faction_data import FACTION_DATA
         import random
 
         # Get faction ID for this player
@@ -1201,7 +1201,7 @@ class Game:
             base.governor_mode = None
 
         # Add faction's free facility (always gets it)
-        from game.data.data import FACTION_DATA
+        from game.data.faction_data import FACTION_DATA
         from game.facilities import get_facility_by_name
         if unit.owner < len(FACTION_DATA):
             faction = FACTION_DATA[unit.owner]

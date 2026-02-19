@@ -1,8 +1,8 @@
 """Supply pod discovery popup."""
 
 import pygame
-from game.data import display
-from game.data.display import (COLOR_TEXT, COLOR_BUTTON, COLOR_BUTTON_HOVER,
+from game.data import display_data as display
+from game.data.display_data import (COLOR_TEXT, COLOR_BUTTON, COLOR_BUTTON_HOVER,
                                  COLOR_BUTTON_BORDER)
 
 

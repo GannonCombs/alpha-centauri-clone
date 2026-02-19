@@ -271,7 +271,7 @@ class Base:
             tuple: (nutrients_per_turn, minerals_per_turn, energy_per_turn)
         """
         from game.map import tile_base_nutrients, tile_base_minerals, tile_base_energy
-        from game.data.data import FACTION_DATA
+        from game.data.faction_data import FACTION_DATA
         from game.terraforming import get_tile_yields
         bonuses = FACTION_DATA[self.owner].get('bonuses', {}) if self.owner < len(FACTION_DATA) else {}
         fungus_nut_bonus = bonuses.get('fungus_nutrients', 0)
@@ -324,7 +324,7 @@ class Base:
 
     def _get_max_pop(self):
         """Return the population cap for this base based on facilities and faction bonuses."""
-        from game.data.data import FACTION_DATA
+        from game.data.faction_data import FACTION_DATA
         bonuses = FACTION_DATA[self.owner].get('bonuses', {}) if self.owner < len(FACTION_DATA) else {}
 
         # Base hard cap from facilities
@@ -776,7 +776,7 @@ class Base:
             base_drones = (self.population - 3) // 4
 
         # Zakharov (University, id 2): +1 extra drone per 4 citizens
-        from game.data.data import FACTION_DATA
+        from game.data.faction_data import FACTION_DATA
         bonuses = FACTION_DATA[self.owner].get('bonuses', {}) if self.owner < len(FACTION_DATA) else {}
         if bonuses.get('extra_drone_per_4'):
             base_drones += self.population // 4
@@ -839,7 +839,7 @@ class Base:
         Called after allocate_energy() so specialist bonuses are included in
         the totals shown to the player and used by calculate_population_happiness.
         """
-        from game.data.unit_data import SPECIALISTS
+        from game.data.citizen_data import SPECIALISTS
         spec_map = {s['id']: s for s in SPECIALISTS}
         for spec_id in self.specialists:
             spec = spec_map.get(spec_id, {})

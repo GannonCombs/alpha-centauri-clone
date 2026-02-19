@@ -63,7 +63,7 @@ class Faction:
         Returns:
             dict: Static faction data (name, leader, color, bonuses, etc.)
         """
-        from game.data.data import FACTION_DATA
+        from game.data.faction_data import FACTION_DATA
         return FACTION_DATA[self.id]
 
     @property
@@ -161,7 +161,7 @@ class Faction:
             total_votes *= 2
 
         # Bonus 3: Lal's double votes perk (2x votes)
-        from game.data.data import FACTION_DATA
+        from game.data.faction_data import FACTION_DATA
         faction_data = FACTION_DATA[self.id]
         if faction_data.get('double_votes', False):
             total_votes *= 2

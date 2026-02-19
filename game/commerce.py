@@ -6,7 +6,7 @@ that is divided based on economic technology advancement.
 """
 
 import math
-from game.data.data import FACTION_DATA
+from game.data.faction_data import FACTION_DATA
 
 ECONOMIC_TECHS = {
     'industrial_economics',
@@ -92,7 +92,7 @@ class CommerceCalculator:
         print("\n  Commerce Distribution:")
         for faction_id, commerce_amount in self.commerce_by_faction.items():
             if commerce_amount > 0:
-                from game.data.data import FACTION_DATA
+                from game.data.faction_data import FACTION_DATA
                 faction_name = FACTION_DATA[faction_id]['leader']
                 print(f"    {faction_name} (Faction {faction_id}): +{commerce_amount} energy")
                 self.game.factions[faction_id].energy_credits += commerce_amount

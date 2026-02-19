@@ -12,15 +12,15 @@ The Renderer class manages the viewport, handles coordinate transformations,
 and draws all game entities to the screen.
 """
 import pygame
-from game.data import display
+from game.data import display_data as display
 import math
-from game.data.display import (TILE_SIZE, COLOR_OCEAN, COLOR_LAND,
+from game.data.display_data import (TILE_SIZE, COLOR_OCEAN, COLOR_LAND,
                                COLOR_LAND_RAINY, COLOR_LAND_MODERATE, COLOR_LAND_ARID,
                                COLOR_GRID, COLOR_BLACK,
                                COLOR_UNIT_SELECTED,
                                COLOR_BASE_BORDER,
                                COLOR_TILE_CURSOR)
-from game.data.data import FACTION_DATA
+from game.data.faction_data import FACTION_DATA
 from game.data.terraforming_data import TERRAFORM_MAP_LETTERS
 
 
@@ -519,7 +519,7 @@ class Renderer:
             territory (TerritoryManager): Territory management system
             game_map: The game map for wrapping calculations
         """
-        from game.data.data import FACTION_DATA
+        from game.data.faction_data import FACTION_DATA
 
         # Get faction colors (faction_id passed in directly)
         def get_player_color(faction_id):
