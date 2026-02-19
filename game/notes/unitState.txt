@@ -22,3 +22,17 @@ etc.
 │ 7. Disembark → unit has N-1 moves (not 0), can still move/act                                           │
 │ 8. Click any busy unit → shows confirmation dialog (not just formers)                                   │
 │ 9. Save and load → status persists correctly; no held key errors
+
+
+Steps involved in holding a unit:
+
+
+1. main.py listens to h among its key presses: elif event.key == pygame.K_h:
+ - Units can have "held" state. Pressing h toggles it. Edit: can you toggle it?
+ - Attempt to pass this on the game.py (good) through set_status_message (prob bad), cycle_units (good), and selected_unit (?)
+2. game.py
+
+Steps involved in cycling through units, and skipping those on hold:
+
+
+TBD

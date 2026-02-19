@@ -45,16 +45,23 @@ def calculate_repair(unit, game):
     base = tile.base if at_base else None
 
     # Check for Nano Factory (full repair anywhere)
-    if _faction_has_nano_factory(unit.owner, game):
+    # TODO: This, and xenoempathy dome, need to be checked against a proper global secret project data structure. Fix
+    # these once one is built.
+    has_nano_factory = any('nano_factory' in b.facilities for b in game.bases if b.owner == unit.owner)
+    if has_nano_factory:
         repair_amount = unit.max_health - unit.current_health
         return repair_amount
 
     # Check for full repair facilities in base
     if at_base:
-        full_repair_facility = _check_full_repair_facility(unit, base)
-        if full_repair_facility:
-            repair_amount = unit.max_health - unit.current_health
-            return repair_amount
+        has_full_repair = (
+            (unit.type == 'land' and 'command_center' in base.facilities) or
+            (unit.type == 'sea' and 'naval_yard' in base.facilities) or
+            (unit.type == 'air' and 'aerospace_complex' in base.facilities) or
+            (unit.weapon == 'native' and 'biology_lab' in base.facilities)
+        )
+        if has_full_repair:
+            return unit.max_health - unit.current_health
 
     # Calculate percentage-based repair
     repair_percent = _calculate_repair_percentage(unit, tile, base, game)
@@ -73,7 +80,7 @@ def calculate_repair(unit, game):
 
     return repair_amount
 
-
+# TODO: The division of tasks between this function and calculate_repair is illogical. Fix.
 def _calculate_repair_percentage(unit, tile, base, game):
     """Calculate repair percentage based on conditions.
 
@@ -121,7 +128,8 @@ def _calculate_repair_percentage(unit, tile, base, game):
     # +10% if in fungus (natives only, or with Xenoempathy Dome)
     if tile.fungus:
         is_native = unit.weapon == 'native'  # Placeholder for native units
-        has_xenoempathy = _faction_has_xenoempathy_dome(unit.owner, game)
+
+        has_xenoempathy = any('xenoempathy_dome' in b.facilities for b in game.bases if b.owner == unit.owner)
 
         if is_native or has_xenoempathy:
             repair_percent += 0.10
@@ -129,75 +137,6 @@ def _calculate_repair_percentage(unit, tile, base, game):
 
     print(f"  Repair calculation: {', '.join(bonuses)}")
     return repair_percent
-
-
-def _check_full_repair_facility(unit, base):
-    """Check if base has a full repair facility for this unit type.
-
-    Full repair facilities:
-    - Command Center: Land units
-    - Naval Yard: Naval units
-    - Aerospace Complex: Air units
-    - Biology Lab: Native units
-
-    Args:
-        unit (Unit): Unit to check
-        base (Base): Base to check
-
-    Returns:
-        str: Name of facility that provides full repair, or None
-    """
-    if unit.type == 'land' and 'command_center' in base.facilities:
-        return 'Command Center'
-
-    if unit.type == 'sea' and 'naval_yard' in base.facilities:
-        return 'Naval Yard'
-
-    if unit.type == 'air' and 'aerospace_complex' in base.facilities:
-        return 'Aerospace Complex'
-
-    # Check for native units (placeholder)
-    is_native = unit.weapon == 'native'
-    if is_native and 'biology_lab' in base.facilities:
-        return 'Biology Lab'
-
-    return None
-
-
-def _faction_has_nano_factory(faction_id, game):
-    """Check if faction owns the Nano Factory secret project.
-
-    Args:
-        faction_id (int): Faction to check
-        game (Game): Game instance
-
-    Returns:
-        bool: True if faction has Nano Factory
-    """
-    # TODO: Implement secret projects tracking
-    # For now, check all bases for Nano Factory
-    for base in game.bases:
-        if base.owner == faction_id and 'nano_factory' in base.facilities:
-            return True
-    return False
-
-
-def _faction_has_xenoempathy_dome(faction_id, game):
-    """Check if faction owns the Xenoempathy Dome secret project.
-
-    Args:
-        faction_id (int): Faction to check
-        game (Game): Game instance
-
-    Returns:
-        bool: True if faction has Xenoempathy Dome
-    """
-    # TODO: Implement secret projects tracking
-    # For now, check all bases for Xenoempathy Dome
-    for base in game.bases:
-        if base.owner == faction_id and 'xenoempathy_dome' in base.facilities:
-            return True
-    return False
 
 
 def _is_bombarded(unit, game):

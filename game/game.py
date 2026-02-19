@@ -158,9 +158,10 @@ class Game:
         self.enemy_ever_had_base = False  # Track if enemy has founded at least one base
 
         # Victory condition tracking
-        self.supreme_leader_complete = False  # Turn when player became supreme leader (None if not leader)
+        self.transcendence_victory_complete = False  # Has Ascent to Transcendence been completed?
+        self.diplomatic_victory_complete = False  # Turn when player became supreme leader (None if not leader)
         self.economic_victory_complete = False  # Has Economic Victory project been completed?
-        self.transcendence_complete = False  # Has Ascent to Transcendence been completed?
+        self.conquer_victory_complete = False # Have we conquered all non-Pact factions?
 
         # Upkeep phase
         self.upkeep_phase_active = False  # Is upkeep phase currently showing?
@@ -250,11 +251,6 @@ class Game:
                     ocean_tiles.append((x, y))
 
         print(f"Found {len(land_tiles)} land tiles (no supply pods), {len(ocean_tiles)} ocean tiles")
-
-        # Need at least 14 land tiles (7 factions * 2 units each)
-        if len(land_tiles) < 14:
-            print("Warning: Not enough land tiles to spawn all faction units")
-            return
 
         # Distribute starting positions across the map
         # Each faction gets a Scout Patrol and a Colony Pod on the same tile
@@ -3010,7 +3006,7 @@ class Game:
                 return
 
         # Check TRANSCENDENCE VICTORY: Ascent to Transcendence complete
-        if hasattr(self, 'transcendence_complete') and self.transcendence_complete:
+        if hasattr(self, 'transcendence_victory_complete') and self.transcendence_victory_complete:
             self.game_over = True
             self.winner = self.player_faction_id
             self.victory_type = "transcendence"
@@ -3019,7 +3015,7 @@ class Game:
             return
 
         #  Check DIPLOMATIC VICTORY
-        if self.supreme_leader_complete:
+        if self.diplomatic_victory_complete:
             self.game_over = True
             self.winner = self.player_faction_id
             self.victory_type = "diplomatic"
@@ -3062,9 +3058,9 @@ class Game:
         self.resigned = False
         self.player_ever_had_base = False
         self.enemy_ever_had_base = False
-        self.supreme_leader_complete = False
+        self.diplomatic_victory_complete = False
         self.economic_victory_complete = False
-        self.transcendence_complete = False
+        self.transcendence_victory_complete = False
         self.upkeep_phase_active = False
         self.upkeep_events = []
         self.current_upkeep_event_index = 0
@@ -3333,9 +3329,9 @@ class Game:
 
         # Initialize victory tracking
         game.victory_type = None
-        game.supreme_leader_complete = False
+        game.diplomatic_victory_complete = False
         game.economic_victory_complete = False
-        game.transcendence_complete = False
+        game.transcendence_victory_complete = False
         game.pending_new_designs_flag = False
 
         return game
