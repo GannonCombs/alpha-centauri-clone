@@ -249,7 +249,7 @@ class Game:
         for y in range(1, self.game_map.height - 1):
             for x in range(self.game_map.width):
                 tile = self.game_map.get_tile(x, y)
-                if tile.is_land() and not tile.supply_pod and getattr(tile, 'rockiness', 0) != 2 and not getattr(tile, 'fungus', False):
+                if tile.is_land() and not tile.supply_pod and getattr(tile, 'rockiness', 0) != 2 and not getattr(tile, 'fungus', False) and not getattr(tile, 'monolith', False):
                     land_tiles.append((x, y))
                 elif not tile.is_land():
                     ocean_tiles.append((x, y))

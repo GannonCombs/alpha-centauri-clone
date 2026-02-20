@@ -168,7 +168,7 @@ what I want?
 13 Cleanup backCompat:  - map.py::set_fungus — docstring says "kept for backward compatibility" (Edit: fungus is both a terraformer improvement
   and a tile state that exists without terraforming. It kinda needs both, as long as it works.)
 14 Cleanup backCompat: - base.py::self.garrison — comment says "legacy". Seems redundant with get_garrison_units
-15 Once again, when ending my turn on hitting a supply pod, the AI turns are already processing before I've cleared hit OK.
+15 When ending my turn on hitting a supply pod, the AI turns are already processing before I've cleared hit OK.
 I'm not going to say which popup this was - ANY popup should keep the turn from auto-ending!
 
 
@@ -179,9 +179,6 @@ I'm not going to say which popup this was - ANY popup should keep the turn from 
 
 ***************************************************************************
 
-
-
-Note: this is the ONLY section of todo.txt that can be edited by Claude Code, but only to add checkmarks to tasks.
 
 
 1 Got a drone riot popup. Zoom to base did not pop up the base view.
@@ -201,9 +198,6 @@ held unit without the H disappearing. This should never happen! This was all sol
 10 Units are no longer healing at all!
 11 Clicking on units in the garrison pane no longer selects them. It should!
 12 W is now cycling to held players again...
-13 Supposed to allow a general Governor when clicking the center button, but right now only the 4x are possible.
-14 Starting tile should be a tile on which a base can be built. I just started on a monolith.
-15 Also skipped turn on my starting monolith with my land unit. No upgrade was performed.
 
 
 

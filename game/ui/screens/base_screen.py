@@ -2211,49 +2211,61 @@ class BaseScreen:
                 self.queue_management_open = True
             return None
 
-        # Check Governor button - toggle governor
+        # Check Governor button (center) — three-case logic:
+        #   OFF            → ON  (general mode, governor_mode=None)
+        #   ON + general   → OFF
+        #   ON + specific  → ON  (switch to general, clear mode)
         if hasattr(self, 'governor_button_rect') and self.governor_button_rect and self.governor_button_rect.collidepoint(pos):
             if base:
-                base.governor_enabled = not base.governor_enabled
-                if base.governor_enabled:
-                    # Set default mode if none set (generalist mode uses 'build')
-                    if not base.governor_mode:
-                        base.governor_mode = 'build'
-
-                    # Immediately change production based on governor
+                if not base.governor_enabled:
+                    # Turn governor ON in general (auto) mode
+                    base.governor_enabled = True
+                    base.governor_mode = None
                     from game.governor import select_production
                     faction = game.factions[base.owner]
                     new_production = select_production(base, faction, game)
-                    if new_production:
-                        if new_production != base.current_production:
-                            base.current_production = new_production
-                            base.production_progress = 0
-                            base.production_cost = base._get_production_cost(new_production)
-                            base.production_turns_remaining = base._calculate_production_turns()
-                            game.set_status_message(f"Governor activated: Now producing {new_production}")
-                        else:
-                            game.set_status_message(f"Governor activated for {base.name}")
+                    if new_production and new_production != base.current_production:
+                        base.current_production = new_production
+                        base.production_progress = 0
+                        base.production_cost = base._get_production_cost(new_production)
+                        base.production_turns_remaining = base._calculate_production_turns()
+                        game.set_status_message(f"Governor activated (auto): Now producing {new_production}")
                     else:
-                        game.set_status_message(f"Governor activated for {base.name}")
-                else:
+                        game.set_status_message(f"Governor activated (auto) for {base.name}")
+                elif base.governor_mode is None:
+                    # Already in general mode — turn governor OFF
+                    base.governor_enabled = False
                     game.set_status_message(f"Governor deactivated for {base.name}")
+                else:
+                    # Specific mode active — switch to general
+                    base.governor_mode = None
+                    from game.governor import select_production
+                    faction = game.factions[base.owner]
+                    new_production = select_production(base, faction, game)
+                    if new_production and new_production != base.current_production:
+                        base.current_production = new_production
+                        base.production_progress = 0
+                        base.production_cost = base._get_production_cost(new_production)
+                        base.production_turns_remaining = base._calculate_production_turns()
+                        game.set_status_message(f"Governor set to auto: Now producing {new_production}")
+                    else:
+                        game.set_status_message(f"Governor set to auto mode for {base.name}")
             return None
 
-        # Check mode buttons - set governor mode
+        # Check mode buttons — select specific governor mode, or turn governor OFF if already active
         if hasattr(self, 'mode_button_rects') and self.mode_button_rects:
             for btn_rect, mode_name in self.mode_button_rects:
                 if btn_rect.collidepoint(pos):
                     if base:
                         if base.governor_enabled and base.governor_mode == mode_name:
-                            # Clicking active mode switches to generalist (no specific mode)
+                            # Clicking the active mode button turns governor OFF
+                            base.governor_enabled = False
                             base.governor_mode = None
-                            game.set_status_message(f"Governor mode cleared (generalist)")
+                            game.set_status_message(f"Governor deactivated for {base.name}")
                         else:
-                            # Activate governor with this mode
+                            # Activate governor with this specific mode
                             base.governor_enabled = True
                             base.governor_mode = mode_name
-
-                            # Immediately change production based on new mode
                             from game.governor import select_production
                             faction = game.factions[base.owner]
                             new_production = select_production(base, faction, game)
