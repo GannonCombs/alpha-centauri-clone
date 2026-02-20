@@ -36,8 +36,6 @@ class UpkeepEventDialog(Dialog):
         etype = event['type']
         if etype == 'tech_complete':
             title_text, title_color = "TECHNOLOGY BREAKTHROUGH", (100, 255, 100)
-        elif etype == 'all_contacts':
-            title_text, title_color = "DIPLOMATIC MILESTONE",    (100, 200, 255)
         elif etype == 'drone_riot':
             title_text, title_color = "CIVIL UNREST",            (255, 100, 100)
         elif etype == 'golden_age':
@@ -81,14 +79,6 @@ class UpkeepEventDialog(Dialog):
                     msg_lines.append("No new units or facilities.")
             else:
                 msg_lines.append("New units and facilities may be available.")
-        elif etype == 'all_contacts':
-            msg_lines = [
-                "You have established contact with",
-                "all living factions on Planet!",
-                "",
-                "You may now call the Planetary Council",
-                "to propose global resolutions.",
-            ]
         elif etype == 'drone_riot':
             msg_lines = [
                 message,

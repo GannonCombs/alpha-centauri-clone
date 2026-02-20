@@ -186,18 +186,18 @@ I'm not going to say which popup this was - ANY popup should keep the turn from 
 3 When certain non-combat units are on the same tile as military units, and another faction destroys all the military units,
 the non-military units automatically die. This is true for probe teams, and all versions of colony pods. (And artifacts,
 but they are captured, not killed. We've implemented this.) A note at the bottom should say We <killed or lost> x units.
-4 AI colony pod keeps trying to build a base on a monolith, and gets denied, every turn. Needs an updated algo.
-5 Growth is still messed up. It should not show two growth meters.
-6 STILL not consistently showing new unit designs! This time it happened for Industrial Base, which I have seen pop
+4 Growth is still messed up. It should not show two growth meters.
+5 STILL not consistently showing new unit designs! This time it happened for Industrial Base, which I have seen pop
 up new unit designs in several previous games.
-7 A unit finally debarked from a transport, but it came out held. At NO point should a transported unit be held. The l
+6 A unit finally debarked from a transport, but it came out held. At NO point should a transported unit be held. The l
 command is the l command. It means board transport. When you debark, you lose this status. I am also able to select the
 held unit without the H disappearing. This should never happen! This was all solved already!!!
-8 I debarked a unit onto a tile with a supply pod. I did not get the supply pod.
-9 Boarded units on a transport are missing from the garrison pane in the console.
-10 Units are no longer healing at all!
-11 Clicking on units in the garrison pane no longer selects them. It should!
-12 W is now cycling to held players again...
+7 I debarked a unit onto a tile with a supply pod. I did not get the supply pod.
+8 Boarded units on a transport are missing from the garrison pane in the console.
+9 Units are no longer healing at all!
+10 Clicking on units in the garrison pane no longer selects them. It should!
+11 W is now cycling to held players again...
+12 ai_call_council makes no sense. Remove it.
 
 
 

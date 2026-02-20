@@ -430,14 +430,6 @@ class TurnManager:
         # Note: upkeep_events may already have tech_complete events from end_turn()
         # We just add additional events here
 
-        # Check if we just obtained all faction contacts
-        if game.all_contacts_obtained and not game.shown_all_contacts_popup:
-            game.upkeep_events.append({
-                'type': 'all_contacts',
-                'message': "You have established contact with all factions! You may now call the Planetary Council."
-            })
-            game.shown_all_contacts_popup = True
-
         # Check player bases for riots and starvation
         for base in game.bases:
             if base.owner != game.player_faction_id:

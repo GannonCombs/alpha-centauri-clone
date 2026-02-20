@@ -192,8 +192,8 @@ class Game:
 
         # Commlink tracking (contacts with other factions)
         self.faction_contacts = set()  # Set of faction IDs we've contacted
-        self.all_contacts_obtained = False  # Flag: have we contacted all living factions?
-        self.shown_all_contacts_popup = False  # Flag: have we shown the popup?
+        self.all_contacts_obtained = False       # Flag: have we contacted all living factions?
+        self.pending_all_contacts_popup = False  # Show AllContactsDialog when True
         self.pending_commlink_requests = []  # List of {faction_id, player_id} dicts for AI contact popups
         self.pending_probe_action = None    # {'probe': unit, 'base': base, 'faction_id': int, 'at_war': bool}
         self.pending_artifact_link = None   # {artifact, base} set when artifact enters base with network node
@@ -1806,9 +1806,10 @@ class Game:
             if faction_id != self.player_faction_id and faction_id not in self.eliminated_factions:
                 living_factions.add(faction_id)
 
-        # If we've contacted all living factions, set flag
-        if living_factions.issubset(self.faction_contacts):
+        # If we've contacted all living factions, trigger the dialog
+        if living_factions.issubset(self.faction_contacts) and not self.all_contacts_obtained:
             self.all_contacts_obtained = True
+            self.pending_all_contacts_popup = True
 
 
 
@@ -2011,7 +2012,7 @@ class Game:
         self.pending_production = []
         self.faction_contacts = set()
         self.all_contacts_obtained = False
-        self.shown_all_contacts_popup = False
+        self.pending_all_contacts_popup = False
         self.pending_commlink_requests = []
         self.pending_probe_action = None
         self.designs_need_rebuild = False
@@ -2224,7 +2225,7 @@ class Game:
         game.pending_probe_action = None
         game.pending_faction_eliminations = []
         game.all_contacts_obtained = False
-        game.shown_all_contacts_popup = False
+        game.pending_all_contacts_popup = False
         game.designs_need_rebuild = False
         game.new_designs_available = False
         game.pending_production = []

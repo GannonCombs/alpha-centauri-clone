@@ -24,6 +24,7 @@ from .dialogs.renounce_pact_dialog import RenouncePactDialog
 from .dialogs.encroachment_dialog import EncroachmentDialog
 from .dialogs.upkeep_dialog import UpkeepEventDialog
 from .dialogs.probe_dialog import ProbeDialog
+from .dialogs.all_contacts_dialog import AllContactsDialog
 from .screens.diplomacy_screen import DiplomacyScreen
 from .screens.council_screen import CouncilScreen
 from .screens.social_engineering_screen import SocialEngineeringScreen
@@ -55,6 +56,7 @@ class UIManager:
         # Initialize all screen managers
         self.supply_pod_dialog = SupplyPodDialog(self.font, self.small_font)
         self.artifact_dialog = ArtifactEventDialog(self.font, self.small_font)
+        self.all_contacts_dialog = AllContactsDialog(self.font, self.small_font)
         self.probe_dialog = ProbeDialog(self.font, self.small_font)
         self.combat_dialog = CombatDialog(self.font, self.small_font)
         self.diplomacy = DiplomacyScreen(self.font, self.small_font, self.mono_font)
@@ -755,6 +757,11 @@ class UIManager:
                 self.supply_pod_dialog.handle_click(event.pos, game)
                 return True
 
+            # All-contacts diplomatic milestone
+            if game.pending_all_contacts_popup:
+                self.all_contacts_dialog.handle_click(event.pos, game)
+                return True
+
             # Artifact event message (theft, capture, destruction)
             if game.artifact_message:
                 self.artifact_dialog.handle_click(event.pos, game)
@@ -979,6 +986,7 @@ class UIManager:
                 game.supply_pod_tech_event or
                 game.artifact_message or
                 game.pending_probe_action or
+                game.pending_all_contacts_popup or
                 game.game_over):
             return True
 
@@ -1375,6 +1383,10 @@ class UIManager:
         # Don't show supply pod if we're in diplomacy or have a commlink request active
         if game.supply_pod_message and not self.commlink_request_dialog.active and self.active_screen != "DIPLOMACY":
             self.supply_pod_dialog.draw(screen, game)
+
+        # All-contacts diplomatic milestone
+        if game.pending_all_contacts_popup:
+            self.all_contacts_dialog.draw(screen, game)
 
         # Artifact event overlay (theft, capture, or destruction)
         if game.artifact_message:
