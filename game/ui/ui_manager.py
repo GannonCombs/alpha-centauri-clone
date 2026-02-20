@@ -23,6 +23,7 @@ from .dialogs.atrocity_dialog import MajorAtrocityDialog
 from .dialogs.renounce_pact_dialog import RenouncePactDialog
 from .dialogs.encroachment_dialog import EncroachmentDialog
 from .dialogs.upkeep_dialog import UpkeepEventDialog
+from .dialogs.probe_dialog import ProbeDialog
 from .screens.diplomacy_screen import DiplomacyScreen
 from .screens.council_screen import CouncilScreen
 from .screens.social_engineering_screen import SocialEngineeringScreen
@@ -54,6 +55,7 @@ class UIManager:
         # Initialize all screen managers
         self.supply_pod_dialog = SupplyPodDialog(self.font, self.small_font)
         self.artifact_dialog = ArtifactEventDialog(self.font, self.small_font)
+        self.probe_dialog = ProbeDialog(self.font, self.small_font)
         self.combat_dialog = CombatDialog(self.font, self.small_font)
         self.diplomacy = DiplomacyScreen(self.font, self.small_font, self.mono_font)
         self.council = CouncilScreen(self.font, self.small_font)
@@ -758,6 +760,11 @@ class UIManager:
                 self.artifact_dialog.handle_click(event.pos, game)
                 return True
 
+            # Probe team action dialog
+            if game.pending_probe_action:
+                self.probe_dialog.handle_click(event.pos, game)
+                return True
+
             if self.active_screen == "SECRET_PROJECTS":
                 if self.secret_project_screen.handle_click(event.pos) == 'close':
                     self.active_screen = "GAME"
@@ -956,12 +963,26 @@ class UIManager:
 
         return False
 
-    def has_any_blocking_popup(self):
-        """Return True if any modal popup is currently active.
+    def has_any_blocking_popup(self, game):
+        """Return True if any modal popup or screen is currently blocking player turn flow.
 
-        Used by game.check_auto_end_turn() to prevent the turn from advancing
-        while the player still needs to interact with a dialog.
+        Single source of truth for auto-end-turn and auto-cycle blocking.
+        Covers both dialog .active flags and game-state-gated dialogs.
+        Adding a new blocking dialog requires ONE addition here only.
         """
+        # --- Active non-game screens block auto-end ---
+        if self.active_screen != "GAME":
+            return True
+
+        # --- Game-state-gated dialogs (no .active flag; gated by game field) ---
+        if (game.supply_pod_message or
+                game.supply_pod_tech_event or
+                game.artifact_message or
+                game.pending_probe_action or
+                game.game_over):
+            return True
+
+        # --- Dialog .active flags ---
         return (self.commlink_request_dialog.active or
                 self.commlink_open or
                 self.elimination_dialog.active or
@@ -1358,6 +1379,10 @@ class UIManager:
         # Artifact event overlay (theft, capture, or destruction)
         if game.artifact_message:
             self.artifact_dialog.draw(screen, game)
+
+        # Probe team action dialog
+        if game.pending_probe_action:
+            self.probe_dialog.draw(screen, game)
 
         # Check for treaty-breaking attacks (before battle prediction)
         if hasattr(game, 'pending_treaty_break') and game.pending_treaty_break and not self.break_treaty_dialog.active:

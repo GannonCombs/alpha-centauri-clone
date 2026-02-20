@@ -195,6 +195,7 @@ class Game:
         self.all_contacts_obtained = False  # Flag: have we contacted all living factions?
         self.shown_all_contacts_popup = False  # Flag: have we shown the popup?
         self.pending_commlink_requests = []  # List of {faction_id, player_id} dicts for AI contact popups
+        self.pending_probe_action = None    # {'probe': unit, 'base': base, 'faction_id': int, 'at_war': bool}
         self.pending_artifact_link = None   # {artifact, base} set when artifact enters base with network node
         self.pending_busy_former = None     # Unit set when player clicks a terraforming former
         self.pending_terraform_cost = None  # {'unit', 'action', 'cost'} for raise/lower confirmation
@@ -2012,6 +2013,7 @@ class Game:
         self.all_contacts_obtained = False
         self.shown_all_contacts_popup = False
         self.pending_commlink_requests = []
+        self.pending_probe_action = None
         self.designs_need_rebuild = False
 
         # Recreate factions with new tech trees and designs
@@ -2219,6 +2221,7 @@ class Game:
         game.cursor_y = 0
         game.last_unit_action = None
         game.pending_commlink_requests = []
+        game.pending_probe_action = None
         game.pending_faction_eliminations = []
         game.all_contacts_obtained = False
         game.shown_all_contacts_popup = False

@@ -30,14 +30,8 @@ class TurnManager:
         # Only auto-cycle for player units, not during AI turn or while popups need attention
         if game.processing_ai or game.upkeep_phase_active:
             return
-        if (game.pending_commlink_requests or game.supply_pod_message or
-                game.supply_pod_tech_event or game.artifact_message or
-                game.pending_artifact_link or
-                game.pending_faction_eliminations or game.pending_treaty_break or
-                game.pending_ai_attack):
-            return
         if (hasattr(game, 'ui_manager') and game.ui_manager is not None
-                and game.ui_manager.has_any_blocking_popup()):
+                and game.ui_manager.has_any_blocking_popup(game)):
             return
 
         # Check if timer is set (non-zero) and delay has elapsed
@@ -104,23 +98,9 @@ class TurnManager:
         if game.processing_ai or game.upkeep_phase_active or game.combat.active_battle:
             return
 
-        # Don't auto-end while any game-state event is pending player attention
-        if (game.pending_commlink_requests or
-                game.supply_pod_message or
-                game.supply_pod_tech_event or
-                game.artifact_message or
-                game.pending_artifact_link or
-                game.pending_busy_former or
-                game.pending_terraform_cost or
-                game.pending_movement_overflow_unit or
-                game.pending_faction_eliminations or
-                game.pending_treaty_break or
-                game.pending_ai_attack):
-            return
-
-        # Don't auto-end while the UI has any modal popup open
+        # Don't auto-end while any dialog or screen needs player attention
         if (hasattr(game, 'ui_manager') and game.ui_manager is not None
-                and game.ui_manager.has_any_blocking_popup()):
+                and game.ui_manager.has_any_blocking_popup(game)):
             return
 
         friendly_units = [u for u in game.units if u.is_friendly(game.player_faction_id)]
