@@ -159,18 +159,69 @@ Diplomacy interface (DiplomacyScreen). Handles commlink communications, treaty p
 **game/ui/screens/council_screen.py**
 Planetary Council voting system (CouncilScreen). Manages proposal submission, vote tallying, and election of Planetary Governor. Tracks voting power based on population and displays results.
 
+**game/ui/screens/secret_project_screen.py**
+Secret Projects browser (SecretProjectScreen). Full-screen overlay listing all secret projects with their status (built, available, locked by tech), construction costs, and effects. Allows queuing a project for construction at the current base.
+
+**game/ui/screens/game_over_screen.py**
+End-of-game overlay (GameOverScreen). Shows VICTORY / DEFEAT / RETIRED title, full score breakdown by component (citizens, diplo bonus, surrendered bases, commerce, techs, secret projects, victory bonus), and native life multiplier. Provides New Game / Main Menu / Exit buttons. Returns semantic signals: 'new_game', 'return_to_menu', 'exit'.
+
 **game/ui/screens/intro_screen.py**
 Game startup screen (IntroScreen). Displays faction leaders, bonuses, and starting technologies. Allows player to choose their faction before beginning the game.
 
 ### Dialogs (game/ui/dialogs/)
 
-Modal popups that overlay the current screen.
+Modal popups that overlay the current screen. All dialogs inherit from the `Dialog` base class in `components.py` and follow the standard interface: `draw(screen, game)` / `handle_click(pos, game)`. Most use an `active` flag gated by UIManager; a few gate on a `game.*` field instead (noted below).
 
 **game/ui/dialogs/combat_dialog.py**
 Combat interface (CombatDialog). Shows attacker and defender stats, calculates combat odds, displays terrain and facility bonuses as a pre-battle prediction modal. Also draws the in-progress battle animation panel.
 
 **game/ui/dialogs/supply_pod_dialog.py**
-Unity Supply Pod discovery popup (SupplyPodDialog). Displays the reward message when a unit opens a supply pod.
+Unity Supply Pod discovery popup (SupplyPodDialog). Reads `game.supply_pod_message`; on dismiss clears the field and chains into a tech breakthrough upkeep event if `game.supply_pod_tech_event` is set.
+
+**game/ui/dialogs/artifact_dialog.py**
+Alien Artifact event notification (ArtifactEventDialog). Reads `game.artifact_message` and displays theft (proximity steal), combat capture, or supply-pod-collision destruction notifications under an "ALIEN ARTIFACT" header.
+
+**game/ui/dialogs/artifact_link_dialog.py**
+Artifact linking prompt (ArtifactLinkDialog). Yes/no dialog asking the player whether to link an Alien Artifact at a base to the Network Node for a research bonus, or hold it for later.
+
+**game/ui/dialogs/commlink_dialog.py**
+Incoming commlink popup (CommLinkRequestDialog). Displays an incoming faction communication with faction portrait area and accept/decline buttons. Feeds into the DiplomacyScreen flow.
+
+**game/ui/dialogs/unit_dialog.py**
+Unit state dialogs. Contains three classes: BusyFormerDialog (confirm canceling a former's queued action), MovementOverflowDialog (unit tried to move more tiles than its movement points allow), DebarkDialog (choose a target tile to disembark a unit from a transport).
+
+**game/ui/dialogs/terraform_dialog.py**
+Terraform cost confirmation (TerraformCostDialog). Shows the energy credit cost of a requested terraform action and asks the player to confirm before deducting credits.
+
+**game/ui/dialogs/pact_dialog.py**
+Pact event dialogs. Contains two classes: PactEvacuationDialog (demand from a pact partner to remove units from their territory), PactPronounceDialog (ceremonial announcement when a new pact is formed between factions, with faction portrait).
+
+**game/ui/dialogs/renounce_pact_dialog.py**
+Pact renouncement notification (RenouncePactDialog). Faction portrait dialog with a word-wrapped AI leader quote shown when the player renounces a pact. AI tone is hostile.
+
+**game/ui/dialogs/encroachment_dialog.py**
+Territory encroachment warning (EncroachmentDialog). Faction portrait popup when the player tries to found a base on another faction's territory. Offers "Fine, we'll leave" or "We'll build here" (triggers Vendetta + integrity loss).
+
+**game/ui/dialogs/atrocity_dialog.py**
+Major atrocity confirmation (MajorAtrocityDialog). Warning shown before launching a Planet Buster. Lists full diplomatic consequences: Vendetta from all factions, permanent loss of voting rights, integrity drop.
+
+**game/ui/dialogs/elimination_dialog.py**
+Faction elimination notification (EliminationDialog). Popup when a faction is completely wiped out, summarizing their final state and diplomatic legacy.
+
+**game/ui/dialogs/new_designs_dialog.py**
+New unit designs notification (NewDesignsDialog). Shown after a tech breakthrough to list unit chassis, weapons, armor, or abilities newly unlocked for the Design Workshop.
+
+**game/ui/dialogs/treaty_dialog.py**
+Treaty-breaking dialogs. Contains two classes: BreakTreatyDialog (confirmation before attacking a faction with whom the player has a treaty), SurpriseAttackDialog (notification when an AI faction attacks the player without warning).
+
+**game/ui/dialogs/secret_project_dialog.py**
+Secret project result dialog (SecretProjectDialog). Shown when a secret project completes construction, displaying its name, global effect, and which faction built it.
+
+**game/ui/dialogs/raze_base_dialog.py**
+Base razing confirmation (RazeBaseDialog). Asks the player to confirm destroying a conquered base rather than keeping it, with consequences noted.
+
+**game/ui/dialogs/upkeep_dialog.py**
+Between-turn upkeep event popup (UpkeepEventDialog). Displays tech breakthroughs, drone riots, golden ages, first-contact diplomatic milestones, starvation warnings, and AI Planetary Council votes. Reads from `game.upkeep_events` queue via `game.turns`. No `active` flag — gated by `game.upkeep_phase_active`.
 
 **game/ui/dialogs/save_load_dialog.py**
 Save and load game dialogs (SaveLoadDialog). Provides file browser for saved games, displays save metadata (turn, faction, date), and handles save/load operations with error handling.
