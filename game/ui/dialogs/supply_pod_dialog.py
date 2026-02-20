@@ -8,17 +8,26 @@ from game.ui.components import Dialog
 
 
 class SupplyPodDialog(Dialog):
-    """Draws and handles the supply pod discovery popup."""
+    """Draws and handles the supply pod discovery popup.
+
+    Does not own an `active` flag — UIManager gates with `game.supply_pod_message`.
+
+    handle_click returns:
+      True  — dismissed (OK clicked)
+      None  — click did not hit OK (click blocked)
+    """
 
     def __init__(self, font, small_font):
         super().__init__(font, small_font)
-        self.supply_pod_ok_rect = None
+        self.ok_rect = None
 
-    def draw_supply_pod_message(self, screen, message):
-        """Draw supply pod discovery message."""
+    def draw(self, screen, game):
+        message = game.supply_pod_message
+        if not message:
+            return
+
         self.draw_overlay(screen)
 
-        # Message box
         box_w, box_h = 500, 250
         box_x = (display.SCREEN_WIDTH - box_w) // 2
         box_y = (display.SCREEN_HEIGHT - box_h) // 2
@@ -27,20 +36,16 @@ class SupplyPodDialog(Dialog):
         pygame.draw.rect(screen, (30, 50, 40), box_rect, border_radius=10)
         pygame.draw.rect(screen, (100, 200, 150), box_rect, 3, border_radius=10)
 
-        # Title
         title_text = self.font.render("UNITY SUPPLY POD", True, (150, 255, 200))
         title_rect = title_text.get_rect(centerx=box_x + box_w // 2, top=box_y + 20)
         screen.blit(title_text, title_rect)
 
-        # Message
         msg_y = box_y + 80
-        msg_lines = message.split('\n')
-        for i, line in enumerate(msg_lines):
+        for i, line in enumerate(message.split('\n')):
             line_text = self.small_font.render(line, True, COLOR_TEXT)
             line_rect = line_text.get_rect(centerx=box_x + box_w // 2, top=msg_y + i * 25)
             screen.blit(line_text, line_rect)
 
-        # OK button
         ok_w, ok_h = 120, 40
         ok_x = box_x + (box_w - ok_w) // 2
         ok_y = box_y + box_h - ok_h - 20
@@ -56,11 +61,17 @@ class SupplyPodDialog(Dialog):
         ok_text_rect = ok_text.get_rect(center=ok_rect.center)
         screen.blit(ok_text, ok_text_rect)
 
-        # Store rect for clicking
-        self.supply_pod_ok_rect = ok_rect
+        self.ok_rect = ok_rect
 
-    def handle_supply_pod_click(self, pos):
-        """Handle click on supply pod message. Returns True if dismissed."""
-        if self.supply_pod_ok_rect and self.supply_pod_ok_rect.collidepoint(pos):
+    def handle_click(self, pos, game):
+        """Returns True if dismissed, None if click did not hit OK."""
+        if self.ok_rect and self.ok_rect.collidepoint(pos):
+            game.supply_pod_message = None
+            if game.supply_pod_tech_event:
+                game.upkeep_events = [game.supply_pod_tech_event]
+                game.supply_pod_tech_event = None
+                game.current_upkeep_event_index = 0
+                game.upkeep_phase_active = True
+                game.mid_turn_upkeep = True
             return True
-        return False
+        return None

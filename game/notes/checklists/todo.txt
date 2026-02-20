@@ -199,8 +199,8 @@ command is the l command. It means board transport. When you debark, you lose th
 held unit without the H disappearing. This should never happen! This was all solved already!!!
 8 I debarked a unit onto a tile with a supply pod. I did not get the supply pod.
 9 Boarded units on a transport are missing from the garrison pane in the console.
-10 Units are no longer healing at all! Stop breaking fixed things!
-11 Clicking on units in the garrison pane no longer selects them. It should! It was!!
+10 Units are no longer healing at all!
+11 Clicking on units in the garrison pane no longer selects them. It should!
 12 Once again, when ending my turn on hitting a supply pod, the AI turns are already processing before I've cleared hit OK.
 I'm not going to say which popup this was - ANY popup should keep the turn from auto-ending!
 13 W is now cycling to held players again...
@@ -226,17 +226,3 @@ not following convention. It is spread out across game.py.
 4 Advanced unit movement (G command, J command, drag path)
 5 Isometric
 6 Diplomacy trees (it is half-built, but may need a redesign)
-
-
-Dialogs that might need their own file:
-
- - _draw_raze_base_popup
-  - _draw_encroachment_popup
-  - _draw_upkeep_event
-  - _draw_commlink_request_popup
-  - _draw_elimination_popup
-  - _draw_new_designs_popup
-  - _draw_break_treaty_popup / _draw_surprise_attack_popup
-  - _draw_artifact_link_popup
-  - _draw_movement_overflow_popup
-  - _draw_game_over

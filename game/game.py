@@ -91,6 +91,7 @@ class Game:
         # Supply pod message
         self.supply_pod_message = None
         self.supply_pod_tech_event = None  # Tech event to show immediately after pod message
+        self.artifact_message = None
         self.mid_turn_upkeep = False  # True when upkeep phase triggered mid-turn (skip _start_new_turn)
 
         # Atrocity tracking
@@ -575,7 +576,7 @@ class Game:
                     if old_owner == self.player_faction_id:
                         thief_faction = self.factions.get(adj_unit.owner, {})
                         thief_name = thief_faction.get('name', 'an enemy') if isinstance(thief_faction, dict) else getattr(thief_faction, 'name', 'an enemy')
-                        self.supply_pod_message = f"Your Alien Artifact was stolen by {thief_name}!"
+                        self.artifact_message = f"Your Alien Artifact was stolen by {thief_name}!"
                     return  # Only one steal per move
 
     def _apply_monolith_effects(self, unit):
@@ -673,9 +674,9 @@ class Game:
                     if old_owner == self.player_faction_id:
                         killer_faction = self.factions.get(killer.owner, {})
                         killer_name = killer_faction.get('name', 'an enemy') if isinstance(killer_faction, dict) else getattr(killer_faction, 'name', 'an enemy')
-                        self.supply_pod_message = f"Your Alien Artifact was captured by {killer_name}!"
+                        self.artifact_message = f"Your Alien Artifact was captured by {killer_name}!"
                     elif killer.owner == self.player_faction_id:
-                        self.supply_pod_message = "You captured an Alien Artifact!"
+                        self.artifact_message = "You captured an Alien Artifact!"
 
         # Deselect if this was the selected unit
         if self.selected_unit == unit:
@@ -1992,6 +1993,7 @@ class Game:
         self.status_message_timer = 0
         self.supply_pod_message = None
         self.supply_pod_tech_event = None
+        self.artifact_message = None
         self.mid_turn_upkeep = False
         self.game_over = False
         self.winner = None
@@ -2197,6 +2199,7 @@ class Game:
         game.status_message_timer = 0
         game.supply_pod_message = None
         game.supply_pod_tech_event = None
+        game.artifact_message = None
         game.mid_turn_upkeep = False
         game.pending_major_atrocity_popup = False
         game.pending_artifact_link = None

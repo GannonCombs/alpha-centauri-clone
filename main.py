@@ -24,18 +24,19 @@ from game.ui.dialogs.exit_dialog import ExitDialog
 def has_blocking_popup(game, ui_panel):
     """Return True if any popup or modal is waiting for player input during AI processing."""
     return (bool(game.pending_commlink_requests) or
-            ui_panel.commlink_request_active or
+            ui_panel.commlink_request_dialog.active or
             ui_panel.commlink_open or
-            ui_panel.elimination_popup_active or
-            ui_panel.new_designs_popup_active or
-            ui_panel.surprise_attack_popup_active or
-            ui_panel.break_treaty_popup_active or
-            ui_panel.pact_evacuation_popup_active or
+            ui_panel.elimination_dialog.active or
+            ui_panel.new_designs_dialog.active or
+            ui_panel.surprise_attack_dialog.active or
+            ui_panel.break_treaty_dialog.active or
+            ui_panel.pact_evacuation_dialog.active or
             ui_panel.active_screen == "DIPLOMACY" or
-            ui_panel.renounce_pact_popup_active or
-            ui_panel.pact_pronounce_popup_active or
-            ui_panel.major_atrocity_popup_active or
-            ui_panel.raze_base_popup_active or
+            ui_panel.renounce_pact_dialog.active or
+            ui_panel.pact_pronounce_dialog.active or
+            ui_panel.major_atrocity_dialog.active or
+            ui_panel.raze_base_dialog.active or
+            ui_panel.encroachment_dialog.active or
             game.upkeep_phase_active or
             game.combat.pending_battle is not None or
             game.combat.active_battle is not None)
@@ -254,17 +255,14 @@ def main():
                                             and territory_owner != game.player_faction_id
                                             and not game.has_pact_with(game.player_faction_id, territory_owner)
                                             and territory_owner not in game.eliminated_factions):
-                                        ui_panel.encroachment_popup_active = True
-                                        ui_panel.encroachment_unit = unit
-                                        ui_panel.encroachment_faction_id = territory_owner
+                                        ui_panel.encroachment_dialog.activate(territory_owner, unit)
                                     else:
                                         ui_panel.show_base_naming_dialog(unit, game)
                                 else:
                                     game.set_status_message(f"Cannot found base: {error_msg}")
                             elif (base_at_tile and base_at_tile.owner == game.player_faction_id):
                                 # Raze the base the unit is standing in
-                                ui_panel.raze_base_popup_active = True
-                                ui_panel.raze_base_target = base_at_tile
+                                ui_panel.raze_base_dialog.activate(base_at_tile)
                     elif event.key == pygame.K_f:
                         unit = game.selected_unit
                         if unit and unit.owner == game.player_faction_id:
@@ -501,12 +499,7 @@ def main():
                                     if (tgt and tgt.is_land()
                                             and not (tgt.base and tgt.base.owner == unit.owner)
                                             and debarkable):
-                                        ui_panel.debark_popup_active = True
-                                        ui_panel.debark_transport = unit
-                                        ui_panel.debark_target_x = wrapped_x
-                                        ui_panel.debark_target_y = target_y
-                                        ui_panel.debark_selected_unit = None
-                                        ui_panel.debark_unit_rects = []
+                                        ui_panel.debark_dialog.activate(unit, wrapped_x, target_y)
                                     else:
                                         was_held = getattr(unit, 'held', False)
                                         game.movement.try_move_unit(unit, target_x, target_y)

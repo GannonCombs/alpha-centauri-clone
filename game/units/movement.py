@@ -363,7 +363,7 @@ class MovementManager:
                 target_tile.supply_pod = False
                 game._remove_unit(unit)
                 if unit.owner == game.player_faction_id:
-                    game.supply_pod_message = "The Artifact was destroyed when it encountered the Supply Pod!"
+                    game.artifact_message = "The Artifact was destroyed when it encountered the Supply Pod!"
                 return True
             game._collect_supply_pod(target_tile, unit)
 

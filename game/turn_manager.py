@@ -31,7 +31,8 @@ class TurnManager:
         if game.processing_ai or game.upkeep_phase_active:
             return
         if (game.pending_commlink_requests or game.supply_pod_message or
-                game.supply_pod_tech_event or game.pending_artifact_link or
+                game.supply_pod_tech_event or game.artifact_message or
+                game.pending_artifact_link or
                 game.pending_faction_eliminations or game.pending_treaty_break or
                 game.pending_ai_attack):
             return
@@ -107,6 +108,7 @@ class TurnManager:
         if (game.pending_commlink_requests or
                 game.supply_pod_message or
                 game.supply_pod_tech_event or
+                game.artifact_message or
                 game.pending_artifact_link or
                 game.pending_busy_former or
                 game.pending_terraform_cost or

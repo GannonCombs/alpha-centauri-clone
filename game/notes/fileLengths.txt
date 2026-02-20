@@ -15,25 +15,40 @@
      16 ./game/data/citizen_data.py
      32 ./game/data/social_engineering_data.py
      49 ./game/data/display_data.py
-     66 ./game/ui/dialogs/supply_pod_dialog.py
+     58 ./game/ui/dialogs/atrocity_dialog.py
+     60 ./game/ui/dialogs/artifact_dialog.py
+     60 ./game/ui/dialogs/elimination_dialog.py
+     67 ./game/ui/dialogs/artifact_link_dialog.py
+     67 ./game/ui/dialogs/new_designs_dialog.py
+     75 ./game/ui/dialogs/commlink_dialog.py
+     76 ./game/ui/dialogs/raze_base_dialog.py
+     77 ./game/ui/dialogs/supply_pod_dialog.py
      78 ./game/ui/dialogs/secret_project_dialog.py
+     83 ./game/ui/dialogs/terraform_dialog.py
      92 ./game/facilities.py
      95 ./game/atrocity.py
     100 ./game/ui/dialogs/exit_dialog.py
+    104 ./game/ui/dialogs/renounce_pact_dialog.py
+    108 ./game/ui/dialogs/encroachment_dialog.py
+    115 ./game/ui/dialogs/pact_dialog.py
     115 ./game/units/repair.py
     123 ./game/score.py
+    125 ./game/ui/dialogs/treaty_dialog.py
     138 ./game/ui/context_menu.py
     138 ./game/ui/screens/secret_project_screen.py
     144 ./game/commlink_text.py
+    144 ./game/ui/screens/game_over_screen.py
     159 ./game/social_engineering.py
     163 ./game/save_load.py
     163 ./game/ui/components.py
+    166 ./game/ui/dialogs/upkeep_dialog.py
     169 ./game/faction.py
     187 ./game/units/unit_design.py
     193 ./game/territory.py
     197 ./game/data/unit_data.py
     212 ./game/ui/dialogs/combat_dialog.py
     214 ./game/units/unit_components.py
+    246 ./game/ui/dialogs/unit_dialog.py
     269 ./game/commerce.py
     283 ./game/tech.py
     339 ./game/debug.py
@@ -47,20 +62,20 @@
     535 ./game/units/movement.py
     584 ./game/ui/dialogs/save_load_dialog.py
     598 ./game/data/faction_data.py
-    601 ./game/turn_manager.py
+    603 ./game/turn_manager.py
     647 ./game/data/facility_data.py
     655 ./game/units/unit.py
     664 ./game/ui/screens/social_engineering_screen.py
     704 ./game/units/combat.py
-    716 ./main.py
+    709 ./main.py
     796 ./game/ui/screens/tech_tree_screen.py
     856 ./game/map.py
     863 ./game/renderer.py
    1001 ./game/ui/screens/intro_screen.py
    1018 ./game/base.py
    1231 ./game/ui/screens/design_workshop_screen.py
+   1825 ./game/ui/ui_manager.py
    1977 ./game/data/commlink_text_data.py
-   2247 ./game/game.py
+   2250 ./game/game.py
    2272 ./game/ui/screens/base_screen.py
-   3090 ./game/ui/ui_manager.py
-  27803 total
+  28101 total
