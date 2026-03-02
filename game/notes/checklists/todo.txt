@@ -197,7 +197,6 @@ held unit without the H disappearing. This should never happen! This was all sol
 9 Units are no longer healing at all!
 10 Clicking on units in the garrison pane no longer selects them. It should!
 11 W is now cycling to held players again...
-12 ai_call_council makes no sense. Remove it.
 
 
 
@@ -215,3 +214,8 @@ held unit without the H disappearing. This should never happen! This was all sol
 4 Advanced unit movement (G command, J command, drag path)
 5 Isometric
 6 Diplomacy trees (it is half-built, but may need a redesign)
+
+
+What's the scenario in which a dialog IS NOT blocking game processing? I can't think of one. If so, then is_blocking(game)
+ makes no sense. And your self._dialogs = [] is just collecting all dialogs again. Don't we have a dialog template?
+ Can't we just check if A dialog is open?
