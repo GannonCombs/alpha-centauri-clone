@@ -42,7 +42,7 @@ Drones ✓
 Talents ✓
 Psych ✓
 Landmarks, Volcanos, etc.
-Council Proposals ◐
+Council Proposals ◐ (proposals not implemented, tallies are buggy)
 Nutrients ◐ (waiting on jungle, gene splicing)
 Minerals ◐
 Energy ◐ (waiting on river, Environmental Economics, special energy resources)

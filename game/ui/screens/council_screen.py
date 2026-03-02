@@ -80,6 +80,7 @@ class CouncilScreen:
                     self.player_vote = val
                     self.council_votes.insert(0, {"name": "You", "color": FACTION_DATA[0]['color'], "vote": val,
                                                   "votes": FACTION_DATA[0]['votes']})
+                    self.selected_proposal['last_voted'] = game.turn
                     pygame.time.wait(300)
                     self.council_stage = "results"
                     return None
@@ -215,19 +216,7 @@ class CouncilScreen:
 
         for f in FACTION_DATA[1:]:
             if is_yesno:
-                # Get faction preference for this proposal
-                preference = self._get_faction_preference(f['name'], self.selected_proposal['id'])
-
-                # Vote based on preference with some randomness
-                if preference >= 1:
-                    # Strongly favor - 80% yes, 15% abstain, 5% no
-                    v = random.choices(["YES", "ABSTAIN", "NO"], weights=[80, 15, 5])[0]
-                elif preference <= -1:
-                    # Strongly oppose - 80% no, 15% abstain, 5% yes
-                    v = random.choices(["NO", "ABSTAIN", "YES"], weights=[80, 15, 5])[0]
-                else:
-                    # Neutral - 40% yes, 40% no, 20% abstain
-                    v = random.choices(["YES", "NO", "ABSTAIN"], weights=[40, 40, 20])[0]
+                v = random.choices(["YES", "NO", "ABSTAIN"], weights=[40, 40, 20])[0]
             else:
                 # Candidate vote - random for now (could be based on alliances)
                 v = random.choice(opts)
@@ -287,20 +276,8 @@ class CouncilScreen:
         if not available_proposals:
             return None
 
-        # Find proposals this faction strongly favors
-        favored_proposals = []
-        for prop in available_proposals:
-            preference = self._get_faction_preference(faction_name, prop['id'])
-            if preference >= 1:  # Favor or strongly favor
-                # Add multiple times for strong preference (increases chance)
-                for _ in range(abs(preference)):
-                    favored_proposals.append(prop)
-
-        if not favored_proposals:
-            return None
-
-        # Randomly select a favored proposal to call
-        selected = random.choice(favored_proposals)
+        # Pick a random available proposal
+        selected = random.choice(available_proposals)
         print(f"AI {faction_name} calling council for: {selected['name']}")
         return selected['id']
 

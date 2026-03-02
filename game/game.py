@@ -1757,36 +1757,46 @@ class Game:
             return
 
         if proposal_id == "UNITY_CORE":
-            # Award 500 energy credits to the faction that proposed/won
             self.energy_credits += 500
             self.set_status_message("Unity Fusion Core salvaged! +500 energy credits")
 
         elif proposal_id == "GLOBAL_TRADE":
-            # Doubles commerce from treaties/pacts (commerce.py handles calculation)
             self.global_trade_pact_active = True
             self.set_status_message("Global Trade Pact enacted! Commerce doubled")
-            # This would need to be tracked and applied in base calculations
-            # For now, just notify the player
+
+        elif proposal_id == "REPEAL_TRADE":
+            self.global_trade_pact_active = False
+            self.set_status_message("Global Trade Pact repealed. Commerce rates return to normal")
 
         elif proposal_id == "SOLAR_SHADE":
-            # Lower sea levels (would need map modification logic)
             self.set_status_message("Solar Shade launched! Sea levels dropping...")
             # TODO: Implement terrain transformation from ocean to land
 
+        elif proposal_id == "INCREASE_SHADE":
+            self.set_status_message("Solar Shade intensified! Sea levels dropping further...")
+            # TODO: Implement terrain transformation from ocean to land
+
         elif proposal_id == "MELT_CAPS":
-            # Raise sea levels (would need map modification logic)
             self.set_status_message("Polar caps melting! Sea levels rising...")
             # TODO: Implement terrain transformation from land to ocean
 
-        elif proposal_id == "ATROCITY":
-            # Remove atrocity prohibitions
-            self.set_status_message("Atrocity prohibitions removed!")
-            # This would affect diplomatic penalties for nerve stapling, etc.
+        elif proposal_id == "REPEAL_CHARTER":
+            self.un_charter_repealed = True
+            self.set_status_message("U.N. Charter repealed! Atrocity prohibitions lifted")
+
+        elif proposal_id == "REINSTATE_CHARTER":
+            self.un_charter_repealed = False
+            self.set_status_message("U.N. Charter reinstated. Atrocity prohibitions restored")
 
         elif proposal_id == "GOVERNOR":
-            # Elect planetary governor (diplomatic victory condition)
             if winner:
+                self.planetary_governor = winner
                 self.set_status_message(f"{winner} elected Planetary Governor!")
+
+        elif proposal_id == "SUPREME_LEADER":
+            # Sets flag; check_victory() picks it up on next call
+            self.diplomatic_victory_complete = True
+            self.set_status_message("Supreme Leader declared! Diplomatic Victory!")
 
 
     def add_faction_contact(self, faction_id):

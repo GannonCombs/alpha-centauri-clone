@@ -416,7 +416,7 @@ Repeal U.N. Charter: Atrocity prohibitions lifted.
 
 Reinstate U.N. Charter: Atrocity prohibitions return.
 
-The Council also elects the Planetary Governor by a majority vote of population, and by a 3/4 vote by population can annoint a Supreme Leader, conferring a Diplomatic Victory (available upon discovery of Mind/Machine Interface).
+The Council also elects the Planetary Governor by a majority vote of population, and by a 3/4 vote by population can anoint a Supreme Leader, conferring a Diplomatic Victory (available upon discovery of Mind/Machine Interface).
 
 Nutrients #
 Nutrients are produced in squares with sufficient Rainfall, sometimes supplemented by the addition of Farms and similar enhancements.
