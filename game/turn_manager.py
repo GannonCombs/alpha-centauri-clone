@@ -410,10 +410,13 @@ class TurnManager:
                 game._grant_secrets_bonus(ai_completed_tech, ai_tech_tree, ai_player.player_id)
 
             # Check if AI wants to call a council
-            if hasattr(game, 'council_manager'):
-                proposal_to_call = game.council_manager.check_ai_council_call(ai_player.player_id, game)
-                if proposal_to_call:
-                    game.council_manager.ai_call_council(proposal_to_call, game)
+            if not game.pending_council_call:
+                proposal = self._check_ai_council_call(ai_player.player_id)
+                if proposal:
+                    game.pending_council_call = {
+                        'faction_id': ai_player.player_id,
+                        'proposal': proposal,
+                    }
 
             print(f"=== AI Player {ai_player.player_id} Turn Complete ===\n")
             game.ai_unit_queue = []
@@ -573,3 +576,47 @@ class TurnManager:
             return game.upkeep_events[game.current_upkeep_event_index]
 
         return None
+
+    def _check_ai_council_call(self, ai_player_id):
+        """Check if an AI player wants to call a council this turn.
+
+        Returns:
+            dict or None: Proposal dict to call, or None if not calling
+        """
+        import random
+        from game.data.faction_data import FACTION_DATA
+        from game.data.council_proposal_data import PROPOSALS
+
+        game = self.game
+
+        # AI only calls council occasionally (20% base chance per turn)
+        if random.random() > 0.2:
+            return None
+
+        faction_id = ai_player_id
+        if faction_id is None or faction_id >= len(FACTION_DATA):
+            return None
+
+        faction_name = FACTION_DATA[faction_id]['name']
+
+        # Get available proposals
+        available_proposals = []
+        for prop in PROPOSALS:
+            required_tech = prop.get('required_tech')
+            if required_tech and ai_player_id in game.factions:
+                ai_tech_tree = game.factions[ai_player_id].tech_tree
+                if ai_tech_tree and not ai_tech_tree.has_tech(required_tech):
+                    continue
+
+            last_voted = prop.get('last_voted', -99)
+            if game.turn - last_voted < prop['cooldown']:
+                continue
+
+            available_proposals.append(prop)
+
+        if not available_proposals:
+            return None
+
+        selected = random.choice(available_proposals)
+        print(f"AI {faction_name} calling council for: {selected['name']}")
+        return selected

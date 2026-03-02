@@ -42,8 +42,6 @@ class UpkeepEventDialog(Dialog):
             title_text, title_color = "GOLDEN AGE",              (255, 220,  80)
         elif etype == 'starvation':
             title_text, title_color = "FOOD SHORTAGE",           (255, 180, 100)
-        elif etype == 'ai_council':
-            title_text, title_color = "PLANETARY COUNCIL VOTE",  (180, 200, 255)
         else:
             title_text, title_color = "UPKEEP REPORT",           (200, 220, 240)
 
@@ -95,15 +93,6 @@ class UpkeepEventDialog(Dialog):
                 "Growth and economy bonuses will apply",
                 "once the full formula is implemented.",
             ]
-        elif etype == 'ai_council':
-            msg_lines = [
-                "The Planetary Council has voted on:",
-                event['proposal_name'],
-                "",
-                "Voting Results:",
-            ]
-            for vote_entry in event.get('results', [])[:5]:
-                msg_lines.append(f"  {vote_entry['name']}: {vote_entry['vote']}")
         else:
             msg_lines = [message]
 

@@ -194,6 +194,7 @@ class Game:
         self.faction_contacts = set()  # Set of faction IDs we've contacted
         self.all_contacts_obtained = False       # Flag: have we contacted all living factions?
         self.pending_all_contacts_popup = False  # Show AllContactsDialog when True
+        self.pending_council_call = None  # {'faction_id': int, 'proposal': dict} when AI calls council
         self.pending_commlink_requests = []  # List of {faction_id, player_id} dicts for AI contact popups
         self.pending_probe_action = None    # {'probe': unit, 'base': base, 'faction_id': int, 'at_war': bool}
         self.pending_artifact_link = None   # {artifact, base} set when artifact enters base with network node
@@ -2236,6 +2237,7 @@ class Game:
         game.pending_faction_eliminations = []
         game.all_contacts_obtained = False
         game.pending_all_contacts_popup = False
+        game.pending_council_call = None
         game.designs_need_rebuild = False
         game.new_designs_available = False
         game.pending_production = []

@@ -25,6 +25,9 @@ from .dialogs.encroachment_dialog import EncroachmentDialog
 from .dialogs.upkeep_dialog import UpkeepEventDialog
 from .dialogs.probe_dialog import ProbeDialog
 from .dialogs.all_contacts_dialog import AllContactsDialog
+from .dialogs.council_proposal_dialog import CouncilProposalDialog
+from .dialogs.council_cooldown_dialog import CouncilCooldownDialog
+from .dialogs.council_called_dialog import CouncilCalledDialog
 from .screens.diplomacy_screen import DiplomacyScreen
 from .screens.council_screen import CouncilScreen
 from .screens.social_engineering_screen import SocialEngineeringScreen
@@ -57,6 +60,9 @@ class UIManager:
         self.supply_pod_dialog = SupplyPodDialog(self.font, self.small_font)
         self.artifact_dialog = ArtifactEventDialog(self.font, self.small_font)
         self.all_contacts_dialog = AllContactsDialog(self.font, self.small_font)
+        self.council_proposal_dialog = CouncilProposalDialog(self.font, self.small_font)
+        self.council_cooldown_dialog = CouncilCooldownDialog(self.font, self.small_font)
+        self.council_called_dialog = CouncilCalledDialog(self.font, self.small_font)
         self.probe_dialog = ProbeDialog(self.font, self.small_font)
         self.combat_dialog = CombatDialog(self.font, self.small_font)
         self.diplomacy = DiplomacyScreen(self.font, self.small_font, self.mono_font)
@@ -350,6 +356,9 @@ class UIManager:
                     return True
 
             if event.key == pygame.K_ESCAPE:
+                # AI-called council — cannot dismiss
+                if game.pending_council_call:
+                    return True
                 # Battle prediction popup - Esc = Cancel
                 if game.combat.pending_battle:
                     game.combat.pending_battle = None
@@ -387,13 +396,19 @@ class UIManager:
                     self.active_screen = "GAME"
                     self.base_screen.viewing_base = None
                     return True
+                elif self.active_screen == "COUNCIL_PROPOSAL":
+                    self.active_screen = "GAME"
+                    return True
+                elif self.active_screen == "COUNCIL_COOLDOWN":
+                    self.active_screen = "COUNCIL_PROPOSAL"
+                    return True
                 elif self.active_screen != "GAME" or self.commlink_open or self.main_menu_open:
                     self.active_screen = "GAME"
                     self.commlink_open = False
                     self.main_menu_open = False
                     self.game_submenu_open = False
                     self.diplomacy.diplo_stage = "greeting"
-                    self.council.council_stage = "select_proposal"
+                    self.council.council_stage = "voting"
                     self.council.selected_proposal = None
                     self.council.player_vote = None
                     return True
@@ -432,16 +447,12 @@ class UIManager:
                         self.active_screen = "GAME"
                         self.diplomacy.diplo_stage = "greeting"
                         return True
+                elif self.active_screen == "COUNCIL_COOLDOWN":
+                    self.active_screen = "COUNCIL_PROPOSAL"
+                    return True
                 elif self.active_screen == "COUNCIL_VOTE":
-                    if self.council.council_stage == "too_recent":
-                        self.council.council_stage = "select_proposal"
-                        self.council.selected_proposal = None
-                        return True
-                    elif self.council.council_stage == "results":
+                    if self.council.council_stage == "results":
                         self.active_screen = "GAME"
-                        self.council.council_stage = "select_proposal"
-                        self.council.selected_proposal = None
-                        self.council.player_vote = None
                         return True
                 return False
 
@@ -762,6 +773,16 @@ class UIManager:
                 self.all_contacts_dialog.handle_click(event.pos, game)
                 return True
 
+            # AI-called council vote
+            if game.pending_council_call:
+                result = self.council_called_dialog.handle_click(event.pos, game)
+                if result is True:
+                    proposal = game.pending_council_call['proposal']
+                    game.pending_council_call = None
+                    self.council.open_council(proposal)
+                    self.active_screen = "COUNCIL_VOTE"
+                return True
+
             # Artifact event message (theft, capture, destruction)
             if game.artifact_message:
                 self.artifact_dialog.handle_click(event.pos, game)
@@ -813,6 +834,24 @@ class UIManager:
                 result = self.diplomacy.handle_click(event.pos)
                 if result == 'close':
                     self.active_screen = "GAME"
+                return True
+            elif self.active_screen == "COUNCIL_PROPOSAL":
+                result = self.council_proposal_dialog.handle_click(event.pos, game)
+                if result == 'close':
+                    self.active_screen = "GAME"
+                elif isinstance(result, tuple) and result[0] == 'selected':
+                    prop = result[1]
+                    if game.turn - prop.get('last_voted', -99) >= prop['cooldown']:
+                        self.council.open_council(prop)
+                        self.active_screen = "COUNCIL_VOTE"
+                    else:
+                        self.council_cooldown_dialog.proposal = prop
+                        self.active_screen = "COUNCIL_COOLDOWN"
+                return True
+            elif self.active_screen == "COUNCIL_COOLDOWN":
+                result = self.council_cooldown_dialog.handle_click(event.pos, game)
+                if result is True:
+                    self.active_screen = "COUNCIL_PROPOSAL"
                 return True
             elif self.active_screen == "COUNCIL_VOTE":
                 result = self.council.handle_click(event.pos, game)
@@ -882,8 +921,7 @@ class UIManager:
                     if self.council_btn.handle_event(event):
                         # Only allow if all contacts obtained
                         if game.all_contacts_obtained:
-                            self.council.open_council()
-                            self.active_screen = "COUNCIL_VOTE"
+                            self.active_screen = "COUNCIL_PROPOSAL"
                             self.commlink_open = False
                             return True
                         else:
@@ -987,6 +1025,7 @@ class UIManager:
                 game.artifact_message or
                 game.pending_probe_action or
                 game.pending_all_contacts_popup or
+                game.pending_council_call or
                 game.game_over):
             return True
 
@@ -1371,6 +1410,10 @@ class UIManager:
             self.base_screen.draw_base_naming(screen)
         elif self.active_screen == "DIPLOMACY":
             self.diplomacy.draw(screen)
+        elif self.active_screen == "COUNCIL_PROPOSAL":
+            self.council_proposal_dialog.draw(screen, game)
+        elif self.active_screen == "COUNCIL_COOLDOWN":
+            self.council_cooldown_dialog.draw(screen, game)
         elif self.active_screen == "COUNCIL_VOTE":
             self.council.draw(screen, game)
 
@@ -1387,6 +1430,10 @@ class UIManager:
         # All-contacts diplomatic milestone
         if game.pending_all_contacts_popup:
             self.all_contacts_dialog.draw(screen, game)
+
+        # AI-called council vote announcement
+        if game.pending_council_call:
+            self.council_called_dialog.draw(screen, game)
 
         # Artifact event overlay (theft, capture, or destruction)
         if game.artifact_message:
