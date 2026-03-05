@@ -7,7 +7,7 @@ from game.ui.components import Dialog
 
 
 class EliminationDialog(Dialog):
-    """Modal popup shown when a faction is completely eliminated."""
+    """Modal dialog shown when a faction is completely eliminated."""
 
     def __init__(self, font, small_font):
         super().__init__(font, small_font)
@@ -51,7 +51,7 @@ class EliminationDialog(Dialog):
         screen.blit(ok_text, (ok_rect.centerx - ok_text.get_width() // 2, ok_rect.centery - 10))
 
     def handle_click(self, pos, game):
-        """Dismiss popup. Returns True if clicked."""
+        """Dismiss dialog. Returns True if clicked."""
         if self.ok_rect and self.ok_rect.collidepoint(pos):
             self.active = False
             if game.pending_faction_eliminations:

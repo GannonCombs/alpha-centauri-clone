@@ -6,7 +6,7 @@ from game.ui.components import Dialog
 
 
 class TerraformCostDialog(Dialog):
-    """Confirmation popup showing the energy cost for raise/lower land terrain operations."""
+    """Confirmation dialog showing the energy cost for raise/lower land terrain operations."""
 
     def __init__(self, font, small_font):
         super().__init__(font, small_font)

@@ -1,4 +1,4 @@
-"""SecretProjectDialog — modal popup for secret project started / 1-turn-away warning."""
+"""SecretProjectDialog — modal dialog for secret project started / 1-turn-away warning."""
 
 import pygame
 from game.data.display_data import COLOR_TEXT, COLOR_BUTTON, COLOR_BUTTON_HOVER, COLOR_BUTTON_BORDER
@@ -7,14 +7,14 @@ from game.ui.components import Dialog
 
 
 class SecretProjectDialog(Dialog):
-    """Modal popup shown when an AI faction starts or is one turn from completing a secret project."""
+    """Modal dialog shown when an AI faction starts or is one turn from completing a secret project."""
 
     def __init__(self, font, small_font):
         super().__init__(font, small_font)
         self.ok_rect = None
 
     def draw(self, screen, game):
-        """Draw the notification popup for the first queued secret project notification."""
+        """Draw the notification dialog for the first queued secret project notification."""
         notifications = getattr(game, 'secret_project_notifications', [])
         if not notifications:
             return

@@ -21,8 +21,8 @@ from game.ui.screens.intro_screen import IntroScreen
 from game.ui.dialogs.save_load_dialog import SaveLoadDialog
 from game.ui.dialogs.exit_dialog import ExitDialog
 
-def has_blocking_popup(game, ui_panel):
-    """Return True if any popup or modal is waiting for player input during AI processing."""
+def has_blocking_dialog(game, ui_panel):
+    """Return True if any dialog or modal is waiting for player input during AI processing."""
     return (bool(game.pending_commlink_requests) or
             ui_panel.commlink_request_dialog.active or
             ui_panel.commlink_open or
@@ -141,9 +141,9 @@ def main():
 
             # Game is active - handle game events
             elif event.type == pygame.KEYDOWN:
-                # Block all input during AI processing unless a popup needs attention
+                # Block all input during AI processing unless a dialog needs attention
                 if game.processing_ai:
-                    if not has_blocking_popup(game, ui_panel):
+                    if not has_blocking_dialog(game, ui_panel):
                         continue
 
                 # Check for exit dialog first
@@ -489,7 +489,7 @@ def main():
                                 target_y = game.selected_unit.y + dy
                                 wrapped_x = target_x % game.game_map.width
                                 unit = game.selected_unit
-                                # Debark popup: sea transport with cargo moving toward land
+                                # Debark dialog: sea transport with cargo moving toward land
                                 if (0 <= target_y < game.game_map.height
                                         and unit.type == 'sea'
                                         and getattr(unit, 'loaded_units', [])):
@@ -512,9 +512,9 @@ def main():
                                         game.turns.cycle_units()
 
             elif event.type == pygame.MOUSEBUTTONDOWN:
-                # Block all input during AI processing unless a popup needs attention
+                # Block all input during AI processing unless a dialog needs attention
                 if game.processing_ai:
-                    if not has_blocking_popup(game, ui_panel):
+                    if not has_blocking_dialog(game, ui_panel):
                         continue
 
                 # Check for exit dialog first
@@ -616,12 +616,12 @@ def main():
         # Check for auto-cycle to next unit after delay
         game.turns.check_auto_cycle()
 
-        # Process AI turns with delay (but not if popup is blocking)
+        # Process AI turns with delay (but not if dialog is blocking)
         if game.processing_ai:
-            # Check if any blocking popup is active
-            popups_blocking = has_blocking_popup(game, ui_panel)
+            # Check if any blocking dialog is active
+            dialogs_blocking = has_blocking_dialog(game, ui_panel)
 
-            if not popups_blocking:
+            if not dialogs_blocking:
                 current_time = pygame.time.get_ticks()
                 if current_time - last_ai_action >= display.AI_TURN_DELAY:
                     game.turns.process_ai_turns()
@@ -668,9 +668,9 @@ def main():
             renderer.center_on_tile(game.center_camera_on_tile[0], game.center_camera_on_tile[1], game.game_map)
             game.center_camera_on_tile = None
 
-        # Hide cursor during AI turns (unless a popup is waiting for player input)
+        # Hide cursor during AI turns (unless a dialog is waiting for player input)
         if game.processing_ai:
-            pygame.mouse.set_visible(has_blocking_popup(game, ui_panel))
+            pygame.mouse.set_visible(has_blocking_dialog(game, ui_panel))
         else:
             pygame.mouse.set_visible(True)
 

@@ -5,7 +5,7 @@ from game.ui.components import Dialog
 
 
 class RazeBaseDialog(Dialog):
-    """Confirmation popup before a player razes (obliterates) one of their own bases."""
+    """Confirmation dialog before a player razes (obliterates) one of their own bases."""
 
     def __init__(self, font, small_font):
         super().__init__(font, small_font)

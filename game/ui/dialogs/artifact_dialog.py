@@ -6,7 +6,7 @@ from game.ui.components import Dialog
 
 
 class ArtifactEventDialog(Dialog):
-    """Notification popup for artifact theft, capture, or destruction events.
+    """Notification dialog for artifact theft, capture, or destruction events.
 
     Does not own an `active` flag — UIManager gates with `game.artifact_message`.
 

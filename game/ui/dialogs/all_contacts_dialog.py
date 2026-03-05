@@ -8,7 +8,7 @@ from game.ui.components import Dialog
 class AllContactsDialog(Dialog):
     """Notification that the player has obtained commlinks with every faction.
 
-    Gated on game.pending_all_contacts_popup.
+    Gated on game.pending_all_contacts_dialog.
     handle_click returns True when dismissed, None otherwise.
     """
 
@@ -17,7 +17,7 @@ class AllContactsDialog(Dialog):
         self.continue_rect = None
 
     def draw(self, screen, game):
-        if not game.pending_all_contacts_popup:
+        if not game.pending_all_contacts_dialog:
             return
 
         self.draw_overlay(screen)
@@ -57,6 +57,6 @@ class AllContactsDialog(Dialog):
 
     def handle_click(self, pos, game):
         if self.continue_rect and self.continue_rect.collidepoint(pos):
-            game.pending_all_contacts_popup = False
+            game.pending_all_contacts_dialog = False
             return True
         return None

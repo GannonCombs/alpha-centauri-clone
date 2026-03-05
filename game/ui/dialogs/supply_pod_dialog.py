@@ -1,4 +1,4 @@
-"""Supply pod discovery popup."""
+"""Supply pod discovery dialog."""
 
 import pygame
 from game.data import display_data as display
@@ -8,7 +8,7 @@ from game.ui.components import Dialog
 
 
 class SupplyPodDialog(Dialog):
-    """Draws and handles the supply pod discovery popup.
+    """Draws and handles the supply pod discovery dialog.
 
     Does not own an `active` flag — UIManager gates with `game.supply_pod_message`.
 

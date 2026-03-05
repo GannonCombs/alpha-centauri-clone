@@ -7,7 +7,7 @@ from game.ui.components import Dialog
 
 
 class BreakTreatyDialog(Dialog):
-    """Confirmation popup when the player tries to attack a faction they have a treaty/truce with."""
+    """Confirmation dialog when the player tries to attack a faction they have a treaty/truce with."""
 
     def __init__(self, font, small_font):
         super().__init__(font, small_font)
@@ -82,7 +82,7 @@ class BreakTreatyDialog(Dialog):
 
 
 class SurpriseAttackDialog(Dialog):
-    """Notification popup when an AI faction breaks a treaty and launches a surprise attack."""
+    """Notification dialog when an AI faction breaks a treaty and launches a surprise attack."""
 
     def __init__(self, font, small_font):
         super().__init__(font, small_font)

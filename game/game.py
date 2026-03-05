@@ -99,7 +99,7 @@ class Game:
         self.sanctions_turns_remaining = 0       # Turns of commerce sanctions remaining
         self.permanent_vendetta_factions = set() # Faction IDs that will never make peace
         self.major_atrocity_committed = False    # Planet buster used — votes permanently 0
-        self.pending_major_atrocity_popup = False  # Show major atrocity declaration popup
+        self.pending_major_atrocity_dialog = False  # Show major atrocity declaration dialog
 
         # Integrity (0=Noble … 5=Treacherous, only decreases)
         self.integrity_level = 0
@@ -130,7 +130,7 @@ class Game:
 
         # Facilities and Projects
         self.built_projects = set()  # Global set of secret projects built (one per game)
-        self.secret_project_notifications = []  # Queue of {type, project_name, faction_id, ...} popups
+        self.secret_project_notifications = []  # Queue of {type, project_name, faction_id, ...} dialogs
 
         # Social Engineering (player selections)
         self.se_selections = {
@@ -187,13 +187,13 @@ class Game:
 
         # Flag to rebuild unit designs when tech is completed
         self.designs_need_rebuild = False
-        self.new_designs_available = False  # Flag for popup to view new units
+        self.new_designs_available = False  # Flag for dialog to view new units
         self.pending_new_designs_flag = False  # Delayed flag (shows after upkeep)
 
         # Commlink tracking (contacts with other factions)
         self.faction_contacts = set()  # Set of faction IDs we've contacted
         self.all_contacts_obtained = False       # Flag: have we contacted all living factions?
-        self.pending_all_contacts_popup = False  # Show AllContactsDialog when True
+        self.pending_all_contacts_dialog = False  # Show AllContactsDialog when True
         self.pending_council_call = None  # {'faction_id': int, 'proposal': dict} when AI calls council
         self.pending_commlink_requests = []  # List of {faction_id, player_id} dicts for AI contact popups
         self.pending_probe_action = None    # {'probe': unit, 'base': base, 'faction_id': int, 'at_war': bool}
@@ -203,7 +203,7 @@ class Game:
         self.pending_movement_overflow_unit = None  # Unit that exceeded 100 moves in one turn
         self.eliminated_factions = set()  # Set of faction IDs that have been eliminated
         self.factions_that_had_bases = set()  # Set of faction IDs that have founded at least one base
-        self.pending_faction_eliminations = []  # List of faction_ids for elimination popups
+        self.pending_faction_eliminations = []  # List of faction_ids for elimination dialogs
         self.infiltrated_datalinks = set()  # Set of faction IDs whose datalinks player has infiltrated
 
         # Camera control
@@ -559,7 +559,7 @@ class Game:
         """If an artifact moves adjacent to an enemy unit, the enemy steals it.
 
         The artifact teleports to the tile of the enemy unit that triggered the steal.
-        Shows a popup if the player owns the artifact.
+        Shows a dialog if the player owns the artifact.
         """
         directions = [(-1,-1),(-1,0),(-1,1),(0,-1),(0,1),(1,-1),(1,0),(1,1)]
         for dx, dy in directions:
@@ -993,13 +993,17 @@ class Game:
                         continue
 
                     # Establish commlink between the two factions
+                    # Bidirectional contact tracking for all factions
+                    self.factions[unit.owner].contacts.add(other_base.owner)
+                    self.factions[other_base.owner].contacts.add(unit.owner)
+
                     if unit.owner == self.player_faction_id:
                         # Player met the AI faction's base
                         other_faction_id = other_base.owner
                         if other_faction_id not in self.faction_contacts:
                             print(f"Player established contact with faction {other_faction_id} (via base)")
 
-                            # Show commlink request popup
+                            # Show commlink request dialog
                             if not hasattr(self, 'pending_commlink_requests'):
                                 self.pending_commlink_requests = []
                             self.pending_commlink_requests.append({
@@ -1015,7 +1019,7 @@ class Game:
                         if other_faction_id not in self.faction_contacts:
                             print(f"Player established contact with faction {other_faction_id} (via base)")
 
-                            # Show commlink request popup
+                            # Show commlink request dialog
                             if not hasattr(self, 'pending_commlink_requests'):
                                 self.pending_commlink_requests = []
                             self.pending_commlink_requests.append({
@@ -1035,18 +1039,19 @@ class Game:
                     if other_unit.owner < 0 or other_unit.owner > 6:
                         continue
 
+                    # Bidirectional contact tracking for all factions
+                    self.factions[unit.owner].contacts.add(other_unit.owner)
+                    self.factions[other_unit.owner].contacts.add(unit.owner)
+
                     # Establish commlink between the two factions
                     # If player is involved, add to faction_contacts
-                    print(f" Unit.owner: {unit.owner}")
-                    print(f" player_id: {self.player_faction_id}")
-                    #TODO: Ensure we are using good ID values below.
                     if unit.owner == self.player_faction_id:
                         # Player met the AI faction (owner IS faction_id)
                         other_faction_id = other_unit.owner
                         if other_faction_id not in self.faction_contacts:
                             print(f"Player established contact with faction {other_faction_id}")
 
-                            # Show commlink request popup (player initiated contact)
+                            # Show commlink request dialog (player initiated contact)
                             if not hasattr(self, 'pending_commlink_requests'):
                                 self.pending_commlink_requests = []
                             self.pending_commlink_requests.append({
@@ -1062,7 +1067,7 @@ class Game:
                         if other_faction_id not in self.faction_contacts:
                             print(f"Player established contact with faction {other_faction_id}")
 
-                            # Show commlink request popup (AI initiated contact)
+                            # Show commlink request dialog (AI initiated contact)
                             if not hasattr(self, 'pending_commlink_requests'):
                                 self.pending_commlink_requests = []
                             self.pending_commlink_requests.append({
@@ -1553,7 +1558,7 @@ class Game:
         return evacuated_count
 
     def check_faction_elimination(self):
-        """Check if any faction has been eliminated and trigger popup.
+        """Check if any faction has been eliminated and trigger dialog.
 
         A faction is eliminated when they have no bases remaining.
         """
@@ -1811,6 +1816,10 @@ class Game:
 
         self.faction_contacts.add(faction_id)
 
+        # Bidirectional: update Faction.contacts for both parties
+        self.factions[self.player_faction_id].contacts.add(faction_id)
+        self.factions[faction_id].contacts.add(self.player_faction_id)
+
         # Check if we have all NON-ELIMINATED factions (excluding player)
         living_factions = set()
         for faction_id in range(7):
@@ -1820,7 +1829,7 @@ class Game:
         # If we've contacted all living factions, trigger the dialog
         if living_factions.issubset(self.faction_contacts) and not self.all_contacts_obtained:
             self.all_contacts_obtained = True
-            self.pending_all_contacts_popup = True
+            self.pending_all_contacts_dialog = True
 
 
 
@@ -1869,7 +1878,7 @@ class Game:
         variants (offensive/defensive) using the new components.
 
         Sets pending_new_designs_flag (not new_designs_available directly) so
-        popup shows AFTER upkeep events, not during tech announcement.
+        dialog shows AFTER upkeep events, not during tech announcement.
 
         Args:
             completed_tech_id (str): The tech ID that was just completed (e.g., 'Physic')
@@ -1902,7 +1911,7 @@ class Game:
                 workshop.rebuild_available_designs(player_tech_tree, self, completed_tech_id)
                 new_count = len(faction_designs.get_designs())
 
-                # Show popup if new designs were added (after upkeep events)
+                # Show dialog if new designs were added (after upkeep events)
                 if new_count > old_count:
                     self.pending_new_designs_flag = True  # Will show after upkeep
                     print(f"New designs available! ({old_count} -> {new_count})")
@@ -2023,7 +2032,7 @@ class Game:
         self.pending_production = []
         self.faction_contacts = set()
         self.all_contacts_obtained = False
-        self.pending_all_contacts_popup = False
+        self.pending_all_contacts_dialog = False
         self.pending_commlink_requests = []
         self.pending_probe_action = None
         self.designs_need_rebuild = False
@@ -2215,7 +2224,7 @@ class Game:
         game.supply_pod_tech_event = None
         game.artifact_message = None
         game.mid_turn_upkeep = False
-        game.pending_major_atrocity_popup = False
+        game.pending_major_atrocity_dialog = False
         game.pending_artifact_link = None
         game.pending_busy_former = None
         game.pending_terraform_cost = None
@@ -2236,7 +2245,7 @@ class Game:
         game.pending_probe_action = None
         game.pending_faction_eliminations = []
         game.all_contacts_obtained = False
-        game.pending_all_contacts_popup = False
+        game.pending_all_contacts_dialog = False
         game.pending_council_call = None
         game.designs_need_rebuild = False
         game.new_designs_available = False

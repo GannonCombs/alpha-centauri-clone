@@ -6,7 +6,7 @@ from game.ui.components import Dialog
 
 
 class UpkeepEventDialog(Dialog):
-    """Modal popup for between-turn events: tech breakthroughs, drone riots, etc.
+    """Modal dialog for between-turn events: tech breakthroughs, drone riots, etc.
 
     Does not own an `active` flag — UIManager gates with `game.upkeep_phase_active`.
 

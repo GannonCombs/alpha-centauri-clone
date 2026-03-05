@@ -83,7 +83,7 @@ class BusyFormerDialog(Dialog):
 
 
 class MovementOverflowDialog(Dialog):
-    """Warning popup when a unit exceeds the 100-move safety limit in one turn."""
+    """Warning dialog when a unit exceeds the 100-move safety limit in one turn."""
 
     def __init__(self, font, small_font):
         super().__init__(font, small_font)

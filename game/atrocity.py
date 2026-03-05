@@ -73,7 +73,7 @@ def commit_atrocity(game, atrocity_type, target_faction_id=None):
                 new_vendettas.append(fid)
 
         if new_vendettas:
-            game.pending_major_atrocity_popup = True
+            game.pending_major_atrocity_dialog = True
 
     return is_major
 

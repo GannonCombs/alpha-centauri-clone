@@ -6,7 +6,7 @@ from game.ui.components import Dialog
 
 
 class NewDesignsDialog(Dialog):
-    """Modal popup shown when new technology unlocks improved unit designs."""
+    """Modal dialog shown when new technology unlocks improved unit designs."""
 
     def __init__(self, font, small_font):
         super().__init__(font, small_font)

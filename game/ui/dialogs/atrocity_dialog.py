@@ -52,7 +52,7 @@ class MajorAtrocityDialog(Dialog):
     def handle_click(self, pos, game):
         """Returns True if dismissed."""
         if self.ok_rect and self.ok_rect.collidepoint(pos):
-            game.pending_major_atrocity_popup = False
+            game.pending_major_atrocity_dialog = False
             self.active = False
             return True
         return None

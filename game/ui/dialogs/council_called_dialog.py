@@ -28,7 +28,7 @@ class CouncilCalledDialog(Dialog):
         box_x, box_y, box_w, box_h = box.x, box.y, box.w, box.h
         self.draw_box(screen, box, border_color=(100, 180, 220), bg_color=(40, 45, 50))
 
-        title_surf = self.font.render("Protocol Director", True, (100, 200, 255))
+        title_surf = self.font.render("Planetary Council", True, (100, 200, 255))
         screen.blit(title_surf, (box_x + box_w // 2 - title_surf.get_width() // 2, box_y + 20))
 
         faction_id = game.pending_council_call['faction_id']
@@ -36,7 +36,7 @@ class CouncilCalledDialog(Dialog):
         faction = FACTION_DATA[faction_id]
 
         msg_lines = [
-            f"{faction['$TITLE']} {faction['leader']}",
+            f"{faction['leader']}",
             "convenes the Planetary Council!",
             "",
             "Agenda:",

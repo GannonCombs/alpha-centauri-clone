@@ -7,7 +7,7 @@ from game.ui.components import Dialog
 
 
 class PactEvacuationDialog(Dialog):
-    """Notification popup after units are evacuated from former pact territory."""
+    """Notification dialog after units are evacuated from former pact territory."""
 
     def __init__(self, font, small_font):
         super().__init__(font, small_font)

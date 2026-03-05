@@ -1,1 +1,1 @@
-"""Modal popup overlays."""
+"""Modal dialog overlays."""

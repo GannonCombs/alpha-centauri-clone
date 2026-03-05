@@ -104,10 +104,10 @@ class UIManager:
 
         self.upkeep_dialog = UpkeepEventDialog(self.font, self.small_font)
 
-        # Encroachment popup (founding base on enemy territory)
+        # Encroachment dialog (founding base on enemy territory)
         self.encroachment_dialog = EncroachmentDialog(self.font, self.small_font)
 
-        # Renounce Pact popup (player initiates pact renouncement from commlink right-click)
+        # Renounce Pact dialog (player initiates pact renouncement from commlink right-click)
         self.renounce_pact_dialog = RenouncePactDialog(self.font, self.small_font)
 
         # Pact pronounce queue (managed here; dialog shows one at a time)
@@ -208,7 +208,7 @@ class UIManager:
 
         # 1. Handle Overlays First (Hotkeys)
         if event.type == pygame.KEYDOWN:
-            # Enter/Return advances upkeep popups and dismisses new-designs popup
+            # Enter/Return advances upkeep dialogs and dismisses new-designs dialog
             if event.key in (pygame.K_RETURN, pygame.K_KP_ENTER):
                 if game.upkeep_phase_active:
                     game.turns.advance_upkeep_event()
@@ -231,7 +231,7 @@ class UIManager:
                     self._execute_raze_base(game)
                     return True
 
-            # Block all game keys while modal popups are open
+            # Block all game keys while modal dialogs are open
             if (self.busy_former_dialog.active or self.terraform_cost_dialog.active
                     or self.movement_overflow_dialog.active):
                 return True
@@ -359,7 +359,7 @@ class UIManager:
                 # AI-called council — cannot dismiss
                 if game.pending_council_call:
                     return True
-                # Battle prediction popup - Esc = Cancel
+                # Battle prediction dialog - Esc = Cancel
                 if game.combat.pending_battle:
                     game.combat.pending_battle = None
                     return True
@@ -491,7 +491,7 @@ class UIManager:
                     return True
 
         if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
-            # Handle upkeep event popup (highest priority)
+            # Handle upkeep event dialog (highest priority)
             if game.upkeep_phase_active:
                 result = self.upkeep_dialog.handle_click(event.pos, game)
                 if isinstance(result, tuple) and result[0] == 'zoom':
@@ -513,12 +513,12 @@ class UIManager:
                     self.diplomacy.diplo_stage = "greeting"
                 return True
 
-            # Faction elimination popup buttons
+            # Faction elimination dialog buttons
             if self.elimination_dialog.active:
                 self.elimination_dialog.handle_click(pygame.mouse.get_pos(), game)
                 return True
 
-            # New designs popup buttons
+            # New designs dialog buttons
             if self.new_designs_dialog.active:
                 result = self.new_designs_dialog.handle_click(pygame.mouse.get_pos(), game)
                 if result == 'view':
@@ -526,7 +526,7 @@ class UIManager:
                     self.design_workshop_screen.dw_editing_panel = None
                 return True
 
-            # Break treaty popup buttons
+            # Break treaty dialog buttons
             if self.break_treaty_dialog.active:
                 result = self.break_treaty_dialog.handle_click(pygame.mouse.get_pos(), game)
                 if result == 'ok':
@@ -556,43 +556,43 @@ class UIManager:
                     self.break_treaty_dialog.target_faction = None
                 return True
 
-            # Pact evacuation popup button
+            # Pact evacuation dialog button
             if self.pact_evacuation_dialog.active:
                 self.pact_evacuation_dialog.handle_click(event.pos, game)
                 return True
 
-            # Renounce Pact popup
+            # Renounce Pact dialog
             if self.renounce_pact_dialog.active:
                 result = self.renounce_pact_dialog.handle_click(event.pos, game)
                 if result:
                     self._resolve_renounce_pact(game)
                 return True
 
-            # Pact pronounce popup (pact partner reacts to surprise attack)
+            # Pact pronounce dialog (pact partner reacts to surprise attack)
             if self.pact_pronounce_dialog.active:
                 result = self.pact_pronounce_dialog.handle_click(pygame.mouse.get_pos(), game)
                 if result:
                     self._advance_pact_pronounce()
                 return True
 
-            # Major atrocity popup (planet buster — all factions declare vendetta)
+            # Major atrocity dialog (planet buster — all factions declare vendetta)
             if self.major_atrocity_dialog.active:
                 self.major_atrocity_dialog.handle_click(pygame.mouse.get_pos(), game)
                 return True
 
-            # Raze base popup
+            # Raze base dialog
             if self.raze_base_dialog.active:
                 result = self.raze_base_dialog.handle_click(pygame.mouse.get_pos(), game)
                 if result == 'raze':
                     self._execute_raze_base(game)
                 return True
 
-            # Secret project started notification popup
+            # Secret project started notification dialog
             if getattr(game, 'secret_project_notifications', []):
                 self.secret_project_dialog.handle_click(pygame.mouse.get_pos(), game)
                 return True
 
-            # Debark popup — unload a unit from a transport onto an adjacent land tile
+            # Debark dialog — unload a unit from a transport onto an adjacent land tile
             if self.debark_dialog.active:
                 result = self.debark_dialog.handle_click(pygame.mouse.get_pos(), game)
                 if result == 'ok':
@@ -612,7 +612,7 @@ class UIManager:
                     self.debark_dialog.unit_rects = []
                 return True
 
-            # Encroachment popup — founding base on enemy territory
+            # Encroachment dialog — founding base on enemy territory
             if self.encroachment_dialog.active:
                 result = self.encroachment_dialog.handle_click(event.pos, game)
                 if result == 'build':
@@ -628,17 +628,17 @@ class UIManager:
                         self.show_base_naming_dialog(unit, game)
                 return True
 
-            # Surprise attack popup button
+            # Surprise attack dialog button
             if self.surprise_attack_dialog.active:
                 result = self.surprise_attack_dialog.handle_click(pygame.mouse.get_pos(), game)
                 if result:
                     faction = self.surprise_attack_dialog.faction
                     self.diplomacy.diplo_relations[faction] = "Vendetta"
-                    self._queue_pact_pronounce_popups(faction, game)
+                    self._queue_pact_pronounce_dialogs(faction, game)
                     self.surprise_attack_dialog.faction = None
                 return True
 
-            # Artifact + Network Node link popup
+            # Artifact + Network Node link dialog
             if self.artifact_link_dialog.active:
                 result = self.artifact_link_dialog.handle_click(pygame.mouse.get_pos(), game)
                 if result == 'yes':
@@ -662,14 +662,14 @@ class UIManager:
                             game._remove_unit(link['artifact'])
                         game.set_status_message("Artifact linked! Technology breakthrough achieved!")
                     game.pending_artifact_link = None
-                return True  # Block clicks through popup (covers both 'yes' and 'no')
+                return True  # Block clicks through dialog (covers both 'yes' and 'no')
 
-            # Movement overflow popup
+            # Movement overflow dialog
             if self.movement_overflow_dialog.active:
                 self.movement_overflow_dialog.handle_click(pygame.mouse.get_pos(), game)
                 return True
 
-            # Terrain cost confirmation popup (raise/lower land)
+            # Terrain cost confirmation dialog (raise/lower land)
             if self.terraform_cost_dialog.active:
                 result = self.terraform_cost_dialog.handle_click(pygame.mouse.get_pos(), game)
                 if result == 'approve':
@@ -687,7 +687,7 @@ class UIManager:
                     game.pending_terraform_cost = None
                 return True
 
-            # Busy former popup buttons
+            # Busy former dialog buttons
             if self.busy_former_dialog.active:
                 result = self.busy_former_dialog.handle_click(pygame.mouse.get_pos(), game)
                 if result in ('select', 'always'):
@@ -769,7 +769,7 @@ class UIManager:
                 return True
 
             # All-contacts diplomatic milestone
-            if game.pending_all_contacts_popup:
+            if game.pending_all_contacts_dialog:
                 self.all_contacts_dialog.handle_click(event.pos, game)
                 return True
 
@@ -1008,8 +1008,8 @@ class UIManager:
 
         return False
 
-    def has_any_blocking_popup(self, game):
-        """Return True if any modal popup or screen is currently blocking player turn flow.
+    def has_any_blocking_dialog(self, game):
+        """Return True if any modal dialog or screen is currently blocking player turn flow.
 
         Single source of truth for auto-end-turn and auto-cycle blocking.
         Covers both dialog .active flags and game-state-gated dialogs.
@@ -1024,8 +1024,9 @@ class UIManager:
                 game.supply_pod_tech_event or
                 game.artifact_message or
                 game.pending_probe_action or
-                game.pending_all_contacts_popup or
+                game.pending_all_contacts_dialog or
                 game.pending_council_call or
+                game.combat.pending_battle or
                 game.game_over):
             return True
 
@@ -1058,7 +1059,7 @@ class UIManager:
         4. Fixed buttons (Main Menu, End Turn, Commlink)
         5. Unit info panel (if unit selected)
         6. Active screen (BASE_VIEW, DIPLOMACY, etc.)
-        7. Popups (highest priority first):
+        7. Dialogs (highest priority first):
            - Battle prediction
            - Upkeep events (tech, milestones)
            - Commlink requests
@@ -1428,7 +1429,7 @@ class UIManager:
             self.supply_pod_dialog.draw(screen, game)
 
         # All-contacts diplomatic milestone
-        if game.pending_all_contacts_popup:
+        if game.pending_all_contacts_dialog:
             self.all_contacts_dialog.draw(screen, game)
 
         # AI-called council vote announcement
@@ -1454,7 +1455,7 @@ class UIManager:
                 game.set_status_message("You cannot attack your pact brother!")
                 game.pending_treaty_break = None
             elif relation in ["Treaty", "Truce"]:
-                # Show break treaty popup
+                # Show break treaty dialog
                 pending_battle = {
                     'attacker': attack_info['attacker'],
                     'defender': attack_info['defender'],
@@ -1480,7 +1481,7 @@ class UIManager:
             relation = self.diplomacy.diplo_relations.get(ai_faction, "Uncommitted")
 
             if relation in ["Treaty", "Truce", "Pact"]:
-                # AI broke treaty - show surprise attack popup
+                # AI broke treaty - show surprise attack dialog
                 self.surprise_attack_dialog.activate(ai_faction)
             game.pending_ai_attack = None
 
@@ -1488,62 +1489,62 @@ class UIManager:
         if game.combat.pending_battle:
             self.combat_dialog.draw_battle_prediction(screen, game)
 
-        # Upkeep phase popup (high priority)
+        # Upkeep phase dialog (high priority)
         if game.upkeep_phase_active:
             self.upkeep_dialog.draw(screen, game)
 
-        # Artifact + Network Node link popup
+        # Artifact + Network Node link dialog
         if game.pending_artifact_link and not self.artifact_link_dialog.active:
             self.artifact_link_dialog.activate()
         if self.artifact_link_dialog.active:
             self.artifact_link_dialog.draw(screen, game)
 
-        # Busy former popup (player clicked a working former)
+        # Busy former dialog (player clicked a working former)
         if game.pending_busy_former and not self.busy_former_dialog.active:
             self.busy_former_dialog.activate(game.pending_busy_former)
             game.pending_busy_former = None
         if self.busy_former_dialog.active:
             self.busy_former_dialog.draw(screen, game)
 
-        # Movement overflow popup
+        # Movement overflow dialog
         if game.pending_movement_overflow_unit and not self.movement_overflow_dialog.active:
             self.movement_overflow_dialog.activate()
         if self.movement_overflow_dialog.active:
             self.movement_overflow_dialog.draw(screen, game)
 
-        # Terrain cost confirmation popup
+        # Terrain cost confirmation dialog
         if game.pending_terraform_cost and not self.terraform_cost_dialog.active:
             self.terraform_cost_dialog.activate()
         if self.terraform_cost_dialog.active:
             self.terraform_cost_dialog.draw(screen, game)
 
-        # Check for pending commlink requests and show popup
+        # Check for pending commlink requests and show dialog
         # Only activate next request if we're not in diplomacy (wait for screen to fully close)
         if not self.commlink_request_dialog.active and game.pending_commlink_requests and self.active_screen != "DIPLOMACY":
             request = game.pending_commlink_requests[0]
             self.commlink_request_dialog.activate(request['other_faction_id'], request['player_faction_id'])
 
-        # Commlink request popup
+        # Commlink request dialog
         if self.commlink_request_dialog.active:
             self.commlink_request_dialog.draw(screen, game)
 
-        # Check for pending faction eliminations and show popup
+        # Check for pending faction eliminations and show dialog
         if not self.elimination_dialog.active and game.pending_faction_eliminations:
             self.elimination_dialog.activate(game.pending_faction_eliminations[0])
 
-        # Faction elimination popup
+        # Faction elimination dialog
         if self.elimination_dialog.active:
             self.elimination_dialog.draw(screen, game)
 
-        # Check for new designs available and show popup
+        # Check for new designs available and show dialog
         if not self.new_designs_dialog.active and game.new_designs_available:
             self.new_designs_dialog.activate()
 
-        # New designs popup
+        # New designs dialog
         if self.new_designs_dialog.active:
             self.new_designs_dialog.draw(screen, game)
 
-        # Treaty breaking popups
+        # Treaty breaking dialogs
         if self.break_treaty_dialog.active:
             self.break_treaty_dialog.draw(screen, game)
 
@@ -1559,8 +1560,8 @@ class UIManager:
         if self.pact_pronounce_dialog.active:
             self.pact_pronounce_dialog.draw(screen, game)
 
-        # Major atrocity popup (planet buster — all factions declare vendetta)
-        if not self.major_atrocity_dialog.active and getattr(game, 'pending_major_atrocity_popup', False):
+        # Major atrocity dialog (planet buster — all factions declare vendetta)
+        if not self.major_atrocity_dialog.active and getattr(game, 'pending_major_atrocity_dialog', False):
             self.major_atrocity_dialog.activate()
 
         if self.major_atrocity_dialog.active:
@@ -1711,7 +1712,7 @@ class UIManager:
     # ------------------------------------------------------------------
 
     def _resolve_renounce_pact(self, game):
-        """Apply pact renouncement: drop to Treaty, evacuate units, close popup."""
+        """Apply pact renouncement: drop to Treaty, evacuate units, close dialog."""
         fid = self.renounce_pact_dialog.faction_id
         self.renounce_pact_dialog.active = False
         self.renounce_pact_dialog.faction_id = None
@@ -1728,8 +1729,8 @@ class UIManager:
         if player_evac > 0:
             self.pact_evacuation_dialog.activate(player_evac)
 
-    def _queue_pact_pronounce_popups(self, attacker_id, game):
-        """Queue pact-pronounce popups for every current pact partner."""
+    def _queue_pact_pronounce_dialogs(self, attacker_id, game):
+        """Queue pact-pronounce dialogs for every current pact partner."""
         for fid, rel in self.diplomacy.diplo_relations.items():
             if rel == 'Pact' and fid != attacker_id:
                 self.pact_pronounce_queue.append(
@@ -1738,7 +1739,7 @@ class UIManager:
         self._advance_pact_pronounce()
 
     def _advance_pact_pronounce(self):
-        """Show the next queued pact-pronounce popup, or close if queue empty."""
+        """Show the next queued pact-pronounce dialog, or close if queue empty."""
         self.pact_pronounce_dialog.active = False
         if self.pact_pronounce_queue:
             self.pact_pronounce_dialog.activate(self.pact_pronounce_queue.pop(0))

@@ -78,7 +78,7 @@ Use it to test the following issues, but also test debug mode along the way.
 - Success chance: 50% base + morale bonuses + speed bonuses
 - Units retreat to safe adjacent tiles
 
-10: Base Conquest (Disloyal Citizens)                                                              ─
+10: Base Conquest (Disloyal Citizens)
 
 - Captured bases have disloyal citizens for 50 turns
 - Formula: 5 - (turns_since_capture // 10), capped by base size
@@ -146,29 +146,27 @@ Bugs:
 
 
 1 A unit of mine took a base and wasn't healed. Any unit taking a base automatically fully heals.
-2 Saw an AI unit on an island tile it couldn't have walked to, before getting a transport. They were on the bottom row
-of the map; are there invisible tiles there that are playable?
-3 Got a diplomatic milestone popup when missing commlinks.
-4 Healing should not occur at turn end. It happens in upkeep of the next turn.
-5 Production times are off. Merchant Exchange takes 20 turns on Turn 1 for Morgan.
-6 Healing isn't working correctly. It's applying the bonuses correctly, but when the units are moving. It should only
+2 Got a diplomatic milestone popup when missing commlinks.
+3 Healing should not occur at turn end. It happens in upkeep of the next turn.
+4 Production times are off. Merchant Exchange takes 20 turns on Turn 1 for Morgan.
+5 Healing isn't working correctly. It's applying the bonuses correctly, but when the units are moving. It should only
 be when they've skipped their turn entirely. If a unit has even partially moved or acted that turn, healing doesn't happen
 naturally (movement onto a monolith is the exception.)
-7 Turn auto-ended when the last unit moved into contact with a new faction. End turn needs to wait for diplomacy to finish.
+6 Turn auto-ended when the last unit moved into contact with a new faction. End turn needs to wait for diplomacy to finish.
 The End Turn button should then blink, not auto-end.
-8 Alien artifact in base with network node — no popup appeared. Now triggers on unit selection.
+7 Alien artifact in base with network node — no popup appeared. Now triggers on unit selection.
     Updated popup: "What would you like to do?" with "Link to Network Node" / "Keep for later".
-9 Land unit in sea base could walk directly to adjacent land tile. Should be blocked unless amphibious or there's a transport.
-10 I got the underground river supply pod. No river appeared. Make sure you not only generate this in the backend, but draw
+8 Land unit in sea base could walk directly to adjacent land tile. Should be blocked unless amphibious or there's a transport.
+9 I got the underground river supply pod. No river appeared. Make sure you not only generate this in the backend, but draw
 it. It becomes a permanent part of the map.
-11 Building a base on enemy land is equivalent to starting an attack. Edit: looks like it's working, but corner case is
+10 Building a base on enemy land is equivalent to starting an attack. Edit: looks like it's working, but corner case is
 when you haven't met the faction yet. The warning popup appears, then no vendetta or even commlink is in drop-up. Is this
 what I want?
-12 Hitting W is still ending turn right now, if there was no one else to move. This is a big bug.
-13 Cleanup backCompat:  - map.py::set_fungus — docstring says "kept for backward compatibility" (Edit: fungus is both a terraformer improvement
+11 Hitting W is still ending turn right now, if there was no one else to move. This is a big bug.
+12 Cleanup backCompat:  - map.py::set_fungus — docstring says "kept for backward compatibility" (Edit: fungus is both a terraformer improvement
   and a tile state that exists without terraforming. It kinda needs both, as long as it works.)
-14 Cleanup backCompat: - base.py::self.garrison — comment says "legacy". Seems redundant with get_garrison_units
-15 When ending my turn on hitting a supply pod, the AI turns are already processing before I've cleared hit OK.
+13 Cleanup backCompat: - base.py::self.garrison — comment says "legacy". Seems redundant with get_garrison_units
+14 When ending my turn on hitting a supply pod, the AI turns are already processing before I've cleared hit OK.
 I'm not going to say which popup this was - ANY popup should keep the turn from auto-ending!
 
 
@@ -214,8 +212,3 @@ held unit without the H disappearing. This should never happen! This was all sol
 4 Advanced unit movement (G command, J command, drag path)
 5 Isometric
 6 Diplomacy trees (it is half-built, but may need a redesign)
-
-
-What's the scenario in which a dialog IS NOT blocking game processing? I can't think of one. If so, then is_blocking(game)
- makes no sense. And your self._dialogs = [] is just collecting all dialogs again. Don't we have a dialog template?
- Can't we just check if A dialog is open?

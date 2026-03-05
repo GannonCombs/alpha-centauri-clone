@@ -27,11 +27,11 @@ class TurnManager:
     def check_auto_cycle(self):
         """Check if enough time has passed to auto-cycle to next unit."""
         game = self.game
-        # Only auto-cycle for player units, not during AI turn or while popups need attention
+        # Only auto-cycle for player units, not during AI turn or while dialogs need attention
         if game.processing_ai or game.upkeep_phase_active:
             return
         if (hasattr(game, 'ui_manager') and game.ui_manager is not None
-                and game.ui_manager.has_any_blocking_popup(game)):
+                and game.ui_manager.has_any_blocking_dialog(game)):
             return
 
         # Check if timer is set (non-zero) and delay has elapsed
@@ -100,7 +100,7 @@ class TurnManager:
 
         # Don't auto-end while any dialog or screen needs player attention
         if (hasattr(game, 'ui_manager') and game.ui_manager is not None
-                and game.ui_manager.has_any_blocking_popup(game)):
+                and game.ui_manager.has_any_blocking_dialog(game)):
             return
 
         friendly_units = [u for u in game.units if u.is_friendly(game.player_faction_id)]
@@ -527,7 +527,7 @@ class TurnManager:
     def advance_upkeep_event(self):
         """Move to next upkeep event or exit upkeep phase.
 
-        Called when player clicks through an upkeep event popup (tech discovery,
+        Called when player clicks through an upkeep event dialog (tech discovery,
         base completion, diplomatic milestone, etc.).
 
         If all events shown:
@@ -536,7 +536,7 @@ class TurnManager:
         3. Call _start_new_turn() to spawn production and begin new turn
 
         Note:
-            New designs popup shows AFTER upkeep, not during, to avoid
+            New designs dialog shows AFTER upkeep, not during, to avoid
             showing units for tech the player hasn't seen announced yet.
         """
         game = self.game
@@ -551,13 +551,13 @@ class TurnManager:
             game.upkeep_events = []
             game.current_upkeep_event_index = 0
 
-            # Show new designs popup AFTER upkeep events are complete
+            # Show new designs dialog AFTER upkeep events are complete
             if hasattr(game, 'pending_new_designs_flag') and game.pending_new_designs_flag:
                 game.new_designs_available = True
                 game.pending_new_designs_flag = False
 
             if game.mid_turn_upkeep:
-                # Mid-turn popup (e.g. supply pod tech): just close, don't start a new turn
+                # Mid-turn dialog (e.g. supply pod tech): just close, don't start a new turn
                 game.mid_turn_upkeep = False
             else:
                 self._start_new_turn()
@@ -588,6 +588,14 @@ class TurnManager:
         from game.data.council_proposal_data import PROPOSALS
 
         game = self.game
+
+        # Council requires contact with all living factions
+        ai_faction = game.factions.get(ai_player_id)
+        if ai_faction:
+            living = {fid for fid in range(7)
+                      if fid != ai_player_id and fid not in game.eliminated_factions}
+            if not living.issubset(ai_faction.contacts):
+                return None
 
         # AI only calls council occasionally (20% base chance per turn)
         if random.random() > 0.2:

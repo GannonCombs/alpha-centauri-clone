@@ -6,7 +6,7 @@ from game.ui.components import Dialog
 
 
 class ArtifactLinkDialog(Dialog):
-    """Yes/no popup asking the player whether to link an Alien Artifact to a Network Node."""
+    """Yes/no dialog asking the player whether to link an Alien Artifact to a Network Node."""
 
     def __init__(self, font, small_font):
         super().__init__(font, small_font)
