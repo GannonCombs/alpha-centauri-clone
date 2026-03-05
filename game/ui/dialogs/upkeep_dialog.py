@@ -42,6 +42,8 @@ class UpkeepEventDialog(Dialog):
             title_text, title_color = "GOLDEN AGE",              (255, 220,  80)
         elif etype == 'starvation':
             title_text, title_color = "FOOD SHORTAGE",           (255, 180, 100)
+        elif etype == 'project_complete':
+            title_text, title_color = "SECRET PROJECT COMPLETED", (180, 140, 255)
         else:
             title_text, title_color = "UPKEEP REPORT",           (200, 220, 240)
 
@@ -93,6 +95,16 @@ class UpkeepEventDialog(Dialog):
                 "Growth and economy bonuses will apply",
                 "once the full formula is implemented.",
             ]
+        elif etype == 'project_complete':
+            msg_lines = [
+                f"{event['base_name']} has completed:",
+                "",
+                event['project_name'],
+                "",
+            ]
+            effect = event.get('effect', '')
+            if effect:
+                msg_lines.append(effect)
         else:
             msg_lines = [message]
 

@@ -1509,13 +1509,18 @@ class BaseScreen:
             if facility['id'] in base.facilities:
                 continue
             turns = get_turns(facility['name'])
-            description = f"{facility['effect']}, {turns} turns, {facility['maint']} energy/turn"
+            if facility['name'] == 'Stockpile Energy':
+                description = facility['effect']
+            elif facility['maint'] > 0:
+                description = f"{facility['effect']}, {turns} turns, {facility['maint']} energy/turn"
+            else:
+                description = f"{facility['effect']}, {turns} turns"
             production_items.append({"name": facility['name'], "type": "facility", "description": description})
 
         # Secret Projects (filtered by tech and global uniqueness)
-        if not hasattr(game, 'built_projects'):
-            game.built_projects = set()
-        available_projects = facilities.get_available_projects(player_tech_tree, game.built_projects)
+        if not hasattr(game, 'completed_secret_projects'):
+            game.completed_secret_projects = {}
+        available_projects = facilities.get_available_projects(player_tech_tree, game.completed_secret_projects)
         for project in available_projects:
             turns = get_turns(project['name'])
             description = f"{project['effect']}, {turns} turns"

@@ -117,7 +117,7 @@ class TurnManager:
         # Require manual end if:
         # 1. Last action was a hold, OR
         # 2. All units are handled (held or working — nobody voluntarily moved)
-        if game.last_unit_action == 'hold' or all_handled:
+        if game.last_unit_action in ('hold', 'contact') or all_handled:
             # Manual end required - button will continue glowing
             return
 
@@ -512,6 +512,12 @@ class TurnManager:
         for base, item_name in game.pending_production:
             game._spawn_production(base, item_name)
         game.pending_production = []
+
+        # If production spawned upkeep events (e.g. secret project), show them
+        if game.upkeep_events:
+            game.current_upkeep_event_index = 0
+            game.upkeep_phase_active = True
+            game.mid_turn_upkeep = True
 
         # Deselect if the current selection is a former still actively terraforming
         if (game.selected_unit

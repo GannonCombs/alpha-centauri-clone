@@ -152,20 +152,16 @@ Possible Bugs:
 5 Healing isn't working correctly. It's applying the bonuses correctly, but when the units are moving. It should only
 be when they've skipped their turn entirely. If a unit has even partially moved or acted that turn, healing doesn't happen
 naturally (movement onto a monolith is the exception.)
-6 Turn auto-ended when the last unit moved into contact with a new faction. End turn needs to wait for diplomacy to finish.
-The End Turn button should then blink, not auto-end.
-7 Alien artifact in base with network node — no popup appeared. Now triggers on unit selection.
-    Updated popup: "What would you like to do?" with "Link to Network Node" / "Keep for later".
-8 Land unit in sea base could walk directly to adjacent land tile. Should be blocked unless amphibious or there's a transport.
-9 I got the underground river supply pod. No river appeared. Make sure you not only generate this in the backend, but draw
+6 Land unit in sea base could walk directly to adjacent land tile. Should be blocked unless amphibious or there's a transport.
+7 I got the underground river supply pod. No river appeared. Make sure you not only generate this in the backend, but draw
 it. It becomes a permanent part of the map.
-10 Hitting W is still ending turn right now, if there was no one else to move. This is a big bug.
-11 Cleanup backCompat:  - map.py::set_fungus — docstring says "kept for backward compatibility" (Edit: fungus is both a terraformer improvement
+8 Hitting W is still ending turn right now, if there was no one else to move. This is a big bug.
+9 Cleanup backCompat:  - map.py::set_fungus — docstring says "kept for backward compatibility" (Edit: fungus is both a terraformer improvement
   and a tile state that exists without terraforming. It kinda needs both, as long as it works.)
-12 Cleanup backCompat: - base.py::self.garrison — comment says "legacy". Seems redundant with get_garrison_units
-13 When ending my turn on hitting a supply pod, the AI turns are already processing before I've cleared hit OK.
+10 Cleanup backCompat: - base.py::self.garrison — comment says "legacy". Seems redundant with get_garrison_units
+11 When ending my turn on hitting a supply pod, the AI turns are already processing before I've cleared hit OK.
 I'm not going to say which popup this was - ANY popup should keep the turn from auto-ending!
-14 STILL not consistently showing new unit designs! This time it happened for Industrial Base, which I have seen pop
+12 STILL not consistently showing new unit designs! This time it happened for Industrial Base, which I have seen pop
 up new unit designs in several previous games.
 
 

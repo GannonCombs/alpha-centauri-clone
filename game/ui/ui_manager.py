@@ -233,7 +233,8 @@ class UIManager:
 
             # Block all game keys while modal dialogs are open
             if (self.busy_former_dialog.active or self.terraform_cost_dialog.active
-                    or self.movement_overflow_dialog.active):
+                    or self.movement_overflow_dialog.active
+                    or self.artifact_link_dialog.active):
                 return True
 
             # Check for Ctrl+S and Ctrl+L first (highest priority shortcuts)
@@ -645,22 +646,23 @@ class UIManager:
                     link = game.pending_artifact_link
                     if link:
                         import random
-                        tech_tree = game.tech.get_faction_tree(game.player_faction_id)
-                        researchable = tech_tree.get_researchable_techs()
-                        if researchable:
-                            tech_id = random.choice(researchable)
-                            tech_name = tech_tree.technologies[tech_id]['name']
-                            tech_tree.technologies[tech_id]['researched'] = True
-                            tech_tree.researched_techs.add(tech_id)
+                        tech_tree = game.factions[game.player_faction_id].tech_tree
+                        available = tech_tree.get_available_techs()
+                        if available:
+                            tech_id, tech_data = random.choice(available)
+                            tech_name = tech_data['name']
+                            tech_tree.discovered_techs.add(tech_id)
                             if tech_tree.current_research == tech_id:
                                 tech_tree.current_research = None
-                                tech_tree.research_points = 0
+                                tech_tree.research_accumulated = 0
                             game._auto_generate_unit_designs(tech_id)
-                            game.upkeep_events.append({'type': 'tech_complete', 'tech_id': tech_id, 'tech_name': tech_name})
+                            game.upkeep_events = [{'type': 'tech_complete', 'tech_id': tech_id, 'tech_name': tech_name}]
+                            game.current_upkeep_event_index = 0
+                            game.upkeep_phase_active = True
+                            game.mid_turn_upkeep = True
                         link['base'].network_node_linked = True
                         if link['artifact'] in game.units:
                             game._remove_unit(link['artifact'])
-                        game.set_status_message("Artifact linked! Technology breakthrough achieved!")
                     game.pending_artifact_link = None
                 return True  # Block clicks through dialog (covers both 'yes' and 'no')
 

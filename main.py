@@ -114,6 +114,10 @@ def main():
                         ui_panel = UIManager()
                         # Give game reference to UI for accessing design workshop
                         game.ui_manager = ui_panel
+                        # Restore diplomatic relations from saved data
+                        if hasattr(game, '_saved_diplo_relations'):
+                            ui_panel.diplomacy.diplo_relations = game._saved_diplo_relations.copy()
+                            delattr(game, '_saved_diplo_relations')
                         intro_screen.mode = None
                         intro_load_dialog.mode = None
                     elif result == 'close':
@@ -377,6 +381,16 @@ def main():
                     elif event.key == pygame.K_h:
                         # Toggle hold status for selected unit
                         if game.selected_unit and game.selected_unit.owner == game.player_faction_id:
+                            # Check for artifact on base with unlinked Network Node
+                            unit = game.selected_unit
+                            if (unit.weapon == 'artifact'
+                                    and not game.pending_artifact_link):
+                                tile = game.game_map.get_tile(unit.x, unit.y)
+                                if (tile and tile.base
+                                        and 'network_node' in tile.base.facilities
+                                        and not getattr(tile.base, 'network_node_linked', False)):
+                                    game.pending_artifact_link = {'artifact': unit, 'base': tile.base}
+                                    continue
                             held_unit = game.selected_unit
                             held_unit.held = not held_unit.held
 
@@ -401,6 +415,16 @@ def main():
                         # Do NOT set has_moved = True here — a unit that skips its turn in place
                         # should remain repair-eligible (repair_eligible = not has_moved).
                         if game.selected_unit and game.selected_unit.owner == game.player_faction_id:
+                            # Check for artifact on base with unlinked Network Node
+                            unit = game.selected_unit
+                            if (unit.weapon == 'artifact'
+                                    and not game.pending_artifact_link):
+                                tile = game.game_map.get_tile(unit.x, unit.y)
+                                if (tile and tile.base
+                                        and 'network_node' in tile.base.facilities
+                                        and not getattr(tile.base, 'network_node_linked', False)):
+                                    game.pending_artifact_link = {'artifact': unit, 'base': tile.base}
+                                    continue
                             # Drain moves so the unit won't be auto-cycled back, but leave
                             # has_moved untouched so it stays heal-eligible.
                             game.selected_unit.moves_remaining = 0

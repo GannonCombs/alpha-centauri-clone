@@ -99,7 +99,7 @@ def select_conquer_production(base, faction, game):
             return unit
 
     # 2. Military facilities
-    if 'Command Center' not in base.facilities and _can_build(base, faction, 'Command Center'):
+    if 'Command Center' not in base.facilities and _can_build(base, faction, 'Command Center', game):
         return 'Command Center'
 
     # 3. Offensive units (main focus)
@@ -123,7 +123,7 @@ def select_discover_production(base, faction, game):
     # 1. Science facilities first
     science_facilities = ['Network Node', 'Research Hospital', 'Fusion Lab', 'Quantum Lab']
     for facility in science_facilities:
-        if facility not in base.facilities and _can_build(base, faction, facility):
+        if facility not in base.facilities and _can_build(base, faction, facility, game):
             return facility
 
     # 2. Probe teams for intel
@@ -188,7 +188,7 @@ def select_explore_production(base, faction, game):
 
 # Helper functions
 
-def _can_build(base, faction, item_name):
+def _can_build(base, faction, item_name, game=None):
     """Check if base can build a specific item."""
     from game.data.facility_data import FACILITIES, SECRET_PROJECTS
 
@@ -206,10 +206,9 @@ def _can_build(base, faction, item_name):
     # Check secret projects
     for project in SECRET_PROJECTS:
         if project['name'] == item_name:
-            # Check if already built anywhere
-            for other_base in faction.bases:
-                if item_name in other_base.facilities:
-                    return False
+            # Check if already built globally
+            if game and project['id'] in game.completed_secret_projects:
+                return False
             # Check tech prereq
             if project['prereq'] and not faction.tech_tree.has_tech(project['prereq']):
                 return False
@@ -370,7 +369,7 @@ def _select_happiness_facility(base, faction, game):
     ]
 
     for facility in happiness_facilities:
-        if _can_build(base, faction, facility):
+        if _can_build(base, faction, facility, game):
             return facility
 
     return None
@@ -387,7 +386,7 @@ def _select_resource_facility(base, faction, game):
     ]
 
     for facility in resource_facilities:
-        if _can_build(base, faction, facility):
+        if _can_build(base, faction, facility, game):
             return facility
 
     return None
@@ -402,7 +401,7 @@ def _select_growth_facility(base, faction, game):
     ]
 
     for facility in growth_facilities:
-        if _can_build(base, faction, facility):
+        if _can_build(base, faction, facility, game):
             return facility
 
     return None
@@ -420,7 +419,7 @@ def _select_general_facility(base, faction, game):
     ]
 
     for facility in all_facilities:
-        if _can_build(base, faction, facility):
+        if _can_build(base, faction, facility, game):
             return facility
 
     return None
@@ -433,7 +432,7 @@ def _select_secret_project(base, faction, game):
     # Get affordable projects
     affordable = []
     for project in SECRET_PROJECTS:
-        if _can_build(base, faction, project['name']):
+        if _can_build(base, faction, project['name'], game):
             if project['cost'] <= faction.energy_credits // 2:
                 affordable.append(project['name'])
 

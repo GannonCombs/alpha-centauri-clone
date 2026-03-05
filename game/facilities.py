@@ -75,18 +75,18 @@ def get_available_facilities(tech_tree):
     return available
 
 
-def get_available_projects(tech_tree, built_projects):
+def get_available_projects(tech_tree, completed_secret_projects):
     """Get all secret projects available to build.
 
     Args:
         tech_tree (TechTree): Player's tech tree
-        built_projects (set): Set of project IDs already built globally
+        completed_secret_projects (dict): {project_id: {'owner': int, 'base_name': str}} of globally built projects
 
     Returns:
         list: List of available project dicts
     """
     available = []
     for project in SECRET_PROJECTS:
-        if project['id'] not in built_projects and is_facility_available(project, tech_tree):
+        if project['id'] not in completed_secret_projects and is_facility_available(project, tech_tree):
             available.append(project)
     return available

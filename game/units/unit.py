@@ -110,8 +110,8 @@ class Unit:
         self.home_base = None
         self.support_cost = 1
 
-        # Transport system (for sea units)
-        if self.type == 'sea':
+        # Transport system (only for transport-weapon sea units)
+        if self.weapon == 'transport':
             self.transport_capacity = 4
             self.loaded_units = []
         else:

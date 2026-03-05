@@ -29,12 +29,12 @@ class SecretProjectScreen:
 
         # Build lookup: project name → faction_id currently building it
         in_progress_by_name = {}
-        built_projects = getattr(game, 'built_projects', set())
+        completed_secret_projects = getattr(game, 'completed_secret_projects', {})
         for base in game.bases:
             prod = getattr(base, 'current_production', None)
             if prod:
                 for proj in SECRET_PROJECTS:
-                    if proj['name'] == prod and proj['id'] not in built_projects:
+                    if proj['name'] == prod and proj['id'] not in completed_secret_projects:
                         if proj['name'] not in in_progress_by_name:
                             in_progress_by_name[proj['name']] = base.owner
 
@@ -43,23 +43,20 @@ class SecretProjectScreen:
         for proj in SECRET_PROJECTS:
             if proj['name'] in in_progress_by_name:
                 visible_projects.append((proj, True, False))
-            elif proj['id'] in built_projects:
+            elif proj['id'] in completed_secret_projects:
                 visible_projects.append((proj, False, True))
 
-        # Layout: 2 columns, cards sized to fill screen
-        cols = 2
+        # Layout: fixed-size cards in a 5-column grid
+        card_w = 160
+        card_h = 100
+        cols = 5
         col_spacing = 20
         row_spacing = 14
-        pad_x = 80
         pad_top = 70
         pad_bottom = 70
 
-        card_w = (sw - pad_x * 2 - (cols - 1) * col_spacing) // cols
-        rows = max(1, (len(visible_projects) + cols - 1) // cols)
-        available_h = sh - pad_top - pad_bottom
-        card_h = max(80, (available_h - (rows - 1) * row_spacing) // rows)
-
-        grid_x = pad_x
+        grid_total_w = cols * card_w + (cols - 1) * col_spacing
+        grid_x = (sw - grid_total_w) // 2
         grid_y = pad_top
 
         if not visible_projects:

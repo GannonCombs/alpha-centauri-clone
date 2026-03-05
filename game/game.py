@@ -129,7 +129,7 @@ class Game:
             self.factions[faction_id].designs = UnitDesign(faction_id)
 
         # Facilities and Projects
-        self.built_projects = set()  # Global set of secret projects built (one per game)
+        self.completed_secret_projects = {}  # {project_id: {'owner': faction_id, 'base_name': str}}
         self.secret_project_notifications = []  # Queue of {type, project_name, faction_id, ...} dialogs
 
         # Social Engineering (player selections)
@@ -352,18 +352,6 @@ class Game:
             tile = self.game_map.get_tile(unit.x, unit.y)
             if tile and unit in tile.units:
                 tile.displayed_unit_index = tile.units.index(unit)
-            # If an artifact is selected while sitting on a base with a Network Node,
-            # prompt the player to link it (handles the case where the artifact was
-            # already on the tile from a previous turn).
-            if (unit.weapon == 'artifact'
-                    and unit.owner == self.player_faction_id
-                    and tile is not None
-                    and getattr(tile, 'base', None) is not None
-                    and 'network_node' in tile.base.facilities
-                    and not getattr(tile.base, 'network_node_linked', False)
-                    and self.pending_artifact_link is None):
-                self.pending_artifact_link = {'artifact': unit, 'base': tile.base}
-
     def handle_input(self, renderer):
         """Process keyboard input for unit movement."""
         # Movement is handled in main.py event loop, not continuous input
@@ -1010,6 +998,7 @@ class Game:
                                 'other_faction_id': other_faction_id,
                                 'player_faction_id': self.player_faction_id
                             })
+                            self.last_unit_action = 'contact'
 
                             self.add_faction_contact(other_faction_id)
 
@@ -1026,6 +1015,7 @@ class Game:
                                 'other_faction_id': other_faction_id,
                                 'player_faction_id': self.player_faction_id
                             })
+                            self.last_unit_action = 'contact'
 
                             self.add_faction_contact(other_faction_id)
 
@@ -1058,6 +1048,7 @@ class Game:
                                 'other_faction_id': other_faction_id,
                                 'player_faction_id': self.player_faction_id
                             })
+                            self.last_unit_action = 'contact'
 
                             self.add_faction_contact(other_faction_id)
 
@@ -1074,6 +1065,7 @@ class Game:
                                 'other_faction_id': other_faction_id,
                                 'player_faction_id': self.player_faction_id
                             })
+                            self.last_unit_action = 'contact'
 
                             self.add_faction_contact(other_faction_id)
 
@@ -1218,6 +1210,13 @@ class Game:
                     base.facilities.append(facility_id)
                     base.free_facilities.append(facility_id)
                     print(f"Added free facility: {free_facility_name} ({facility_id})")
+
+        # Grant free facilities from secret projects
+        if 'command_nexus' in self.completed_secret_projects:
+            nexus_owner = self.completed_secret_projects['command_nexus']['owner']
+            if nexus_owner == base.owner and 'command_center' not in base.facilities:
+                base.facilities.append('command_center')
+                base.free_facilities.append('command_center')
 
         if len(player_bases) > 0:
             # Not first base - check governor settings
@@ -1628,9 +1627,30 @@ class Game:
             project_data = facilities.get_facility_by_id(facility_data['id'])
             if project_data in facilities.SECRET_PROJECTS:
                 # Mark as globally built
-                self.built_projects.add(facility_data['id'])
-                self.set_status_message(f"{base.name} completed {item_name}!")
-                print(f"SECRET PROJECT COMPLETED: {item_name}")
+                self.completed_secret_projects[facility_data['id']] = {
+                    'owner': base.owner,
+                    'base_name': base.name
+                }
+                print(f"SECRET PROJECT COMPLETED: {item_name} by faction {base.owner} at {base.name}")
+                if base.owner == self.player_faction_id:
+                    self.upkeep_events.append({
+                        'type': 'project_complete',
+                        'project_name': item_name,
+                        'base_name': base.name,
+                        'base': base,
+                        'effect': facility_data.get('effect', ''),
+                    })
+                else:
+                    self.set_status_message(f"{base.name} completed {item_name}!")
+                # Cancel production of this project at all other bases
+                self._cancel_competing_projects(facility_data['id'], base)
+                # Command Nexus: grant free Command Center to all owner's bases
+                if facility_data['id'] == 'command_nexus':
+                    for b in self.bases:
+                        if b.owner == base.owner and 'command_center' not in b.facilities:
+                            b.facilities.append('command_center')
+                            b.free_facilities.append('command_center')
+                    print(f"  Command Nexus: granted Command Center to all {base.owner}'s bases")
             else:
                 self.set_status_message(f"{base.name} built {item_name}")
             return
@@ -1708,6 +1728,44 @@ class Game:
         self.game_map.add_unit_at(base.x, base.y, unit)
         self.set_status_message(f"{base.name} completed {item_name}")
         print(f"{base.name} spawned {item_name} at ({base.x}, {base.y})")
+
+    def _cancel_competing_projects(self, project_id, winning_base):
+        """Cancel production of a secret project at all bases except the winner.
+
+        Called when a secret project completes. Any other base building it has
+        its production reset to a default unit and progress zeroed. Also removes
+        the project from pending_production if another base completed it on the
+        same turn, and cleans up the duplicate from that base's facilities.
+        """
+        from game.data.facility_data import SECRET_PROJECTS
+        project_name = next((p['name'] for p in SECRET_PROJECTS if p['id'] == project_id), None)
+        if not project_name:
+            return
+
+        # Cancel in-progress production at other bases
+        for b in self.bases:
+            if b is winning_base:
+                continue
+            if b.current_production == project_name:
+                faction = self.factions.get(b.owner)
+                from game.governor import get_default_unit_name
+                b.current_production = get_default_unit_name(faction) if faction else "Scout Patrol"
+                b.production_progress = 0
+                b.production_cost = b._get_production_cost(b.current_production)
+                b.production_turns_remaining = b._calculate_production_turns()
+                print(f"  {b.name} (faction {b.owner}): {project_name} cancelled, switched to {b.current_production}")
+
+        # Clean up same-turn duplicates in pending_production
+        cleaned = []
+        for pending_base, item_name in self.pending_production:
+            if item_name == project_name and pending_base is not winning_base:
+                # Another base completed this project on the same turn — remove from its facilities
+                if project_id in pending_base.facilities:
+                    pending_base.facilities.remove(project_id)
+                print(f"  {pending_base.name}: removed duplicate {project_name} from pending_production")
+            else:
+                cleaned.append((pending_base, item_name))
+        self.pending_production = cleaned
 
     def set_status_message(self, message, duration=3000):
         """Set a status message to display temporarily."""
@@ -2049,7 +2107,7 @@ class Game:
             self.factions[faction_id].tech_tree.auto_select_research()
             self.factions[faction_id].designs = UnitDesign(faction_id)
         self.territory = TerritoryManager(self.game_map)
-        self.built_projects = set()
+        self.completed_secret_projects = {}
         self.se_selections = {
             'Politics': 0,
             'Economics': 0,
@@ -2086,7 +2144,7 @@ class Game:
                 'player_id': self.player_faction_id,
                 'player_faction_id': self.player_faction_id,
                 'player_name': self.player_name,
-                'built_projects': list(self.built_projects),
+                'completed_secret_projects': self.completed_secret_projects,
                 'se_selections': self.se_selections.copy(),
                 'game_over': self.game_over,
                 'winner': self.winner,
@@ -2146,7 +2204,7 @@ class Game:
         game.player_id = gs['player_id']
         game.player_faction_id = gs['player_faction_id']
         game.player_name = gs['player_name']
-        game.built_projects = set(gs['built_projects'])
+        game.completed_secret_projects = gs.get('completed_secret_projects', {})
         game.secret_project_notifications = []
         game.se_selections = gs['se_selections']
         game.game_over = gs['game_over']
@@ -2166,7 +2224,7 @@ class Game:
         game.truce_expiry_turns = {int(k): v for k, v in gs['truce_expiry_turns'].items()}
         game.global_energy_allocation = gs['global_energy_allocation']
         # Store diplo_relations for later restoration (after ui_manager is created)
-        saved_diplo_relations = gs['diplo_relations']
+        saved_diplo_relations = {int(k): v for k, v in gs['diplo_relations'].items()}
 
         # Rebuild complex objects
         game.game_map = GameMap.from_dict(data['map'])
