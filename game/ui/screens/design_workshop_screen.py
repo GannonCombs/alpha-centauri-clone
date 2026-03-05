@@ -164,7 +164,37 @@ class DesignWorkshopScreen:
             game: Game instance to access faction designs
             completed_tech_id: Optional - the tech that was just completed (for targeted generation)
         """
-        from game.units.unit_components import CHASSIS, WEAPONS, ARMOR, REACTORS, generate_unit_name
+        from game.units.unit_components import CHASSIS, WEAPONS, ARMOR, REACTORS, SPECIAL_ABILITIES, generate_unit_name
+
+        # Rules for which abilities get auto-generated designs
+        ABILITY_DESIGN_RULES = {
+            # Offensive abilities — best weapon, no armor
+            'amphibious':       {'role': 'offensive', 'chassis_ids': ['infantry']},
+            'empath':           {'role': 'offensive', 'chassis_types': ['land', 'sea']},
+            'air_superiority':  {'role': 'offensive', 'chassis_ids': ['needlejet', 'copter']},
+            'heavy_artillery':  {'role': 'offensive', 'chassis_ids': ['infantry']},
+            'drop_pods':        {'role': 'offensive', 'chassis_types': ['land']},
+            'blink':            {'role': 'offensive', 'chassis_types': ['land', 'sea']},
+            'cloaking':         {'role': 'offensive', 'chassis_types': ['land']},
+            'antigrav':         {'role': 'offensive', 'chassis_types': ['land']},
+            'deep_pressure':    {'role': 'offensive', 'chassis_types': ['sea']},
+            'fungal_payload':   {'role': 'offensive', 'chassis_ids': ['infantry']},
+            'high_morale':      {'role': 'offensive', 'chassis_types': ['land', 'sea']},
+            'deep_radar':       {'role': 'offensive', 'chassis_types': ['land']},
+            'slow':             {'role': 'offensive', 'chassis_ids': ['infantry']},
+            # Defensive abilities — best armor, best weapon
+            'comm_jammer':      {'role': 'defensive', 'chassis_ids': ['infantry']},
+            'AAA':              {'role': 'defensive', 'chassis_ids': ['infantry']},
+            'trance':           {'role': 'defensive', 'chassis_types': ['land', 'sea']},
+            'clean_reactor':    {'role': 'defensive', 'chassis_types': ['land']},
+            'police':           {'role': 'defensive', 'chassis_ids': ['infantry']},
+            # Role-specific
+            'super_former':     {'role': 'former',    'chassis_ids': ['infantry']},
+            'fungicide_tanks':  {'role': 'former',    'chassis_ids': ['infantry']},
+            'carrier_deck':     {'role': 'carrier',   'chassis_ids': ['cruiser']},
+            'repair_bay':       {'role': 'carrier',   'chassis_types': ['sea']},
+            'polymorphic':      {'role': 'probe',     'chassis_ids': ['infantry']},
+        }
 
         # Get player's faction designs
         faction_designs = game.factions[game.player_faction_id].designs
@@ -175,10 +205,12 @@ class DesignWorkshopScreen:
             print(f"  Triggered by tech: {completed_tech_id}")
 
         # Keep existing designs (don't reset!)
-        # Generate names from component IDs for duplicate checking
-        existing_names = {generate_unit_name(d['weapon'], d['chassis'], d['armor'], d['reactor'],
-                                               d.get('ability1', 'none'), d.get('ability2', 'none'))
-                          for d in current_designs}
+        # Component-tuple set for robust duplicate checking (name doesn't include reactor)
+        existing_specs = {
+            (d['weapon'], d['chassis'], d['armor'], d['reactor'],
+             d.get('ability1', 'none'), d.get('ability2', 'none'))
+            for d in current_designs
+        }
 
         # Get available components
         available_chassis = [c for c in CHASSIS if c['prereq'] is None or tech_tree.has_tech(c['prereq'])]
@@ -217,8 +249,8 @@ class DesignWorkshopScreen:
                         # Unarmored offensive variant for ground/sea chassis
                         # (always created — even when no armor tech is available yet)
                         if chassis['type'] in ['land', 'sea']:
-                            design_name = generate_unit_name(weapon['id'], chassis['id'], min_armor_obj['id'], best_reactor['id'], 'none', 'none')
-                            if design_name not in existing_names:
+                            spec = (weapon['id'], chassis['id'], min_armor_obj['id'], best_reactor['id'], 'none', 'none')
+                            if spec not in existing_specs:
                                 new_designs.append({
                                     "chassis": chassis['id'],
                                     "weapon": weapon['id'],
@@ -230,8 +262,8 @@ class DesignWorkshopScreen:
 
                         # Armored variant — only when combat armor is available
                         if chassis['type'] in ['land', 'sea'] and best_armor:
-                            design_name = generate_unit_name(weapon['id'], chassis['id'], best_armor['id'], best_reactor['id'], 'none', 'none')
-                            if design_name not in existing_names:
+                            spec = (weapon['id'], chassis['id'], best_armor['id'], best_reactor['id'], 'none', 'none')
+                            if spec not in existing_specs:
                                 new_designs.append({
                                     "chassis": chassis['id'],
                                     "weapon": weapon['id'],
@@ -243,8 +275,8 @@ class DesignWorkshopScreen:
 
                         # Air/missile chassis: always create no-armor variant
                         if chassis['type'] == 'air':
-                            design_name = generate_unit_name(weapon['id'], chassis['id'], min_armor_obj['id'], best_reactor['id'], 'none', 'none')
-                            if design_name not in existing_names:
+                            spec = (weapon['id'], chassis['id'], min_armor_obj['id'], best_reactor['id'], 'none', 'none')
+                            if spec not in existing_specs:
                                 new_designs.append({
                                     "chassis": chassis['id'],
                                     "weapon": weapon['id'],
@@ -260,8 +292,8 @@ class DesignWorkshopScreen:
                         # Transport weapon only makes sense on sea chassis (foil, cruiser)
                         if weapon['id'] == 'transport' and chassis['type'] != 'sea':
                             continue
-                        design_name = generate_unit_name(weapon['id'], chassis['id'], 'no_armor', best_reactor['id'], 'none', 'none')
-                        if design_name not in existing_names:
+                        spec = (weapon['id'], chassis['id'], 'no_armor', best_reactor['id'], 'none', 'none')
+                        if spec not in existing_specs:
                             new_designs.append({
                                 "chassis": chassis['id'],
                                 "weapon": weapon['id'],
@@ -279,8 +311,8 @@ class DesignWorkshopScreen:
                         for chassis in available_chassis:
                             # Only for chassis that use armor
                             if chassis['type'] in ['land', 'sea']:
-                                design_name = generate_unit_name(best_weapon['id'], chassis['id'], armor['id'], best_reactor['id'], 'none', 'none')
-                                if design_name not in existing_names:
+                                spec = (best_weapon['id'], chassis['id'], armor['id'], best_reactor['id'], 'none', 'none')
+                                if spec not in existing_specs:
                                     new_designs.append({
                                         "chassis": chassis['id'],
                                         "weapon": best_weapon['id'],
@@ -295,8 +327,8 @@ class DesignWorkshopScreen:
                 best_weapon = max(combat_weapons, key=lambda w: w['attack']) if combat_weapons else None
                 if best_weapon:
                     armor_to_use = self._get_armor_for_chassis(chassis, best_armor, min_armor_obj)
-                    design_name = generate_unit_name(best_weapon['id'], chassis['id'], armor_to_use['id'], best_reactor['id'], 'none', 'none')
-                    if design_name not in existing_names:
+                    spec = (best_weapon['id'], chassis['id'], armor_to_use['id'], best_reactor['id'], 'none', 'none')
+                    if spec not in existing_specs:
                         new_designs.append({
                             "chassis": chassis['id'],
                             "weapon": best_weapon['id'],
@@ -309,8 +341,8 @@ class DesignWorkshopScreen:
                 # Also create colony pod version if available
                 colony_weapon = next((w for w in noncombat_weapons if w['id'] == 'colony_pod'), None)
                 if colony_weapon and chassis['id'] != 'missile':
-                    design_name = generate_unit_name('colony_pod', chassis['id'], 'no_armor', best_reactor['id'], 'none', 'none')
-                    if design_name not in existing_names:
+                    spec = ('colony_pod', chassis['id'], 'no_armor', best_reactor['id'], 'none', 'none')
+                    if spec not in existing_specs:
                         new_designs.append({
                             "chassis": chassis['id'],
                             "weapon": colony_weapon['id'],
@@ -320,16 +352,93 @@ class DesignWorkshopScreen:
                             "ability2": "none"
                         })
 
+            # New reactor unlocked: create upgraded versions of existing combat designs
+            new_reactors = [r for r in available_reactors if r['prereq'] == completed_tech_id]
+            if new_reactors:
+                for slot in faction_designs.design_slots:
+                    if slot is None:
+                        continue
+                    # Skip if already using best reactor
+                    if slot['reactor'] == best_reactor['id']:
+                        continue
+                    # Skip non-combat (colony pods, formers, etc.)
+                    weapon = next((w for w in WEAPONS if w['id'] == slot['weapon']), None)
+                    if weapon and weapon['attack'] == 0:
+                        continue
+                    spec = (slot['weapon'], slot['chassis'], slot['armor'],
+                            best_reactor['id'], slot.get('ability1', 'none'),
+                            slot.get('ability2', 'none'))
+                    if spec not in existing_specs:
+                        new_designs.append({
+                            "chassis": slot['chassis'],
+                            "weapon": slot['weapon'],
+                            "armor": slot['armor'],
+                            "reactor": best_reactor['id'],
+                            "ability1": slot.get('ability1', 'none'),
+                            "ability2": slot.get('ability2', 'none')
+                        })
+                print(f"  Upgrading designs to {best_reactor['name']}")
+
+            # New ability unlocked: create designs based on ABILITY_DESIGN_RULES
+            new_abilities = [a for a in SPECIAL_ABILITIES
+                             if a['prereq'] == completed_tech_id and a['id'] in ABILITY_DESIGN_RULES]
+
+            for ability in new_abilities:
+                rule = ABILITY_DESIGN_RULES[ability['id']]
+                role = rule['role']
+
+                # Determine compatible chassis
+                if 'chassis_ids' in rule:
+                    target_chassis = [c for c in available_chassis if c['id'] in rule['chassis_ids']]
+                else:
+                    target_chassis = [c for c in available_chassis if c['type'] in rule['chassis_types']]
+
+                for chassis in target_chassis:
+                    if role == 'offensive':
+                        best_weapon = max(combat_weapons, key=lambda w: w['attack']) if combat_weapons else None
+                        if not best_weapon:
+                            continue
+                        weapon_id = best_weapon['id']
+                        armor_id = min_armor_obj['id']
+                    elif role == 'defensive':
+                        best_weapon = max(combat_weapons, key=lambda w: w['attack']) if combat_weapons else None
+                        if not best_weapon or not best_armor:
+                            continue
+                        weapon_id = best_weapon['id']
+                        armor_id = best_armor['id']
+                    elif role == 'former':
+                        weapon_id = 'terraforming'
+                        armor_id = 'no_armor'
+                    elif role == 'carrier':
+                        weapon_id = 'transport'
+                        armor_id = 'no_armor'
+                    elif role == 'probe':
+                        weapon_id = 'probe'
+                        armor_id = 'no_armor'
+                    else:
+                        continue
+
+                    spec = (weapon_id, chassis['id'], armor_id, best_reactor['id'], ability['id'], 'none')
+                    if spec not in existing_specs:
+                        new_designs.append({
+                            "chassis": chassis['id'],
+                            "weapon": weapon_id,
+                            "armor": armor_id,
+                            "reactor": best_reactor['id'],
+                            "ability1": ability['id'],
+                            "ability2": "none"
+                        })
+
         # Add all new designs to first available empty slots
         added_count = 0
         for design in new_designs:
-            design_name = generate_unit_name(design['weapon'], design['chassis'], design['armor'], design['reactor'],
-                                              design.get('ability1', 'none'), design.get('ability2', 'none'))
-            if design_name not in existing_names:
+            spec = (design['weapon'], design['chassis'], design['armor'], design['reactor'],
+                    design.get('ability1', 'none'), design.get('ability2', 'none'))
+            if spec not in existing_specs:
                 # Add to first empty slot
                 slot_index = faction_designs.add_design(design)
                 if slot_index is not None:
-                    existing_names.add(design_name)
+                    existing_specs.add(spec)
                     added_count += 1
 
         print(f"  Added {added_count} new designs")

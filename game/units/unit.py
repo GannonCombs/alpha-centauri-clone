@@ -601,6 +601,7 @@ class Unit:
             'is_cloaked': self.is_cloaked,
             'terraforming_action': self.terraforming_action,
             'terraforming_turns_left': self.terraforming_turns_left,
+            'held': self.held,
         }
 
     @classmethod
@@ -652,5 +653,6 @@ class Unit:
         unit.terraforming_action = data.get('terraforming_action', None)
         unit.terraforming_turns_left = data.get('terraforming_turns_left', 0)
         unit.has_moved = False  # Reset per-turn state
+        unit.held = data.get('held', False)
 
         return unit

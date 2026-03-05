@@ -1269,7 +1269,7 @@ class UIManager:
                     xeno_text = self.small_font.render("Xenofungus", True, (255, 0, 200))
                     screen.blit(xeno_text, (terrain_x, _label_y))
                     _label_y += 16
-                if getattr(tile, 'river_edges', None):
+                if getattr(tile, 'river_edges', None) or getattr(tile, 'has_river', False):
                     river_text = self.small_font.render("River", True, (100, 160, 220))
                     screen.blit(river_text, (terrain_x, _label_y))
                     _label_y += 16

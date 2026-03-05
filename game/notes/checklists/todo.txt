@@ -141,7 +141,7 @@ If yes, the artifact is consumed and we get a free tech. Linking means a network
 
 
 
-Bugs:
+Possible Bugs:
 
 
 
@@ -159,16 +159,14 @@ The End Turn button should then blink, not auto-end.
 8 Land unit in sea base could walk directly to adjacent land tile. Should be blocked unless amphibious or there's a transport.
 9 I got the underground river supply pod. No river appeared. Make sure you not only generate this in the backend, but draw
 it. It becomes a permanent part of the map.
-10 Building a base on enemy land is equivalent to starting an attack. Edit: looks like it's working, but corner case is
-when you haven't met the faction yet. The warning popup appears, then no vendetta or even commlink is in drop-up. Is this
-what I want?
-11 Hitting W is still ending turn right now, if there was no one else to move. This is a big bug.
-12 Cleanup backCompat:  - map.py::set_fungus — docstring says "kept for backward compatibility" (Edit: fungus is both a terraformer improvement
+10 Hitting W is still ending turn right now, if there was no one else to move. This is a big bug.
+11 Cleanup backCompat:  - map.py::set_fungus — docstring says "kept for backward compatibility" (Edit: fungus is both a terraformer improvement
   and a tile state that exists without terraforming. It kinda needs both, as long as it works.)
-13 Cleanup backCompat: - base.py::self.garrison — comment says "legacy". Seems redundant with get_garrison_units
-14 When ending my turn on hitting a supply pod, the AI turns are already processing before I've cleared hit OK.
+12 Cleanup backCompat: - base.py::self.garrison — comment says "legacy". Seems redundant with get_garrison_units
+13 When ending my turn on hitting a supply pod, the AI turns are already processing before I've cleared hit OK.
 I'm not going to say which popup this was - ANY popup should keep the turn from auto-ending!
-
+14 STILL not consistently showing new unit designs! This time it happened for Industrial Base, which I have seen pop
+up new unit designs in several previous games.
 
 
 ***************************************************************************
@@ -185,16 +183,14 @@ I'm not going to say which popup this was - ANY popup should keep the turn from 
 the non-military units automatically die. This is true for probe teams, and all versions of colony pods. (And artifacts,
 but they are captured, not killed. We've implemented this.) A note at the bottom should say We <killed or lost> x units.
 4 Growth is still messed up. It should not show two growth meters.
-5 STILL not consistently showing new unit designs! This time it happened for Industrial Base, which I have seen pop
-up new unit designs in several previous games.
-6 A unit finally debarked from a transport, but it came out held. At NO point should a transported unit be held. The l
+5 A unit finally debarked from a transport, but it came out held. At NO point should a transported unit be held. The l
 command is the l command. It means board transport. When you debark, you lose this status. I am also able to select the
 held unit without the H disappearing. This should never happen! This was all solved already!!!
-7 I debarked a unit onto a tile with a supply pod. I did not get the supply pod.
-8 Boarded units on a transport are missing from the garrison pane in the console.
-9 Units are no longer healing at all!
-10 Clicking on units in the garrison pane no longer selects them. It should!
-11 W is now cycling to held players again...
+6 I debarked a unit onto a tile with a supply pod. I did not get the supply pod.
+7 Boarded units on a transport are missing from the garrison pane in the console.
+8 Units are no longer healing at all!
+9 Clicking on units in the garrison pane no longer selects them. It should!
+10 W is now cycling to held players again...
 
 
 

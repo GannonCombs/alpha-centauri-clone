@@ -255,8 +255,30 @@ class GameMap:
         }
         STEP = {'N': (0, -1), 'S': (0, 1), 'E': (1, 0), 'W': (-1, 0)}
 
+        start_tile = self.get_tile(start_x, start_y)
+        if start_tile is None or not start_tile.is_land():
+            return
+
         length = random.randint(3, 10)
-        direction = random.choice(['N', 'S', 'E', 'W'])
+
+        # Try all 4 initial directions (shuffled) to find one that works
+        directions = ['N', 'S', 'E', 'W']
+        random.shuffle(directions)
+        direction = None
+        for d in directions:
+            dx, dy = STEP[d]
+            nx, ny = (start_x + dx) % self.width, start_y + dy
+            if 0 <= ny < self.height:
+                adj = self.get_tile(nx, ny)
+                if adj and adj.is_land():
+                    direction = d
+                    break
+        if direction is None:
+            # Single-tile island — river exists but doesn't extend
+            start_tile.has_river = True
+            print(f"River generated from ({start_x},{start_y}) — single tile")
+            return
+
         x, y = start_x, start_y
 
         for _ in range(length):

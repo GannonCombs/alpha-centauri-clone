@@ -251,8 +251,10 @@ def main():
                                 can_found, error_msg = game.can_found_base(unit)
                                 if can_found:
                                     territory_owner = game.territory.get_tile_owner(unit.x, unit.y)
+                                    player_faction = game.factions[game.player_faction_id]
                                     if (territory_owner is not None
                                             and territory_owner != game.player_faction_id
+                                            and player_faction.has_met(territory_owner)
                                             and not game.has_pact_with(game.player_faction_id, territory_owner)
                                             and territory_owner not in game.eliminated_factions):
                                         ui_panel.encroachment_dialog.activate(territory_owner, unit)

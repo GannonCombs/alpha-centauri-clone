@@ -773,7 +773,11 @@ class Renderer:
             for screen_x_idx in range(visible_tiles_x):
                 map_x = (self.camera_offset_x + screen_x_idx) % game_map.width
                 tile = game_map.get_tile(map_x, map_y)
-                if not tile or not getattr(tile, 'river_edges', None):
+                if not tile:
+                    continue
+                has_edges = getattr(tile, 'river_edges', None)
+                has_river = getattr(tile, 'has_river', False)
+                if not has_edges and not has_river:
                     continue
 
                 screen_x = (screen_x_idx * TILE_SIZE) + self.base_offset_x
@@ -787,15 +791,23 @@ class Renderer:
                 cx = screen_x + half
                 cy = screen_y + half
 
-                # Draw a segment from the tile centre to each river edge midpoint
-                for edge in tile.river_edges:
-                    ex, ey = edge_mid[edge]
-                    pygame.draw.line(
-                        self.screen, RIVER_COLOR,
-                        (cx, cy),
-                        (screen_x + ex, screen_y + ey),
-                        RIVER_WIDTH
-                    )
+                if has_edges:
+                    # Draw a segment from the tile centre to each river edge midpoint
+                    for edge in tile.river_edges:
+                        ex, ey = edge_mid[edge]
+                        pygame.draw.line(
+                            self.screen, RIVER_COLOR,
+                            (cx, cy),
+                            (screen_x + ex, screen_y + ey),
+                            RIVER_WIDTH
+                        )
+                elif has_river:
+                    # Drilled-aquifer river with no edges — draw a blue diamond
+                    pts = [
+                        (cx, cy - 4), (cx + 4, cy),
+                        (cx, cy + 4), (cx - 4, cy),
+                    ]
+                    pygame.draw.polygon(self.screen, RIVER_COLOR, pts)
 
     def draw_monoliths(self, game_map):
         """Draw monoliths on the map (brown towers)."""
