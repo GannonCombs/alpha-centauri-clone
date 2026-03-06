@@ -563,8 +563,11 @@ class Unit:
             self.morale_level += 1
             print(f"{self.name} promoted from {old_name} to {self.get_morale_name()}!")
 
-    def to_dict(self):
+    def to_dict(self, unit_index_map=None):
         """Serialize unit to dictionary.
+
+        Args:
+            unit_index_map: optional {unit: index} mapping for stable cargo indices
 
         Returns:
             dict: Unit data as dictionary
@@ -596,7 +599,7 @@ class Unit:
             'home_base_coords': (self.home_base.x, self.home_base.y) if self.home_base else None,
             'support_cost': self.support_cost,
             'transport_capacity': self.transport_capacity,
-            'loaded_unit_indices': [id(u) for u in self.loaded_units],
+            'loaded_unit_indices': [unit_index_map[u] for u in self.loaded_units if unit_index_map and u in unit_index_map],
             'is_probe': self.is_probe,
             'is_cloaked': self.is_cloaked,
             'terraforming_action': self.terraforming_action,

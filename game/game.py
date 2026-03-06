@@ -2165,7 +2165,7 @@ class Game:
                 'global_energy_allocation': self.global_energy_allocation.copy()
             },
             'map': self.game_map.to_dict(),
-            'units': [u.to_dict() for u in self.units],
+            'units': [u.to_dict(unit_index_map) for u in self.units],
             'bases': [b.to_dict(unit_index_map) for b in self.bases],
             'factions': {
                 faction_id: {
@@ -2234,8 +2234,21 @@ class Game:
         game.units = [Unit.from_dict(u) for u in data['units']]
         game.bases = [Base.from_dict(b, game.units) for b in data['bases']]
 
-        # Rebuild tile references (units and bases)
+        # Reconstruct transport cargo from saved indices
+        cargo_units = set()
+        for unit, unit_data in zip(game.units, data['units']):
+            indices = unit_data.get('loaded_unit_indices', [])
+            if indices and unit.transport_capacity > 0:
+                for idx in indices:
+                    if 0 <= idx < len(game.units):
+                        cargo = game.units[idx]
+                        unit.loaded_units.append(cargo)
+                        cargo_units.add(id(cargo))
+
+        # Rebuild tile references (units and bases) — skip cargo (they live inside transports)
         for unit in game.units:
+            if id(unit) in cargo_units:
+                continue
             tile = game.game_map.get_tile(unit.x, unit.y)
             if tile:
                 tile.units.append(unit)

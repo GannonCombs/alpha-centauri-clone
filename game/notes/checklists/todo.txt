@@ -175,10 +175,9 @@ but they are captured, not killed. We've implemented this.) A note at the bottom
 4 Growth is still messed up. It should not show two growth meters.
 5 I'm able to select the held unit without the H disappearing. This should never happen.
 6 I debarked a unit onto a tile with a supply pod. I did not get the supply pod.
-7 Boarded units on a transport are missing from the garrison pane in the console.
-8 Units are no longer healing at all!
-9 Clicking on units in the garrison pane no longer selects them. It should!
-10 I drove a sea transport over a supply pod and got an alien artifact. What should happen: The randomizer in supply pod
+7 Units are no longer healing at all!
+8 Clicking on units in the garrison pane no longer selects them. It should!
+9 I drove a sea transport over a supply pod and got an alien artifact. What should happen: The randomizer in supply pod
 event should check if the ship has cargo first. It should never pick artifact found if the transport is full - we can't
 exceed cargo limits. But if it's ok, and selected, this unit is added to cargo. It can't move the turn it's found
 (already moved). What did happen: It was not added to ship cargo. It floated in the sea but couldn't move.

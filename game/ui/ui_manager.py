@@ -1814,7 +1814,13 @@ class UIManager:
         screen.blit(title, (panel_x + panel_w // 2 - title.get_width() // 2, panel_y + 5))
 
         # Draw unit icons (up to 8 visible at once)
-        units_to_show = tile.units
+        # Include units loaded inside transports on this tile
+        units_to_show = list(tile.units)
+        boarded_set = set()
+        for u in tile.units:
+            for cargo in getattr(u, 'loaded_units', []):
+                units_to_show.append(cargo)
+                boarded_set.add(id(cargo))
         if not units_to_show:
             empty_text = self.small_font.render("No units in tile", True, (120, 130, 140))
             screen.blit(empty_text, (panel_x + panel_w // 2 - empty_text.get_width() // 2, panel_y + 50))
@@ -1850,9 +1856,13 @@ class UIManager:
             if unit == game.selected_unit:
                 pygame.draw.circle(screen, (255, 255, 0), (icon_x + icon_size // 2, icon_y + icon_size // 2), icon_size // 2 + 3)
 
-            # Draw unit circle
-            pygame.draw.circle(screen, unit_color, (icon_x + icon_size // 2, icon_y + icon_size // 2), icon_size // 2)
-            pygame.draw.circle(screen, COLOR_BLACK, (icon_x + icon_size // 2, icon_y + icon_size // 2), icon_size // 2, 1)
+            # Draw unit circle — boarded units are slightly smaller
+            cx = icon_x + icon_size // 2
+            cy = icon_y + icon_size // 2
+            is_boarded = id(unit) in boarded_set
+            radius = icon_size // 2 - 2 if is_boarded else icon_size // 2
+            pygame.draw.circle(screen, unit_color, (cx, cy), radius)
+            pygame.draw.circle(screen, COLOR_BLACK, (cx, cy), radius, 1)
 
             # Draw unit type indicator (first letter of unit type)
             # Show 'C' for colony pods, 'A' for artifacts, otherwise first letter of type
@@ -1864,8 +1874,14 @@ class UIManager:
                 type_letter = unit.type[0].upper()  # 'L', 'S', 'A'
             letter_font = pygame.font.Font(None, 16)
             letter_surf = letter_font.render(type_letter, True, COLOR_BLACK)
-            letter_rect = letter_surf.get_rect(center=(icon_x + icon_size // 2, icon_y + icon_size // 2))
+            letter_rect = letter_surf.get_rect(center=(cx, cy))
             screen.blit(letter_surf, letter_rect)
+
+            # Boarded indicator: small "B" badge in corner
+            if is_boarded:
+                badge_font = pygame.font.Font(None, 12)
+                badge_surf = badge_font.render("l", True, (255, 255, 255))
+                screen.blit(badge_surf, (icon_x + icon_size - 6, icon_y - 2))
 
         # Draw scroll arrows and count if needed
         if total_units > max_visible:
