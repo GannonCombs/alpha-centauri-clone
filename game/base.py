@@ -19,6 +19,24 @@ def _default_unit_name(faction):
     except Exception:
         return "Scout Patrol"
 
+
+def get_default_specialist(base, faction):
+    """Return the best available psych specialist for a freed worker.
+
+    Picks the strongest psych-producing specialist whose tech prerequisite
+    the faction has already researched and whose min_pop the base meets.
+    Priority: transcend > empath > doctor.
+    """
+    from game.data.citizen_data import SPECIALISTS
+    tech_tree = faction.tech_tree
+    spec_map = {s['id']: s for s in SPECIALISTS}
+    for spec_id in ('transcend', 'empath', 'doctor'):
+        spec = spec_map[spec_id]
+        if base.population >= spec['min_pop']:
+            if spec['prereq'] is None or tech_tree.has_tech(spec['prereq']):
+                return spec_id
+    return 'doctor'
+
 class Base:
     """Represents a base (city) on the map.
 
@@ -188,9 +206,10 @@ class Base:
         placed_coords = {(t.x, t.y) for t in worked}
 
         # 2. Auto-fill remaining slots, skipping excluded and already-placed.
-        # Each manual_exclude reduces available auto-fill by 1 so that deselecting
-        # a tile leaves a real empty slot rather than immediately replacing it.
-        remaining = slots - (len(worked) - 1) - len(self.manual_exclude_coords)
+        # Specialists reduce `slots` (pop - specialists), so each excluded tile
+        # paired with a specialist already reduces the auto-fill count naturally.
+        # The exclude set only acts as a *filter* (skip these specific tiles).
+        remaining = slots - (len(worked) - 1)
         if remaining > 0:
             candidates = []
             for tile, coord in domain:
@@ -217,16 +236,19 @@ class Base:
 
         return worked
 
-    def toggle_worked_tile(self, tx, ty, game_map):
+    def toggle_worked_tile(self, tx, ty, game_map, game=None):
         """Toggle manual work assignment for a domain tile.
 
-        If currently worked:  exclude it (or un-include if manually included).
-        If currently unworked: include it (or un-exclude if manually excluded).
+        If currently worked:  exclude it and convert the freed worker to a
+        specialist (governor's choice).
+        If currently unworked: include it and convert a specialist back to a
+        worker (if any).
         The base tile cannot be toggled.
 
         Args:
             tx, ty: Tile coordinates to toggle
             game_map: GameMap instance
+            game: Game instance (for tech-tree lookup when choosing specialist)
         """
         coord = (tx, ty)
         if coord == (self.x, self.y):
@@ -246,17 +268,20 @@ class Base:
         current_worked_coords = {(t.x, t.y) for t in self.get_worked_tiles(game_map)}
 
         if coord in current_worked_coords:
-            # Deselect: remove from manual_include or add to manual_exclude
-            if coord in self.manual_include_coords:
-                self.manual_include_coords.discard(coord)
-            else:
-                self.manual_exclude_coords.add(coord)
+            # Deselect: always exclude (even if previously manually included)
+            self.manual_include_coords.discard(coord)
+            self.manual_exclude_coords.add(coord)
+            # Convert freed worker → specialist
+            if game:
+                faction = game.factions[self.owner]
+                self.specialists.append(get_default_specialist(self, faction))
         else:
-            # Select: remove from manual_exclude or add to manual_include
-            if coord in self.manual_exclude_coords:
-                self.manual_exclude_coords.discard(coord)
-            else:
-                self.manual_include_coords.add(coord)
+            # Select: always include (even if not previously excluded)
+            self.manual_exclude_coords.discard(coord)
+            self.manual_include_coords.add(coord)
+            # Convert specialist → worker
+            if self.specialists:
+                self.specialists.pop()
 
     def calculate_resource_output(self, game_map):
         """Sum nutrients, minerals, and energy from all worked tiles.
@@ -954,6 +979,7 @@ class Base:
             'governor_mode': self.governor_mode,
             'manual_include_coords': [list(c) for c in self.manual_include_coords],
             'manual_exclude_coords': [list(c) for c in self.manual_exclude_coords],
+            'tile_assign_v2': True,
         }
 
     @classmethod
@@ -1007,6 +1033,14 @@ class Base:
         base.commerce_income = data.get('commerce_income', 0)
         base.manual_include_coords = set(tuple(c) for c in data.get('manual_include_coords', []))
         base.manual_exclude_coords = set(tuple(c) for c in data.get('manual_exclude_coords', []))
+
+        # v2 migration: excludes used to directly reduce auto-fill count.
+        # Now specialists handle count reduction, so add specialists for
+        # unmatched old excludes to preserve the same number of worked tiles.
+        if not data.get('tile_assign_v2') and base.manual_exclude_coords:
+            max_new = max(0, base.population - len(base.specialists))
+            for _ in range(min(len(base.manual_exclude_coords), max_new)):
+                base.specialists.append('doctor')
 
         # Initialize derived/calculated values
         base.supported_units = []

@@ -133,8 +133,8 @@ The artifact transports to the title the unit was on.
 in similar fashion. Note that if the tile has multiple units on it, the artifact stays put. Only transfers on the last death.
 - If an artifact moves onto a supply pod, both artifact and pod are consumed. No tech comes of it. Have a popup saying
 the artifact was destroyed. Ok button only.
-- If an artifact is held in a base with an unlinked Network Node, a popup occurs, asking if we'd like to link it.
-If yes, the artifact is consumed and we get a free tech. Linking means a network node can only consume one artifact ever.
+- If an artifact is held in a base with an unlinked Network Node, a popup occurs, asking if we'd like to link it. ✅
+If yes, the artifact is consumed and we get a free tech. Linking means a network node can only consume one artifact ever. ✅
 
 18: Bonus techs
 - The first person to discover any of the three techs starting with "Secrets of" get another tech right after.
@@ -145,7 +145,7 @@ Possible Bugs:
 
 
 
-1 A unit of mine took a base and wasn't healed. Any unit taking a base automatically fully heals.
+1 A unit of mine took a base and wasn't healed. Any unit taking a base should fully heal, even if the base is destroyed.
 2 Got a diplomatic milestone popup when missing commlinks.
 3 Healing should not occur at turn end. It happens in upkeep of the next turn.
 4 Production times are off. Merchant Exchange takes 20 turns on Turn 1 for Morgan.
@@ -155,14 +155,12 @@ naturally (movement onto a monolith is the exception.)
 6 Land unit in sea base could walk directly to adjacent land tile. Should be blocked unless amphibious or there's a transport.
 7 I got the underground river supply pod. No river appeared. Make sure you not only generate this in the backend, but draw
 it. It becomes a permanent part of the map.
-8 Hitting W is still ending turn right now, if there was no one else to move. This is a big bug.
-9 Cleanup backCompat:  - map.py::set_fungus — docstring says "kept for backward compatibility" (Edit: fungus is both a terraformer improvement
+8 Cleanup backCompat:  - map.py::set_fungus — docstring says "kept for backward compatibility" (Edit: fungus is both a terraformer improvement
   and a tile state that exists without terraforming. It kinda needs both, as long as it works.)
-10 Cleanup backCompat: - base.py::self.garrison — comment says "legacy". Seems redundant with get_garrison_units
-11 When ending my turn on hitting a supply pod, the AI turns are already processing before I've cleared hit OK.
+9 Cleanup backCompat: - base.py::self.garrison — comment says "legacy". Seems redundant with get_garrison_units
+10 When ending my turn on hitting a supply pod, the AI turns are already processing before I've cleared hit OK.
 I'm not going to say which popup this was - ANY popup should keep the turn from auto-ending!
-12 STILL not consistently showing new unit designs! This time it happened for Industrial Base, which I have seen pop
-up new unit designs in several previous games.
+
 
 
 ***************************************************************************
@@ -179,14 +177,16 @@ up new unit designs in several previous games.
 the non-military units automatically die. This is true for probe teams, and all versions of colony pods. (And artifacts,
 but they are captured, not killed. We've implemented this.) A note at the bottom should say We <killed or lost> x units.
 4 Growth is still messed up. It should not show two growth meters.
-5 A unit finally debarked from a transport, but it came out held. At NO point should a transported unit be held. The l
-command is the l command. It means board transport. When you debark, you lose this status. I am also able to select the
-held unit without the H disappearing. This should never happen! This was all solved already!!!
+5 I'm able to select the held unit without the H disappearing. This should never happen.
 6 I debarked a unit onto a tile with a supply pod. I did not get the supply pod.
 7 Boarded units on a transport are missing from the garrison pane in the console.
 8 Units are no longer healing at all!
 9 Clicking on units in the garrison pane no longer selects them. It should!
-10 W is now cycling to held players again...
+10 I drove a sea transport over a supply pod and got an alien artifact. What should happen: The randomizer in supply pod
+event should check if the ship has cargo first. It should never pick artifact found if the transport is full - we can't
+exceed cargo limits. But if it's ok, and selected, this unit is added to cargo. It can't move the turn it's found
+(already moved). What did happen: It was not added to ship cargo. It floated in the sea but couldn't move.
+11 Right now, a tile can be worked by two nearby bases of the same faction. This should not happen.
 
 
 

@@ -580,6 +580,8 @@ class BaseScreen:
                 base.energy_production = max(0, base.energy_production - base.inefficiency_loss)
             alloc = getattr(game, 'global_energy_allocation', {'economy': 50, 'labs': 50, 'psych': 0})
             base.allocate_energy(alloc['economy'], alloc['labs'], alloc['psych'])
+            base.apply_specialist_bonuses()
+            base.calculate_population_happiness()
 
         # Fill background
         screen.fill((15, 20, 25))
@@ -2165,7 +2167,7 @@ class BaseScreen:
         if not is_enemy_base:
             for tile_rect, map_x, map_y in self.map_tile_rects:
                 if tile_rect.collidepoint(pos):
-                    base.toggle_worked_tile(map_x, map_y, game.game_map)
+                    base.toggle_worked_tile(map_x, map_y, game.game_map, game)
                     base.calculate_resource_output(game.game_map)
                     base.growth_turns_remaining = base._calculate_growth_turns()
                     return None
