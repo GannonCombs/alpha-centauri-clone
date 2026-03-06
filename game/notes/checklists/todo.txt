@@ -69,7 +69,7 @@ Use it to test the following issues, but also test debug mode along the way.
 - Loaded units move with transport automatically ✅
 - Unload to adjacent land tiles ✅
 - Loaded units destroyed if transport is destroyed while not in base.
-- When a unit is in a base along with a transport, press l to load them.
+- When a unit is in a base along with a transport, press l to load them. ✅
 
 9: Disengage Mechanic
 

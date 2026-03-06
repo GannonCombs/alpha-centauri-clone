@@ -568,13 +568,12 @@ class BaseScreen:
         if not base:
             return
 
-        # Compute tiles claimed by closer same-faction bases
-        same_faction = [b for b in game.bases if b.owner == base.owner] if hasattr(game, 'bases') else []
-        self._rival_coords = base.get_rival_claimed_coords(game.game_map, same_faction) if same_faction else set()
+        # Compute tiles claimed by closer bases (friendly or enemy)
+        self._unworkable_coords = base.get_unworkable_coords(game.game_map, game.bases) if hasattr(game, 'bases') else set()
 
         # Refresh resource output from worked tiles so display is always current
         if hasattr(game, 'game_map'):
-            base.calculate_resource_output(game.game_map, rival_coords=self._rival_coords)
+            base.calculate_resource_output(game.game_map, unworkable_coords=self._unworkable_coords)
             base.energy_production = base.energy_per_turn  # sync for allocate_energy
             base.growth_turns_remaining = base._calculate_growth_turns()
             # Apply inefficiency before splitting so economy/labs reflect true net
@@ -692,8 +691,8 @@ class BaseScreen:
         start_tile_y = map_view_y
 
         # Build set of currently-worked tile coords for highlighting
-        rival_coords = getattr(self, '_rival_coords', set())
-        worked_tiles = base.get_worked_tiles(game.game_map, rival_coords=rival_coords)
+        unworkable_coords = getattr(self, '_unworkable_coords', set())
+        worked_tiles = base.get_worked_tiles(game.game_map, unworkable_coords=unworkable_coords)
         worked_coords = {(t.x, t.y) for t in worked_tiles}
 
         # Resource colors
@@ -762,18 +761,18 @@ class BaseScreen:
                     # Outside domain: pure black
                     pygame.draw.rect(screen, COLOR_BLACK, tile_rect)
                 else:
-                    is_rival = (map_x, map_y) in rival_coords
+                    is_unworkable = (map_x, map_y) in unworkable_coords
                     pygame.draw.rect(screen, terrain_color, tile_rect)
                     # Rocks: draw a subtle darker overlay on rocky land tiles
                     if actual_tile.is_land() and getattr(actual_tile, 'rockiness', 0) == 2:
                         rock_surf = pygame.Surface((tile_size, tile_size), pygame.SRCALPHA)
                         rock_surf.fill((0, 0, 0, 60))
                         screen.blit(rock_surf, tile_rect.topleft)
-                    if is_rival:
+                    if is_unworkable:
                         # Gray out tiles belonging to a closer same-faction base
-                        rival_surf = pygame.Surface((tile_size, tile_size), pygame.SRCALPHA)
-                        rival_surf.fill((0, 0, 0, 120))
-                        screen.blit(rival_surf, tile_rect.topleft)
+                        dim_surf = pygame.Surface((tile_size, tile_size), pygame.SRCALPHA)
+                        dim_surf.fill((0, 0, 0, 120))
+                        screen.blit(dim_surf, tile_rect.topleft)
                     else:
                         # Store rect for click detection (claimable domain tiles only)
                         self.map_tile_rects.append((pygame.Rect(tile_rect), map_x, map_y))
@@ -784,12 +783,56 @@ class BaseScreen:
                     pygame.draw.rect(screen, (255, 255, 255), tile_rect, 2, border_radius=3)
                 elif is_corner:
                     pygame.draw.rect(screen, (40, 40, 40), tile_rect, 1)
-                elif coord in rival_coords:
+                elif coord in unworkable_coords:
                     pygame.draw.rect(screen, (40, 40, 40), tile_rect, 1)
                 elif coord in worked_coords:
                     pygame.draw.rect(screen, (200, 200, 200), tile_rect, 2)
                 else:
                     pygame.draw.rect(screen, (55, 65, 55), tile_rect, 1)
+
+                # Territory border edges — dual-color dotted lines (matches main map)
+                if not is_corner and hasattr(game, 'territory'):
+                    tile_owner = game.territory.get_tile_owner(map_x, map_y)
+                    if tile_owner is not None:
+                        _get_color = lambda fid: FACTION_DATA[fid]['color'] if fid is not None and fid < len(FACTION_DATA) else None
+                        my_color = _get_color(tile_owner)
+                        dash_len = 3
+                        gap_len = 2
+                        pat = dash_len + gap_len
+                        sx, sy = tile_rect.x, tile_rect.y
+                        for edge, edx, edy in (('N', 0, -1), ('E', 1, 0), ('S', 0, 1), ('W', -1, 0)):
+                            nx = (map_x + edx) % game.game_map.width
+                            ny = map_y + edy
+                            nb_owner = game.territory.get_tile_owner(nx, ny) if 0 <= ny < game.game_map.height else None
+                            if nb_owner == tile_owner:
+                                continue
+                            nb_color = _get_color(nb_owner)
+                            if edge == 'N':
+                                for i in range(0, tile_size, pat):
+                                    xe = min(sx + i + dash_len, sx + tile_size)
+                                    pygame.draw.line(screen, my_color, (sx + i, sy + 1), (xe, sy + 1), 1)
+                                    if nb_color:
+                                        pygame.draw.line(screen, nb_color, (sx + i, sy), (xe, sy), 1)
+                            elif edge == 'S':
+                                by = sy + tile_size - 1
+                                for i in range(0, tile_size, pat):
+                                    xe = min(sx + i + dash_len, sx + tile_size)
+                                    pygame.draw.line(screen, my_color, (sx + i, by - 1), (xe, by - 1), 1)
+                                    if nb_color:
+                                        pygame.draw.line(screen, nb_color, (sx + i, by), (xe, by), 1)
+                            elif edge == 'W':
+                                for i in range(0, tile_size, pat):
+                                    ye = min(sy + i + dash_len, sy + tile_size)
+                                    pygame.draw.line(screen, my_color, (sx + 1, sy + i), (sx + 1, ye), 1)
+                                    if nb_color:
+                                        pygame.draw.line(screen, nb_color, (sx, sy + i), (sx, ye), 1)
+                            elif edge == 'E':
+                                rx = sx + tile_size - 1
+                                for i in range(0, tile_size, pat):
+                                    ye = min(sy + i + dash_len, sy + tile_size)
+                                    pygame.draw.line(screen, my_color, (rx - 1, sy + i), (rx - 1, ye), 1)
+                                    if nb_color:
+                                        pygame.draw.line(screen, nb_color, (rx, sy + i), (rx, ye), 1)
 
                 # Resource number overlays for worked tiles (including base tile)
                 if coord in worked_coords:
@@ -1997,7 +2040,7 @@ class BaseScreen:
                         if self.citizen_context_spec_idx is not None:
                             base.specialists.pop(self.citizen_context_spec_idx)
                         base.calculate_population_happiness()
-                        base.calculate_resource_output(game.game_map, rival_coords=getattr(self, '_rival_coords', set()))
+                        base.calculate_resource_output(game.game_map, unworkable_coords=getattr(self, '_unworkable_coords', set()))
                         base.growth_turns_remaining = base._calculate_growth_turns()
                         game.set_status_message("Specialist reverted to auto citizen")
                     else:
@@ -2007,7 +2050,7 @@ class BaseScreen:
                         elif self.citizen_context_spec_idx is not None:
                             base.specialists[self.citizen_context_spec_idx] = action
                         base.calculate_population_happiness()
-                        base.calculate_resource_output(game.game_map, rival_coords=getattr(self, '_rival_coords', set()))
+                        base.calculate_resource_output(game.game_map, unworkable_coords=getattr(self, '_unworkable_coords', set()))
                         base.growth_turns_remaining = base._calculate_growth_turns()
                         from game.data.citizen_data import SPECIALISTS
                         name = next((s['name'] for s in SPECIALISTS if s['id'] == action), action)
@@ -2185,9 +2228,9 @@ class BaseScreen:
         if not is_enemy_base:
             for tile_rect, map_x, map_y in self.map_tile_rects:
                 if tile_rect.collidepoint(pos):
-                    rival = getattr(self, '_rival_coords', set())
-                    base.toggle_worked_tile(map_x, map_y, game.game_map, game, rival_coords=rival)
-                    base.calculate_resource_output(game.game_map, rival_coords=rival)
+                    uw = getattr(self, '_unworkable_coords', set())
+                    base.toggle_worked_tile(map_x, map_y, game.game_map, game, unworkable_coords=uw)
+                    base.calculate_resource_output(game.game_map, unworkable_coords=uw)
                     base.growth_turns_remaining = base._calculate_growth_turns()
                     return None
 
