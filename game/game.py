@@ -508,7 +508,7 @@ class Game:
                 if uncontacted:
                     new_faction_id = random.choice(uncontacted)
                     faction_name = FACTION_DATA[new_faction_id]['name'] if new_faction_id < len(FACTION_DATA) else f"Faction {new_faction_id}"
-                    self.supply_pod_message = f"Supply Pod discovered! Commlink frequencies for {faction_name} recovered from ancient datalinks!"
+                    self.supply_pod_message = f"Supply Pod discovered!\nCommlink frequencies for {faction_name}\nrecovered from ancient datalinks!"
                     self.add_faction_contact(new_faction_id)
                     # NOTE: intentionally NOT adding to pending_commlink_requests — supply pod
                     # commlinks just unlock the contact in the commlink panel; they don't start a call.
