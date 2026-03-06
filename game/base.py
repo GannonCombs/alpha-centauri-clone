@@ -20,6 +20,14 @@ def _default_unit_name(faction):
         return "Scout Patrol"
 
 
+def _manhattan_dist(x1, y1, x2, y2, map_width):
+    """Manhattan distance with east-west wrapping."""
+    dx = abs(x2 - x1)
+    if dx > map_width // 2:
+        dx = map_width - dx
+    return dx + abs(y2 - y1)
+
+
 def get_default_specialist(base, faction):
     """Return the best available psych specialist for a freed worker.
 
@@ -162,7 +170,38 @@ class Base:
                     domain.append((tile, (nx, ny)))
         return domain
 
-    def get_worked_tiles(self, game_map):
+    def get_rival_claimed_coords(self, game_map, same_faction_bases):
+        """Return the set of coords in this base's fat cross that are closer to
+        another same-faction base (and thus not workable by this base).
+
+        Uses Manhattan distance with east-west wrapping.  Tiebreaker for
+        equidistant: lower (y, x) base wins.
+
+        Args:
+            game_map: GameMap instance
+            same_faction_bases: list of Base objects with the same owner
+
+        Returns:
+            set: Coordinates (x, y) claimed by a rival base
+        """
+        rival = set()
+        width = game_map.width
+        for _, coord in self._get_fat_cross_domain(game_map):
+            cx, cy = coord
+            my_dist = _manhattan_dist(self.x, self.y, cx, cy, width)
+            for other in same_faction_bases:
+                if other is self:
+                    continue
+                other_dist = _manhattan_dist(other.x, other.y, cx, cy, width)
+                if other_dist < my_dist or (
+                    other_dist == my_dist
+                    and (other.y, other.x) < (self.y, self.x)
+                ):
+                    rival.add(coord)
+                    break
+        return rival
+
+    def get_worked_tiles(self, game_map, rival_coords=None):
         """Return the list of tiles this base is currently working.
 
         Domain is the SMAC fat cross (5×5 minus corners = 21 tiles).
@@ -173,6 +212,8 @@ class Base:
 
         Args:
             game_map: GameMap instance
+            rival_coords: optional set of (x,y) coords claimed by a nearby
+                same-faction base (excluded from working)
 
         Returns:
             list[Tile]: Tiles being worked (base tile first)
@@ -191,6 +232,9 @@ class Base:
             return worked
 
         domain = self._get_fat_cross_domain(game_map)
+        # Filter out tiles claimed by a closer same-faction base
+        if rival_coords:
+            domain = [(t, c) for t, c in domain if c not in rival_coords]
         domain_coord_set = {coord for _, coord in domain}
 
         # 1. Fill manually-included tiles first (in sorted coord order for determinism)
@@ -236,23 +280,27 @@ class Base:
 
         return worked
 
-    def toggle_worked_tile(self, tx, ty, game_map, game=None):
+    def toggle_worked_tile(self, tx, ty, game_map, game=None, rival_coords=None):
         """Toggle manual work assignment for a domain tile.
 
         If currently worked:  exclude it and convert the freed worker to a
         specialist (governor's choice).
         If currently unworked: include it and convert a specialist back to a
         worker (if any).
-        The base tile cannot be toggled.
+        The base tile cannot be toggled.  Tiles claimed by a closer
+        same-faction base (in rival_coords) are also ignored.
 
         Args:
             tx, ty: Tile coordinates to toggle
             game_map: GameMap instance
             game: Game instance (for tech-tree lookup when choosing specialist)
+            rival_coords: optional set of (x,y) coords claimed by a rival base
         """
         coord = (tx, ty)
         if coord == (self.x, self.y):
             return  # base tile is permanent
+        if rival_coords and coord in rival_coords:
+            return  # belongs to a closer same-faction base
 
         # Verify the tile is in the fat cross domain
         raw_dx = tx - self.x
@@ -283,7 +331,7 @@ class Base:
             self.manual_include_coords.add(coord)
             self.specialists.pop()
 
-    def calculate_resource_output(self, game_map):
+    def calculate_resource_output(self, game_map, rival_coords=None):
         """Sum nutrients, minerals, and energy from all worked tiles.
 
         Updates self.nutrients_per_turn, self.minerals_per_turn, and
@@ -291,6 +339,7 @@ class Base:
 
         Args:
             game_map: GameMap instance
+            rival_coords: optional set of (x,y) coords claimed by a rival base
 
         Returns:
             tuple: (nutrients_per_turn, minerals_per_turn, energy_per_turn)
@@ -301,7 +350,7 @@ class Base:
         bonuses = FACTION_DATA[self.owner].get('bonuses', {}) if self.owner < len(FACTION_DATA) else {}
         fungus_nut_bonus = bonuses.get('fungus_nutrients', 0)
 
-        worked = self.get_worked_tiles(game_map)
+        worked = self.get_worked_tiles(game_map, rival_coords=rival_coords)
         n = 0
         m = 0
         e = 0
@@ -575,8 +624,14 @@ class Base:
         if energy_allocation is None:
             energy_allocation = {'economy': 50, 'labs': 50, 'psych': 0}
 
+        # Compute tiles claimed by closer same-faction bases (once per turn)
+        rival_coords = None
+        if game is not None:
+            same_faction = [b for b in game.bases if b.owner == self.owner]
+            rival_coords = self.get_rival_claimed_coords(game.game_map, same_faction)
+
         # Calculate energy production and allocate it
-        self.calculate_energy_output(game)
+        self.calculate_energy_output(game, rival_coords=rival_coords)
         self.inefficiency_loss = min(self.energy_production, max(0, inefficiency_loss))
         self.energy_production = max(0, self.energy_production - self.inefficiency_loss)
         self.allocate_energy(
@@ -592,7 +647,7 @@ class Base:
 
         # Calculate resources from all worked tiles (base tile + workers' tiles).
         if game is not None:
-            nutrients_per_turn, minerals_from_tiles, _ = self.calculate_resource_output(game.game_map)
+            nutrients_per_turn, minerals_from_tiles, _ = self.calculate_resource_output(game.game_map, rival_coords=rival_coords)
         else:
             nutrients_per_turn = 1
             minerals_from_tiles = 1
@@ -732,7 +787,7 @@ class Base:
 
         return completed_item
 
-    def calculate_energy_output(self, game=None):
+    def calculate_energy_output(self, game=None, rival_coords=None):
         """Calculate total energy production before allocation.
 
         Sums energy from all worked tiles (base tile + workers' adjacent tiles).
@@ -743,7 +798,7 @@ class Base:
         """
         if game is not None:
             from game.map import tile_base_energy
-            worked = self.get_worked_tiles(game.game_map)
+            worked = self.get_worked_tiles(game.game_map, rival_coords=rival_coords)
             self.energy_production = sum(tile_base_energy(t) for t in worked)
             self.energy_per_turn = self.energy_production
         else:

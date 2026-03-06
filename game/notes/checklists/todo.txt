@@ -182,7 +182,6 @@ but they are captured, not killed. We've implemented this.) A note at the bottom
 event should check if the ship has cargo first. It should never pick artifact found if the transport is full - we can't
 exceed cargo limits. But if it's ok, and selected, this unit is added to cargo. It can't move the turn it's found
 (already moved). What did happen: It was not added to ship cargo. It floated in the sea but couldn't move.
-11 Right now, a tile can be worked by two nearby bases of the same faction. This should not happen.
 
 
 

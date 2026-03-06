@@ -568,9 +568,13 @@ class BaseScreen:
         if not base:
             return
 
+        # Compute tiles claimed by closer same-faction bases
+        same_faction = [b for b in game.bases if b.owner == base.owner] if hasattr(game, 'bases') else []
+        self._rival_coords = base.get_rival_claimed_coords(game.game_map, same_faction) if same_faction else set()
+
         # Refresh resource output from worked tiles so display is always current
         if hasattr(game, 'game_map'):
-            base.calculate_resource_output(game.game_map)
+            base.calculate_resource_output(game.game_map, rival_coords=self._rival_coords)
             base.energy_production = base.energy_per_turn  # sync for allocate_energy
             base.growth_turns_remaining = base._calculate_growth_turns()
             # Apply inefficiency before splitting so economy/labs reflect true net
@@ -688,7 +692,8 @@ class BaseScreen:
         start_tile_y = map_view_y
 
         # Build set of currently-worked tile coords for highlighting
-        worked_tiles = base.get_worked_tiles(game.game_map)
+        rival_coords = getattr(self, '_rival_coords', set())
+        worked_tiles = base.get_worked_tiles(game.game_map, rival_coords=rival_coords)
         worked_coords = {(t.x, t.y) for t in worked_tiles}
 
         # Resource colors
@@ -757,20 +762,29 @@ class BaseScreen:
                     # Outside domain: pure black
                     pygame.draw.rect(screen, COLOR_BLACK, tile_rect)
                 else:
+                    is_rival = (map_x, map_y) in rival_coords
                     pygame.draw.rect(screen, terrain_color, tile_rect)
                     # Rocks: draw a subtle darker overlay on rocky land tiles
                     if actual_tile.is_land() and getattr(actual_tile, 'rockiness', 0) == 2:
                         rock_surf = pygame.Surface((tile_size, tile_size), pygame.SRCALPHA)
                         rock_surf.fill((0, 0, 0, 60))
                         screen.blit(rock_surf, tile_rect.topleft)
-                    # Store rect for click detection (domain tiles only, not base)
-                    self.map_tile_rects.append((pygame.Rect(tile_rect), map_x, map_y))
+                    if is_rival:
+                        # Gray out tiles belonging to a closer same-faction base
+                        rival_surf = pygame.Surface((tile_size, tile_size), pygame.SRCALPHA)
+                        rival_surf.fill((0, 0, 0, 120))
+                        screen.blit(rival_surf, tile_rect.topleft)
+                    else:
+                        # Store rect for click detection (claimable domain tiles only)
+                        self.map_tile_rects.append((pygame.Rect(tile_rect), map_x, map_y))
 
                 # Border: bright if worked, dim if unworked domain, faint if corner/out
                 coord = (map_x, map_y)
                 if is_base:
                     pygame.draw.rect(screen, (255, 255, 255), tile_rect, 2, border_radius=3)
                 elif is_corner:
+                    pygame.draw.rect(screen, (40, 40, 40), tile_rect, 1)
+                elif coord in rival_coords:
                     pygame.draw.rect(screen, (40, 40, 40), tile_rect, 1)
                 elif coord in worked_coords:
                     pygame.draw.rect(screen, (200, 200, 200), tile_rect, 2)
@@ -1983,7 +1997,7 @@ class BaseScreen:
                         if self.citizen_context_spec_idx is not None:
                             base.specialists.pop(self.citizen_context_spec_idx)
                         base.calculate_population_happiness()
-                        base.calculate_resource_output(game.game_map)
+                        base.calculate_resource_output(game.game_map, rival_coords=getattr(self, '_rival_coords', set()))
                         base.growth_turns_remaining = base._calculate_growth_turns()
                         game.set_status_message("Specialist reverted to auto citizen")
                     else:
@@ -1993,7 +2007,7 @@ class BaseScreen:
                         elif self.citizen_context_spec_idx is not None:
                             base.specialists[self.citizen_context_spec_idx] = action
                         base.calculate_population_happiness()
-                        base.calculate_resource_output(game.game_map)
+                        base.calculate_resource_output(game.game_map, rival_coords=getattr(self, '_rival_coords', set()))
                         base.growth_turns_remaining = base._calculate_growth_turns()
                         from game.data.citizen_data import SPECIALISTS
                         name = next((s['name'] for s in SPECIALISTS if s['id'] == action), action)
@@ -2171,8 +2185,9 @@ class BaseScreen:
         if not is_enemy_base:
             for tile_rect, map_x, map_y in self.map_tile_rects:
                 if tile_rect.collidepoint(pos):
-                    base.toggle_worked_tile(map_x, map_y, game.game_map, game)
-                    base.calculate_resource_output(game.game_map)
+                    rival = getattr(self, '_rival_coords', set())
+                    base.toggle_worked_tile(map_x, map_y, game.game_map, game, rival_coords=rival)
+                    base.calculate_resource_output(game.game_map, rival_coords=rival)
                     base.growth_turns_remaining = base._calculate_growth_turns()
                     return None
 
