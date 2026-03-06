@@ -697,6 +697,8 @@ class BaseScreen:
         COLOR_ENE = (230, 220, 80)        # yellow
 
         self.map_tile_rects = []
+        faction_bonuses = FACTION_DATA[base.owner].get('bonuses', {}) if base.owner < len(FACTION_DATA) else {}
+        fungus_nut_bonus = faction_bonuses.get('fungus_nutrients', 0)
 
         for grid_dy in range(5):
             for grid_dx in range(5):
@@ -783,6 +785,8 @@ class BaseScreen:
                     else:
                         mult = imp_yields['nutrients_multiplier']
                         nut  = int((tile_base_nutrients(actual_tile) + imp_yields['nutrients']) * mult)
+                        if fungus_nut_bonus and getattr(actual_tile, 'fungus', False):
+                            nut += fungus_nut_bonus
                         min_ = tile_base_minerals(actual_tile) + imp_yields['minerals']
                         ene  = tile_base_energy(actual_tile)   + imp_yields['energy']
 

@@ -103,10 +103,6 @@ Use it to test the following issues, but also test debug mode along the way.
 - Some hot key also activates
 
 14: Remaining Faction bonuses to test
-Faction: Deirdre
-Bonus: fungus_nutrients: 1 — Get +1 nutrient per worked fungus tile
-Location: calculate_resource_output
-────────────────────────────────────────
 Faction: Zakharov
 Bonus: extra_drone_per_4 — +floor(pop/4) extra drones
 Location: calculate_population_happiness

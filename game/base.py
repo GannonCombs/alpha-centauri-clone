@@ -276,12 +276,12 @@ class Base:
                 faction = game.factions[self.owner]
                 self.specialists.append(get_default_specialist(self, faction))
         else:
-            # Select: always include (even if not previously excluded)
+            # Select: only allowed if there's a specialist to convert back
+            if not self.specialists:
+                return  # no free worker — deselect a tile first
             self.manual_exclude_coords.discard(coord)
             self.manual_include_coords.add(coord)
-            # Convert specialist → worker
-            if self.specialists:
-                self.specialists.pop()
+            self.specialists.pop()
 
     def calculate_resource_output(self, game_map):
         """Sum nutrients, minerals, and energy from all worked tiles.
